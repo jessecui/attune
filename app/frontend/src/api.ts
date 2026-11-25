@@ -57,11 +57,12 @@ export const AXIS_NOTES: Record<string, { title: string; about: string }> = {
 }
 export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-// How each style reads in a sentence ("answers that are warm, collaborative and concise").
+// How each style reads in a sentence ("answers that are warm, collaborative and formal").
+// Depth is about reasons, not length, so it is phrased as what the answers do, not as "concise".
 export const AS_ADJECTIVE: Record<string, string> = {
-  warm: 'warm', neutral: 'matter-of-fact', directive: 'directive', collaborative: 'collaborative',
-  casual: 'casual', formal: 'formal', 'explains why': 'explanatory', 'just the advice': 'concise',
+  warm: 'warm', neutral: 'matter-of-fact', directive: 'directive', collaborative: 'collaborative', casual: 'casual', formal: 'formal',
 }
+export const AS_CLAUSE: Record<string, string> = { 'explains why': 'explain the reasons', 'just the advice': 'give the advice without the reasons' }
 
 // Each scale keeps one colour wherever it appears.
 export const axisColor = (axis: string) => `var(--color-${axis}, var(--color-accent))`

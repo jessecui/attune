@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
-import { api, AS_ADJECTIVE, read, type ModelStatus, type Summary } from '../api'
+import { api, AS_ADJECTIVE, AS_CLAUSE, read, type ModelStatus, type Summary } from '../api'
 import { Scale } from '../components/Scale'
 import { Trajectory, sharedLimit } from '../components/Trajectory'
 import { Spinner } from '../components/Spinner'
 
 /** "warm, collaborative and formal" */
 const list = (words: string[]) => words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+
+/** "are warm, collaborative and formal, and give the advice without the reasons" */
+function describe(found: { side: string; strength: string }[]) {
+  const adjectives = found.filter((r) => AS_ADJECTIVE[r.side]).map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + AS_ADJECTIVE[r.side])
+  const clauses = found.filter((r) => AS_CLAUSE[r.side]).map((r) => (r.strength === 'leans' ? 'mostly ' : '') + AS_CLAUSE[r.side])
+  return [adjectives.length ? `are ${list(adjectives)}` : '', ...clauses].filter(Boolean).join(', and ')
+}
 
 export function Results({ summary, mock, onAgain }: { summary: Summary; mock: boolean; onAgain: () => void }) {
   const readings = summary.axes.map((a) => ({ axis: a.axis, ...read(a) }))
@@ -27,7 +34,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           <h1 className="mt-1 text-lg font-semibold text-gray-900">Your personal AI model is ready</h1>
           <p className="mt-2 text-gray-600">
             {found.length > 0
-              ? <>It learned that you prefer answers that are <strong className="font-semibold text-gray-900">{list(found.map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + (AS_ADJECTIVE[r.side] ?? r.side)))}</strong>.</>
+              ? <>It learned that you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
               : <>Your picks did not point clearly one way on any scale.</>}
             {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
           </p>

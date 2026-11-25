@@ -39,6 +39,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 ## Style menu
 
 - [ ] Watch for overlap between casual and warm, and between collaborative and "explains why".
+- [ ] Collaborative answers read as if they give reasons even under "just the advice": "plain statements about what works" comes out as "X can help you Y", which is a reason in all but name. Seen in a live session on 2026-11-25 (profile said just the advice, the answer explained). Depth was also the scale the judge agreed with least (15 of 22). Either accept it and say so, or find a wording for collaborative that states what people do without saying what it achieves.
 - [ ] Deal with warm and "explains why" answers running past three sentences before the cap.
 - [ ] Remove the retired axes (brevity, language, energy) and old grids from `data/advice.json` and `bench/remote.py`.
 - [ ] Write prepared question sets with checked fact sheets for doctor and tutor: the fallback when Gemini is down, the example chips, and settings the benchmark can be rerun on. (The built-in ten mix settings, which may be one reason the user's own sessions differed.)
