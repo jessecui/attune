@@ -4,6 +4,8 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 
 ## Next up
 
+- [ ] Flatten line breaks in answers. About 2% come out one sentence per line (mostly the directive style); the trimming step used to remove them and has kept them since the two-paragraph experiment on 2026-11-25.
+- [ ] Never show two identical answers in a round: redraw one, and if it repeats, give it a different style. Seen in 5 of about 180 benchmark rounds, from round 4 on, between styles differing on one axis (usually formality) where the answer is nearly the fact sheet verbatim.
 - [ ] Run two or three sessions on the unchanged live page to see whether the same person gets the same profile twice.
 - [ ] Have a few friends try the live page; note which axes they notice and whether any two feel the same.
 - [x] Judge model, first version (`bench/judge.py`, Gemini 3.8 Flash, key in `.judge_key`): rates the four axes 1 to 5, checks each fact, lists additions.
