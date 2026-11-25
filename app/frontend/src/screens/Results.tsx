@@ -45,7 +45,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           <h2 id="scales" className="panel-title border-b border-gray-200 px-4 py-3">What it learned</h2>
           <div className="divide-y divide-gray-100">{summary.axes.map((a) => <Scale key={a.axis} axis={a} />)}</div>
           <p className="hint border-t border-gray-100 px-4 py-3">
-            {rated ? 'Rated from what your model wrote on three questions it was not trained on, by a second AI model. The darker middle is no clear preference.'
+            {rated ? 'Rated from what your model wrote on six questions it was not trained on, by a second AI model. The darker middle is no clear preference.'
               : 'The writing could not be rated this time, so these show the styles your model chooses. The darker middle is no clear preference.'}
             {' '}Results can differ between sessions.
           </p>

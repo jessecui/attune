@@ -20,6 +20,7 @@ import modal
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
 ROUNDS, K = 5, 4
+MEASURE, EXAMPLES = 6, 3  # unseen questions rated after every round; how many are shown as before/after
 LONG_ROUNDS = 10  # optional longer session: each of the ten questions once
 
 # Access key: generated once, kept out of git, sent to the container as a secret.
@@ -113,7 +114,7 @@ class Live:
         self.menu = [m for name in AXES for m in self.scenario["menu"] if m["axis"] == name]
         R.use_menu(self.scenario["menu"], AXES)
         # Questions for tracking and the before/after comparison; never used in rounds.
-        self.scenario["heldout"] = self.scenario["test"][:3]
+        self.scenario["heldout"] = self.scenario["test"][:MEASURE]
         self.args = argparse.Namespace(two_step=True, k=K, max_new_tokens=128, max_sentences=4,
                                        min_facts=1.0, strict_facts=True, redraws=3, neutral_start=True)
         self.policy = Policy(MODEL)
@@ -236,7 +237,7 @@ class Live:
                  "written": [w[m["axis"]] for w in written] if rated else None} for m in self.menu]
         texts = h[-1]["texts"]   # the tuned model's answers to the unseen questions, as rated
         examples = [{"question": it["q"], "before": b, "after": t}
-                    for it, b, t in zip(self.scenario["heldout"], self.base_texts, texts)]
+                    for it, b, t in list(zip(self.scenario["heldout"], self.base_texts, texts))[:EXAMPLES]]
         keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases", "update_seconds")
         return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes,
                 "style_instructions": h[-1]["clauses"], "tracked_question": self.scenario["heldout"][0]["q"],
