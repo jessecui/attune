@@ -10,7 +10,8 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Hand-label about 30 answers and check the judge agrees, depth especially (15 of 22 against the requested style).
 - [ ] Use the judge as the simulated user: the word lists cannot see formality (7 of 20 runs right, below chance) and are weak on depth and directiveness. Needs the key stored as a Modal secret.
 - [x] GRPO against DPO on the setup of 2026-11-25 (grid `full`: 4 simulated users x 3 seeds, 5 rounds, judge as user, best-and-worst feedback for both). Axes on the wanted side, of 4: untouched 1.50, DPO 2.83 (lr 1e-5) and 3.17 (3e-5), GRPO 3.25 (1e-5) and 3.67 (3e-5). At a matched learning rate GRPO's answers suited the user better in 10 and 11 of 12 paired runs. GRPO at 1e-5 (the live setting) against DPO at its best rate is not clearly ahead. Rerun if the model, menu or update changes.
-- [ ] Decide whether the live app should use learning rate 3e-5: it learned more in five rounds, but earlier runs showed more commitment and wording drift at that rate.
+- [x] Live app: learning rate 3e-5 for the 5-question session (matches the benchmarked setting), 1e-5 for the 10-question one.
+- [ ] Check the 10-question session at 3e-5 with the current settings; the choice to keep it gentle rests on earlier runs.
 
 ## Benchmark and method
 
@@ -45,6 +46,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [x] Backend (`app/backend`): password check, signed session cookie, and a private relay to Modal. Runs locally; a Dockerfile for Railway exists but is not deployed or tested there.
 - [x] Front end (`app/frontend`), first version: sign-in, welcome, questions, profile with four scales, before and after, round-by-round charts.
 - [ ] Serve the page from Railway so it loads instantly while the GPU starts; add loading states for the cold start.
+- [ ] Honest wait indicators: tell the visitor what they are waiting for and why, from the server's real state, not a timer. Stages to report: GPU starting, model loading, writing the first answers; training on the last pick; writing the next answers; checking them (redraws); building the results; packaging the model. Needs the Modal service to expose its current stage (a status endpoint the page polls, or streamed progress).
 - [ ] Enforce the session time limit on the server.
 - [ ] Results screen: present the outcome as a profile, show the user's style against its opposite, keep the per-round charts and tracked answers.
 - [ ] Add a visible note that the answers are a style demonstration, not advice.

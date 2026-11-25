@@ -274,7 +274,10 @@ class Live:
                 raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None,
-                 "method": GRPOStyle(self.policy, lr=1e-5, steps_per_round=8, choice_clip=0.2)}
+                 # The short session learns faster; the long one stays gentle, because ten rounds at the
+                 # higher rate over-commit and drift in wording (benchmark of 2026-11-25).
+                 "method": GRPOStyle(self.policy, lr=3e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,
+                                     choice_clip=0.2)}
             self.sessions[s["id"]] = s
             self._with(s, lambda: self._write(s, 1))
             if rounds >= 2:  # get one round ahead straight away
