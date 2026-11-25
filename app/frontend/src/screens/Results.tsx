@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, AS_ADJECTIVE, AS_CLAUSE, read, type ModelStatus, type Summary } from '../api'
 import { Scale } from '../components/Scale'
-import { Trajectory, sharedLimit } from '../components/Trajectory'
 import { Spinner } from '../components/Spinner'
 
 /** "warm, collaborative and formal" */
@@ -16,10 +15,11 @@ function describe(found: { side: string; strength: string }[]) {
 
 export function Results({ summary, mock, onAgain }: { summary: Summary; mock: boolean; onAgain: () => void }) {
   const readings = summary.axes.map((a) => ({ axis: a.axis, ...read(a) }))
-  const found = readings.filter((r) => r.strength !== 'none'), open = readings.filter((r) => r.strength === 'none')
+  // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
+  const found = readings.filter((r) => r.strength !== 'none' && r.moved), open = readings.filter((r) => r.strength === 'none')
+  const same = readings.filter((r) => r.strength !== 'none' && !r.moved)
   const [shown, setShown] = useState(0)
   const example = summary.examples[shown]
-  const limit = sharedLimit(summary.axes)
   const rated = summary.axes.every((a) => a.written?.length)
 
   return (
@@ -36,8 +36,9 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           <p className="mt-2 text-gray-600">
             {found.length > 0
               ? <>It learned that you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
-              : <>Your picks did not point clearly one way on any scale.</>}
+              : <>Your picks did not move the model clearly on any scale.</>}
             {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
+            {same.length > 0 && <> On {list(same.map((r) => r.axis))}, it writes as the standard model already does.</>}
           </p>
         </section>
 
@@ -45,7 +46,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           <h2 id="scales" className="panel-title border-b border-gray-200 px-4 py-3">What it learned</h2>
           <div className="divide-y divide-gray-100">{summary.axes.map((a) => <Scale key={a.axis} axis={a} />)}</div>
           <p className="hint border-t border-gray-100 px-4 py-3">
-            {rated ? 'Rated from what your model wrote on six questions it was not trained on, by a second AI model. The darker middle is no clear preference.'
+            {rated ? <>Rated by a second AI model from answers to six questions your model was not trained on. <Marker hollow /> standard model, <Marker /> your model. The darker middle is no clear preference.</>
               : 'The writing could not be rated this time, so these show the styles your model chooses. The darker middle is no clear preference.'}
             {' '}Results can differ between sessions.
           </p>
@@ -71,21 +72,15 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
             </div>
           </section>
         )}
-
-        <section className="panel" aria-labelledby="training">
-          <h2 id="training" className="panel-title border-b border-gray-200 px-4 py-3">Training, question by question</h2>
-          <div className="p-4">
-            <div className="grid gap-5 sm:grid-cols-2">{summary.axes.map((a) => <Trajectory key={a.axis} axis={a} limit={limit} />)}</div>
-            <p className="hint mt-4 max-w-2xl">
-              {rated ? 'Each point is how the model\u2019s writing was rated after one more of your picks, from 1 to 5. The first point is the standard model.'
-                : 'Each point is the model after one more of your picks. The further from the line, the stronger the lean; the scale is compressed, so each step away is roughly ten times stronger.'}
-            </p>
-          </div>
-        </section>
       </div>
     </div>
   )
 }
+
+/** The key to the two markers on each scale. */
+const Marker = ({ hollow }: { hollow?: boolean }) => (
+  <span className={`mx-0.5 inline-block h-2.5 w-2.5 rounded-full align-[-1px] ${hollow ? 'border-2 border-gray-400 bg-white' : 'bg-gray-600'}`} aria-hidden />
+)
 
 /** The adapter tuned in this session, packaged a few seconds after the last question. */
 function ModelCard({ session, mock, instructions }: { session: string; mock: boolean; instructions: string[] }) {

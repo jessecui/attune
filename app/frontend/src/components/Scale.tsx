@@ -11,12 +11,15 @@ export function Scale({ axis }: { axis: Axis }) {
     <div className="px-4 py-3.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
         <h3 className="flex items-center gap-2 font-medium text-gray-900"><span className="h-2 w-2 rounded-full" style={{ background: axisColor(axis.axis) }} aria-hidden />{note?.title ?? capital(axis.axis)}</h3>
-        <p className={r.strength === 'none' ? 'text-gray-500' : 'font-medium text-gray-900'}>{result}</p>
+        <p className={r.strength === 'none' || !r.moved ? 'text-gray-500' : 'font-medium text-gray-900'}>{r.moved ? result : `${result} · unchanged`}</p>
       </div>
       <div className="relative mt-3 h-1.5 rounded-full bg-gray-100" role="img"
         aria-label={`${note?.title}: ${result}. ${r.detail}`}>
         <div className={`absolute inset-y-0 bg-gray-200 ${axis.written?.length ? 'left-[37.5%] w-1/4' : 'left-1/4 w-1/2'}`} />
         <div className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-gray-400" style={{ left: '50%' }} />
+        {/* where the standard model's writing was rated, for comparison */}
+        {axis.written?.length ? <div className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gray-400 bg-white"
+          style={{ left: `${Math.min(97, Math.max(3, ((axis.written[0] - 1) / 4) * 100))}%` }} /> : null}
         <div className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
           style={{ left: `${left}%`, background: r.strength === 'none' ? 'var(--color-gray-400)' : axisColor(axis.axis) }} />
       </div>

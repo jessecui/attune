@@ -38,7 +38,9 @@ export const api = {
 // A lean is the model's log-odds for an axis's first style over its second.
 export const probability = (lean: number) => 1 / (1 + Math.exp(-lean))
 
-export type Reading = { side: string; other: string; strength: 'none' | 'leans' | 'clear'; share: number; position: number; detail: string }
+export type Reading = { side: string; other: string; strength: 'none' | 'leans' | 'clear'; share: number; position: number; detail: string;
+  /** false when the writing ended within half a point of the standard model's: nothing was learned on this scale */
+  moved: boolean }
 
 /** What the profile says about one axis: under 75% either way is no clear preference,
  *  75% to 95% is a lean, above that is stated plainly. */
@@ -47,15 +49,16 @@ export function read(a: Axis): Reading {
     // From the writing: within half a point of 3 is no clear preference, a full point or more is clear.
     const rating = a.written[a.written.length - 1], off = Math.abs(rating - 3)
     const side = rating >= 3 ? a.first : a.second, other = rating >= 3 ? a.second : a.first
-    return { side, other, strength: off < 0.5 ? 'none' : off < 1 ? 'leans' : 'clear', share: off / 2, position: (rating - 1) / 4,
-             detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${side}.` }
+    const moved = Math.abs(rating - a.written[0]) >= 0.5
+    return { side, other, strength: off < 0.5 ? 'none' : off < 1 ? 'leans' : 'clear', share: off / 2, position: (rating - 1) / 4, moved,
+             detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${side}` + (moved ? '.' : ', the same as the standard model.') }
   }
   const last = a.lean[a.lean.length - 1], prev = a.lean[a.lean.length - 2] ?? last
   const p = probability(last), share = Math.max(p, 1 - p)
   const side = last >= 0 ? a.first : a.second, other = last >= 0 ? a.second : a.first
   const settled = Math.sign(last) === Math.sign(prev) || prev === 0
   const strength = share < 0.75 || !settled ? 'none' : share < 0.95 ? 'leans' : 'clear'
-  return { side, other, strength, share, position: p,
+  return { side, other, strength, share, position: p, moved: true,
            detail: `Ended ${share > 0.95 ? 'more than 95%' : Math.floor(share * 100) + '%'} ${side} by its style choices.` }
 }
 

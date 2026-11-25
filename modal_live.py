@@ -173,7 +173,14 @@ class Live:
                 # log-odds of the axis's first option over its second
                 lean[a] += (torch.logsumexp(lp[m], 0) - torch.logsumexp(lp[~m], 0)).item() / len(prompts)
         items = self.scenario["heldout"]
-        firsts = [int(total.argmax())] * len(items)
+        # The answers that get rated are written in styles shared out in proportion to the model's
+        # preferences (largest remainders, so nothing is random): a model split between two styles
+        # writes some answers in each, and its rating sits in the middle instead of flipping.
+        share = torch.softmax(total / len(prompts), dim=0) * len(items)
+        counts = share.floor()
+        for j in (share - counts).argsort(descending=True)[: int(len(items) - counts.sum())]:
+            counts[j] += 1
+        firsts = [j for j in share.argsort(descending=True).tolist() for _ in range(int(counts[j]))]
         if plain is None:
             # One answer per unseen question, each in the style the model now favours for it.
             outs = self.policy.generate([self.sess.answer_prompt(it, f) for it, f in zip(items, firsts)],
@@ -211,13 +218,7 @@ class Live:
         rewards[best], rewards[worst] = 1.0, -1.0
         s["method"].update([Group(None, c["answers"], list(range(K)), None, None,
                                   segments=c["segments"], rewards=rewards)], None)
-        entry = {"round": n, "update_seconds": round(time.time() - t, 1), **self._track()}
-        s["history"].append(entry)
-        # Rate the writing in the background (a network call), so the GPU can move on to the next answers.
-        import threading
-        job = threading.Thread(target=lambda: entry.update(written=self._written(entry["texts"])))
-        job.start()
-        s["judging"].append(job)
+        # Nothing is measured between rounds: the model is rated once, at the end (see _summary).
 
     def _after(self, s, n, best, worst):
         """Background work after round n's feedback: learn from it, then write round n+2."""
@@ -229,11 +230,12 @@ class Live:
             s["error"] = repr(e)[:300]
 
     def _summary(self, s):
-        h = s["history"]
-        for job in s["judging"]:
-            job.join(timeout=40)
-        # The page plots the writing's ratings when every round has one, else the model's choices.
-        written = [self.written0] + [r.get("written") for r in h[1:]]
+        # Measured once, at the end: the tuned model answers the unseen questions and the judge rates
+        # each scale. The standard model's ratings on the same questions (taken at start-up) are the
+        # comparison. If the judge is unavailable the page falls back to the model's style choices.
+        final = {"round": s["rounds"], **self._track()}
+        h = [s["history"][0], final]
+        written = [self.written0, self._written(final["texts"])]
         rated = all(written)
         axes = [{"axis": m["axis"], "first": m["options"][0][0], "second": m["options"][1][0],
                  "lean": [r["lean"][m["axis"]] for r in h],
@@ -309,7 +311,7 @@ class Live:
             if rounds not in (ROUNDS, LONG_ROUNDS):
                 raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
-                 "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None, "judging": [],
+                 "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None,
                  # The short session learns faster; the long one stays gentle, because ten rounds at the
                  # higher rate over-commit and drift in wording (benchmark of 2026-11-25).
                  "method": GRPOStyle(self.policy, lr=3e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,
