@@ -9,7 +9,8 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [x] Judge model, first version (`bench/judge.py`, Gemini 3.8 Flash, key in `.judge_key`): rates the four axes 1 to 5, checks each fact, lists additions.
 - [ ] Hand-label about 30 answers and check the judge agrees, depth especially (15 of 22 against the requested style).
 - [ ] Use the judge as the simulated user: the word lists cannot see formality (7 of 20 runs right, below chance) and are weak on depth and directiveness. Needs the key stored as a Modal secret.
-- [ ] Rerun GRPO against DPO on the current setup (7B, short answers, two-step, neutral start, best-and-worst), three or more seeds, on a fresh test set. These are the resume numbers.
+- [x] GRPO against DPO on the setup of 2026-11-25 (grid `full`: 4 simulated users x 3 seeds, 5 rounds, judge as user, best-and-worst feedback for both). Axes on the wanted side, of 4: untouched 1.50, DPO 2.83 (lr 1e-5) and 3.17 (3e-5), GRPO 3.25 (1e-5) and 3.67 (3e-5). At a matched learning rate GRPO's answers suited the user better in 10 and 11 of 12 paired runs. GRPO at 1e-5 (the live setting) against DPO at its best rate is not clearly ahead. Rerun if the model, menu or update changes.
+- [ ] Decide whether the live app should use learning rate 3e-5: it learned more in five rounds, but earlier runs showed more commitment and wording drift at that rate.
 
 ## Benchmark and method
 
