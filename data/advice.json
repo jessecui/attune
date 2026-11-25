@@ -1,0 +1,544 @@
+{
+ "name": "advice",
+ "system": "You are an advisor answering a person's question. Base your advice only on the points provided and cover both of them. You may add a brief remark that sets the tone, but no new advice. Never write more than three sentences.",
+ "menu": [
+  {
+   "axis": "brevity",
+   "feature": "short",
+   "options": [
+    [
+     "one",
+     "Answer in one sentence.",
+     1
+    ],
+    [
+     "three",
+     "Answer in three sentences."
+    ]
+   ]
+  },
+  {
+   "axis": "warmth",
+   "feature": "warm_words",
+   "options": [
+    [
+     "warm",
+     "Open with a short remark, in your own voice, that shows you understand how the person may be feeling."
+    ],
+    [
+     "neutral",
+     "Go straight to the advice, with no greeting, sympathy or encouragement."
+    ]
+   ]
+  },
+  {
+   "axis": "directiveness",
+   "feature": "directive",
+   "options": [
+    [
+     "directive",
+     "Give the advice as firm, direct instructions, starting each sentence with a verb."
+    ],
+    [
+     "collaborative",
+     "Describe what works well for most people in plain statements rather than commands, and leave it to the person to decide what to adopt."
+    ]
+   ]
+  },
+  {
+   "axis": "language",
+   "feature": "technical",
+   "options": [
+    [
+     "technical",
+     "Use formal, technical vocabulary."
+    ],
+    [
+     "plain",
+     "Use simple everyday words."
+    ]
+   ]
+  },
+  {
+   "axis": "energy",
+   "feature": "energy",
+   "options": [
+    [
+     "upbeat",
+     "Sound lively and positive."
+    ],
+    [
+     "calm",
+     "Sound calm and even, with no exclamation marks."
+    ]
+   ]
+  },
+  {
+   "axis": "depth",
+   "feature": "reasons",
+   "options": [
+    [
+     "explains why",
+     "Give the reason behind each piece of advice."
+    ],
+    [
+     "just the advice",
+     "State the advice only, with no reasons or explanation."
+    ]
+   ]
+  },
+  {
+   "axis": "formality",
+   "feature": "casual",
+   "options": [
+    [
+     "casual",
+     "Write in a relaxed, conversational way, using contractions and everyday phrasing, but no slang."
+    ],
+    [
+     "formal",
+     "Write formally, with no contractions or slang."
+    ]
+   ]
+  }
+ ],
+ "train": [
+  {
+   "q": "I keep forgetting to take my daily medication. What can I do?",
+   "facts": [
+    "Tying the dose to a daily routine, such as brushing your teeth, makes it easier to remember.",
+    "A weekly pill organizer shows at a glance whether a dose was missed."
+   ],
+   "keys": [
+    [
+     "routine",
+     "brush"
+    ],
+    [
+     "organizer",
+     "pill box",
+     "pillbox"
+    ]
+   ]
+  },
+  {
+   "q": "I have an exam next week. How should I study?",
+   "facts": [
+    "Spreading study over several days works better than cramming the night before.",
+    "Testing yourself improves recall more than rereading notes."
+   ],
+   "keys": [
+    [
+     "several days",
+     "spread",
+     "spac",
+     "cram"
+    ],
+    [
+     "test",
+     "quiz"
+    ]
+   ]
+  },
+  {
+   "q": "How do I start saving money?",
+   "facts": [
+    "An automatic transfer to savings on payday makes saving consistent.",
+    "A common first goal is an emergency fund covering three to six months of expenses."
+   ],
+   "keys": [
+    [
+     "automatic",
+     "payday"
+    ],
+    [
+     "emergency"
+    ]
+   ]
+  },
+  {
+   "q": "I'm about to sign a lease for an apartment. What should I watch for?",
+   "facts": [
+    "Read the whole lease before signing it.",
+    "Get any promises from the landlord in writing."
+   ],
+   "keys": [
+    [
+     "read"
+    ],
+    [
+     "in writing",
+     "written"
+    ]
+   ]
+  },
+  {
+   "q": "I have too many tasks at work. How do I cope?",
+   "facts": [
+    "Listing tasks and ranking them by urgency and importance shows what to do first.",
+    "Telling your manager early when a deadline is at risk gives time to adjust."
+   ],
+   "keys": [
+    [
+     "rank",
+     "urgen",
+     "priorit"
+    ],
+    [
+     "manager",
+     "early"
+    ]
+   ]
+  },
+  {
+   "q": "I have trouble falling asleep. What helps?",
+   "facts": [
+    "Going to bed and waking up at the same times each day helps regulate the body clock.",
+    "Caffeine can stay in the body for several hours, so avoiding it late in the day helps."
+   ],
+   "keys": [
+    [
+     "same time",
+     "consistent",
+     "regular"
+    ],
+    [
+     "caffeine"
+    ]
+   ]
+  },
+  {
+   "q": "I can't stay focused when I study. Any advice?",
+   "facts": [
+    "Keeping your phone out of reach removes the most common distraction.",
+    "Working in short timed blocks of about 25 minutes with breaks helps sustain attention."
+   ],
+   "keys": [
+    [
+     "phone"
+    ],
+    [
+     "25",
+     "block",
+     "break"
+    ]
+   ]
+  },
+  {
+   "q": "How should I pay down my credit card debt?",
+   "facts": [
+    "Paying more than the minimum each month reduces the interest you pay.",
+    "Paying off the card with the highest interest rate first saves the most money."
+   ],
+   "keys": [
+    [
+     "minimum"
+    ],
+    [
+     "highest"
+    ]
+   ]
+  },
+  {
+   "q": "How can I make my team's meetings more useful?",
+   "facts": [
+    "Sending an agenda beforehand lets people come prepared.",
+    "Ending with clear owners and deadlines for each action keeps things moving."
+   ],
+   "keys": [
+    [
+     "agenda"
+    ],
+    [
+     "owner",
+     "deadline"
+    ]
+   ]
+  },
+  {
+   "q": "I want to start exercising again after a long break. How?",
+   "facts": [
+    "Starting with short sessions and building up gradually lowers the risk of injury.",
+    "Brisk walking counts as moderate exercise."
+   ],
+   "keys": [
+    [
+     "gradual",
+     "short session",
+     "slowly",
+     "build"
+    ],
+    [
+     "walk"
+    ]
+   ]
+  }
+ ],
+ "heldout": [
+  {
+   "q": "My back hurts from sitting at a desk all day. What can I do?",
+   "facts": [
+    "Raising your screen to eye level reduces strain.",
+    "Standing up and moving every 30 to 60 minutes helps."
+   ],
+   "keys": [
+    [
+     "eye level",
+     "screen"
+    ],
+    [
+     "stand",
+     "move",
+     "30"
+    ]
+   ]
+  },
+  {
+   "q": "How can I remember more of what I read?",
+   "facts": [
+    "Summarizing the material in your own words strengthens memory.",
+    "Explaining it to someone else shows what you have not understood."
+   ],
+   "keys": [
+    [
+     "summar",
+     "own words"
+    ],
+    [
+     "explain",
+     "teach"
+    ]
+   ]
+  },
+  {
+   "q": "I'm about to make a big purchase. How do I avoid regretting it?",
+   "facts": [
+    "Comparing prices from several sellers helps you find a fair deal.",
+    "Waiting a day before buying reduces impulse purchases."
+   ],
+   "keys": [
+    [
+     "compar"
+    ],
+    [
+     "wait",
+     "a day",
+     "impulse"
+    ]
+   ]
+  },
+  {
+   "q": "I lost my wallet. What should I do first?",
+   "facts": [
+    "Cancelling your bank cards right away prevents fraudulent charges.",
+    "Reporting a lost ID to the office that issued it lets you get a replacement."
+   ],
+   "keys": [
+    [
+     "cancel"
+    ],
+    [
+     "report",
+     "replac",
+     "issu"
+    ]
+   ]
+  },
+  {
+   "q": "A client keeps asking for extra work outside our agreement. What do I do?",
+   "facts": [
+    "Putting the agreed scope in writing gives you something to point to.",
+    "Treating extra requests as changes with their own cost and timeline keeps the project under control."
+   ],
+   "keys": [
+    [
+     "in writing",
+     "written",
+     "scope"
+    ],
+    [
+     "cost",
+     "timeline",
+     "change"
+    ]
+   ]
+  }
+ ],
+ "test": [
+  {
+   "q": "How should I prepare for a doctor's appointment?",
+   "facts": [
+    "Writing down your symptoms and questions beforehand helps you cover everything.",
+    "Bringing a list of your current medications helps the doctor."
+   ],
+   "keys": [
+    [
+     "write",
+     "writing",
+     "list",
+     "note"
+    ],
+    [
+     "medication"
+    ]
+   ]
+  },
+  {
+   "q": "What's a good way to learn a new language?",
+   "facts": [
+    "Short daily practice works better than occasional long sessions.",
+    "Speaking with other people builds fluency."
+   ],
+   "keys": [
+    [
+     "daily",
+     "every day",
+     "each day"
+    ],
+    [
+     "speak",
+     "conversation",
+     "talk"
+    ]
+   ]
+  },
+  {
+   "q": "How do I make a budget?",
+   "facts": [
+    "Tracking your spending for a month shows where the money goes.",
+    "Separating needs from wants shows where you can cut back."
+   ],
+   "keys": [
+    [
+     "track"
+    ],
+    [
+     "needs",
+     "wants"
+    ]
+   ]
+  },
+  {
+   "q": "A company charged me incorrectly. How do I dispute it?",
+   "facts": [
+    "Keeping records of every communication supports your case.",
+    "Putting the complaint in writing creates a paper trail."
+   ],
+   "keys": [
+    [
+     "record"
+    ],
+    [
+     "in writing",
+     "written",
+     "writing"
+    ]
+   ]
+  },
+  {
+   "q": "How do I ask for a raise?",
+   "facts": [
+    "Gathering evidence of your results strengthens the request.",
+    "Researching typical pay for your role tells you what is reasonable."
+   ],
+   "keys": [
+    [
+     "evidence",
+     "results",
+     "achievement"
+    ],
+    [
+     "research",
+     "typical",
+     "market"
+    ]
+   ]
+  },
+  {
+   "q": "How do I stay hydrated on a hot day?",
+   "facts": [
+    "Drinking water regularly, before you feel thirsty, keeps you hydrated.",
+    "Pale yellow urine is a sign of good hydration."
+   ],
+   "keys": [
+    [
+     "thirst",
+     "regularly"
+    ],
+    [
+     "urine"
+    ]
+   ]
+  },
+  {
+   "q": "How should I approach writing an essay?",
+   "facts": [
+    "Starting with an outline keeps the argument organized.",
+    "Leaving time to revise a day later helps you catch problems."
+   ],
+   "keys": [
+    [
+     "outline"
+    ],
+    [
+     "revis",
+     "day later",
+     "next day"
+    ]
+   ]
+  },
+  {
+   "q": "How can I improve my credit score?",
+   "facts": [
+    "Paying bills on time is the most important factor.",
+    "Keeping card balances low relative to their limits helps."
+   ],
+   "keys": [
+    [
+     "on time"
+    ],
+    [
+     "balance",
+     "limit"
+    ]
+   ]
+  },
+  {
+   "q": "How do I give feedback to a colleague?",
+   "facts": [
+    "Being specific about the behaviour, not the person, makes feedback easier to act on.",
+    "Giving it soon after the event and in private works best."
+   ],
+   "keys": [
+    [
+     "specific",
+     "behavio"
+    ],
+    [
+     "private",
+     "soon"
+    ]
+   ]
+  },
+  {
+   "q": "I'm nervous about giving a presentation. Any advice?",
+   "facts": [
+    "Rehearsing out loud several times builds confidence.",
+    "Knowing your opening lines by heart gets you through the first minute."
+   ],
+   "keys": [
+    [
+     "rehears",
+     "practice",
+     "practise",
+     "out loud"
+    ],
+    [
+     "opening",
+     "by heart",
+     "memori"
+    ]
+   ]
+  }
+ ]
+}

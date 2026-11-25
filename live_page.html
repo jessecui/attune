@@ -1,0 +1,173 @@
+<!doctype html>
+<!-- Plain test page for trying a live session. Not the real interface. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attune: test session</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --text: #0b0b0b; --text-2: #52514e; --rule: #d9d8d3; --series: #2a78d6;
+    --good: #1a7f37; --good-bg: #f0faf2; --bad: #b42318; --bad-bg: #fdf2f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; --surface: #1a1a19; --text: #f0efec; --text-2: #c3c2b7; --rule: #3a3a37;
+            --series: #3987e5; --good: #4fb86a; --good-bg: #1f2b22; --bad: #e66767; --bad-bg: #2e1f1f; }
+  }
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 820px; margin: 2rem auto; padding: 0 1rem;
+         color: var(--text); background: var(--surface); }
+  h1 { font-size: 1.2rem; margin-bottom: .25rem; }
+  h2 { font-size: 1.05rem; margin: 1.6rem 0 .3rem; }
+  .muted { color: var(--text-2); font-size: .9rem; }
+  .card { border: 1px solid var(--rule); border-radius: 6px; padding: .75rem 1rem; margin: .75rem 0; }
+  .card.best { border-color: var(--good); background: var(--good-bg); }
+  .card.worst { border-color: var(--bad); background: var(--bad-bg); }
+  button { font: inherit; padding: .35rem .8rem; margin-right: .5rem; cursor: pointer; }
+  button:disabled { cursor: default; opacity: .5; }
+  table { border-collapse: collapse; width: 100%; margin: .75rem 0; font-size: .92rem; }
+  th, td { text-align: left; padding: .35rem .6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #status { margin: 1rem 0; }
+  .panels { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+  td:first-child { white-space: nowrap; }
+  .panel { position: relative; }
+  .panel h3 { font-size: .95rem; margin: 0; text-transform: capitalize; }
+  .panel svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .panel svg text { fill: var(--text-2); font-size: 11px; }
+  .tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--text);
+         border: 1px solid var(--rule); border-radius: 4px; padding: .2rem .45rem; font-size: .8rem;
+         white-space: nowrap; display: none; transform: translate(-50%, -130%); }
+</style>
+</head>
+<body>
+<h1>Attune: test session</h1>
+<p class="muted">Six rounds. Each round, mark the answer you like best and the one you like least.</p>
+<div id="status"></div>
+<div id="main"><button id="start">Start session</button></div>
+<script>
+const key = new URLSearchParams(location.search).get("key") || "";
+const main = document.getElementById("main"), statusEl = document.getElementById("status");
+let state = null, best = null, worst = null, waitStart = 0, timer = null;
+const NS = "http://www.w3.org/2000/svg";
+
+function wait(msg) {
+  waitStart = Date.now();
+  clearInterval(timer);
+  const tick = () => statusEl.textContent = msg + " (" + Math.round((Date.now() - waitStart) / 1000) + " s)";
+  tick(); timer = setInterval(tick, 1000);
+}
+function ready(msg) { clearInterval(timer); statusEl.textContent = msg || ""; }
+
+async function call(path, body) {
+  const r = await fetch(path + "?key=" + encodeURIComponent(key),
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : null });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || ("HTTP " + r.status));
+  return r.json();
+}
+function el(tag, text, cls) { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+function svg(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+function showRound(d) {
+  state = d; best = worst = null;
+  main.replaceChildren(el("p", "Round " + d.round + " of " + d.rounds, "muted"), el("h2", d.question));
+  d.candidates.forEach((text, i) => {
+    const card = el("div", null, "card"); card.dataset.i = i;
+    card.append(el("p", text));
+    const b = el("button", "Best"), w = el("button", "Worst");
+    b.onclick = () => { best = i; if (worst === i) worst = null; paint(); };
+    w.onclick = () => { worst = i; if (best === i) best = null; paint(); };
+    card.append(b, w); main.append(card);
+  });
+  const go = el("button", "Submit"); go.id = "go"; go.disabled = true;
+  go.onclick = submit; main.append(go);
+  ready(d.waited_seconds != null ? "You waited " + d.waited_seconds + " s for these answers." : "");
+}
+function paint() {
+  document.querySelectorAll(".card").forEach(c => {
+    const i = +c.dataset.i; c.className = "card" + (i === best ? " best" : i === worst ? " worst" : "");
+  });
+  document.getElementById("go").disabled = best === null || worst === null;
+}
+async function submit() {
+  document.querySelectorAll("button").forEach(b => b.disabled = true);
+  wait(state.round === state.rounds ? "Applying your last choice and preparing the summary" : "Fetching the next answers");
+  try {
+    const d = await call("/api/feedback", { session: state.session, best, worst });
+    d.done ? showSummary(d) : showRound(d);
+  } catch (e) { ready("Error: " + e.message); }
+}
+
+// Leans run from a few units to several hundred, so the charts use a compressed (log) scale.
+const squash = v => Math.sign(v) * Math.log10(1 + Math.abs(v));
+
+// One small chart per style: how strongly the model leans to each end after every round.
+function panel(a, limit) {
+  const W = 240, H = 150, L = 8, R = 8, T = 22, B = 30, n = a.lean.length;
+  const x = i => L + (W - L - R) * i / (n - 1), y = v => T + (H - T - B) * (1 - (squash(v) + limit) / (2 * limit));
+  const box = el("div", null, "panel"), s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+  const ends = n => (n >= 0 ? a.first : a.second);
+  s.setAttribute("aria-label", `${a.axis}: starts leaning ${ends(a.lean[0])}, ends leaning ${ends(a.lean[n - 1])}`);
+  box.append(el("h3", a.axis));
+  s.append(svg("line", { x1: L, x2: W - R, y1: y(0), y2: y(0), stroke: "var(--rule)", "stroke-width": 1 }));
+  const top = svg("text", { x: L, y: 12 }); top.textContent = "↑ " + a.first;
+  const bot = svg("text", { x: L, y: H - 16 }); bot.textContent = "↓ " + a.second;
+  const r0 = svg("text", { x: L, y: H - 2 }); r0.textContent = "start";
+  const r1 = svg("text", { x: W - R, y: H - 2, "text-anchor": "end" }); r1.textContent = "round " + (n - 1);
+  s.append(top, bot, r0, r1);
+  s.append(svg("polyline", { points: a.lean.map((v, i) => x(i) + "," + y(v)).join(" "), fill: "none",
+                             stroke: "var(--series)", "stroke-width": 2, "stroke-linejoin": "round" }));
+  const tip = el("div", null, "tip");
+  a.lean.forEach((v, i) => {
+    s.append(svg("circle", { cx: x(i), cy: y(v), r: 4, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }));
+    const hit = svg("circle", { cx: x(i), cy: y(v), r: 14, fill: "transparent", tabindex: 0 });
+    const show = () => { tip.textContent = (i ? "After round " + i : "Start") + ": leans " + ends(v) + " (" + Math.abs(v).toFixed(1) + ")";
+                         tip.style.left = (x(i) / W * 100) + "%"; tip.style.top = (s.getBoundingClientRect().height * y(v) / H + s.offsetTop) + "px"; tip.style.display = "block"; };
+    hit.onmouseenter = hit.onfocus = show; hit.onmouseleave = hit.onblur = () => tip.style.display = "none";
+    s.append(hit);
+  });
+  box.append(s, tip);
+  return box;
+}
+
+function showSummary(d) {
+  ready("Session finished.");
+  main.replaceChildren();
+  main.append(el("h2", "How the model's preferences moved"),
+    el("p", "One chart per style. Above the middle line the model leans to the style named at the top, below it to the one at the bottom. The further from the line, the stronger the lean; the scale is compressed, so each step away from the line is roughly ten times stronger. Each point is the model after one more round of your choices.", "muted"));
+  const limit = Math.max(1, ...d.axes.flatMap(a => a.lean.map(v => Math.abs(squash(v)))));
+  const panels = el("div", null, "panels"); d.axes.forEach(a => panels.append(panel(a, limit))); main.append(panels);
+
+  const det = el("details"); det.append(el("summary", "Show these numbers as a table"));
+  const t0 = el("table"), h0 = el("tr"); h0.append(el("th", "Style"));
+  d.axes[0].lean.forEach((_, i) => h0.append(el("th", i ? "R" + i : "Start", "num"))); t0.append(h0);
+  d.axes.forEach(a => { const r = el("tr"); r.append(el("td", a.axis + " (+ " + a.first + ", − " + a.second + ")"));
+    a.lean.forEach(v => r.append(el("td", (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1), "num"))); t0.append(r); });
+  det.append(t0, el("p", "The numbers are log-odds: how many times more likely one style is than the other, on a log scale.", "muted")); main.append(det);
+
+  main.append(el("h2", "The same question after each round"), el("p", d.tracked_question, "muted"));
+  const t1 = el("table"), h1 = el("tr");
+  [["After", ""], ["Style it chose", ""], ["Its answer", ""], ["Words", "num"], ["“!”", "num"], ["Warm phrases", "num"]]
+    .forEach(([h, c]) => h1.append(el("th", h, c))); t1.append(h1);
+  d.track.forEach(r => { const row = el("tr");
+    row.append(el("td", r.round ? "Round " + r.round : "Start"), el("td", r.style.length ? r.style.join(", ") : "no preference yet"), el("td", r.answer),
+               el("td", r.words, "num"), el("td", r.exclamations, "num"), el("td", r.warm_phrases, "num")); t1.append(row); });
+  main.append(t1);
+
+  main.append(el("h2", "Before and after on new questions"),
+    el("p", "“Before” is the untouched model with no style instructions.", "muted"));
+  d.examples.forEach(x => {
+    const c = el("div", null, "card");
+    c.append(el("p", x.question, "muted"), el("p", "Before: " + x.before), el("p", "After: " + x.after)); main.append(c);
+  });
+  const again = el("button", "Start another session"); again.onclick = start; main.append(again);
+}
+async function start() {
+  main.replaceChildren();
+  wait("Starting the GPU and writing the first answers; the first start can take a minute or two");
+  try { showRound(await call("/api/start")); } catch (e) { ready("Error: " + e.message); main.append(Object.assign(el("button", "Try again"), { onclick: start })); }
+}
+document.getElementById("start").onclick = start;
+</script>
+</body>
+</html>

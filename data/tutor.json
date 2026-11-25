@@ -1,0 +1,680 @@
+{
+ "name": "tutor",
+ "system": "You are a tutor answering a student's question. Use only the facts provided and cover all of them.",
+ "train": [
+  {
+   "q": "Why is the sky blue?",
+   "facts": [
+    "Sunlight is a mix of all colors.",
+    "Air molecules scatter short wavelengths like blue much more than long wavelengths like red.",
+    "The scattered blue light reaches our eyes from every direction in the sky."
+   ],
+   "keys": [
+    [
+     "all colors",
+     "all the colors",
+     "mix of colors",
+     "every color"
+    ],
+    [
+     "scatter"
+    ],
+    [
+     "direction"
+    ]
+   ]
+  },
+  {
+   "q": "What is photosynthesis?",
+   "facts": [
+    "Plants use light energy to make glucose from carbon dioxide and water.",
+    "It takes place in chloroplasts, which contain chlorophyll.",
+    "Oxygen is released as a by-product."
+   ],
+   "keys": [
+    [
+     "carbon dioxide",
+     "co2"
+    ],
+    [
+     "chloroplast",
+     "chlorophyll"
+    ],
+    [
+     "oxygen"
+    ]
+   ]
+  },
+  {
+   "q": "What is a derivative in calculus?",
+   "facts": [
+    "A derivative measures the instantaneous rate of change of a function.",
+    "It equals the slope of the tangent line at a point.",
+    "The derivative of x^2 is 2x."
+   ],
+   "keys": [
+    [
+     "rate of change"
+    ],
+    [
+     "slope",
+     "tangent"
+    ],
+    [
+     "2x"
+    ]
+   ]
+  },
+  {
+   "q": "Why do we have seasons?",
+   "facts": [
+    "Earth's axis is tilted by about 23.5 degrees.",
+    "The hemisphere tilted toward the Sun gets more direct sunlight and longer days.",
+    "Seasons are not caused by Earth's distance from the Sun."
+   ],
+   "keys": [
+    [
+     "tilt"
+    ],
+    [
+     "direct",
+     "longer days"
+    ],
+    [
+     "distance"
+    ]
+   ]
+  },
+  {
+   "q": "What is the difference between the mean and the median?",
+   "facts": [
+    "The mean is the sum of the values divided by how many there are.",
+    "The median is the middle value when the values are sorted.",
+    "The median is less affected by outliers than the mean."
+   ],
+   "keys": [
+    [
+     "divid",
+     "sum"
+    ],
+    [
+     "middle"
+    ],
+    [
+     "outlier",
+     "extreme"
+    ]
+   ]
+  },
+  {
+   "q": "What is an atom made of?",
+   "facts": [
+    "An atom has a nucleus made of protons and neutrons.",
+    "Electrons surround the nucleus.",
+    "Protons are positive, electrons are negative, and neutrons have no charge."
+   ],
+   "keys": [
+    [
+     "nucleus"
+    ],
+    [
+     "electron"
+    ],
+    [
+     "positive",
+     "negative",
+     "charge"
+    ]
+   ]
+  },
+  {
+   "q": "What causes ocean tides?",
+   "facts": [
+    "The Moon's gravity pulls on Earth's oceans.",
+    "Most coasts get two high tides a day because water bulges on both the near and far sides of Earth.",
+    "The Sun also affects tides, but less than the Moon."
+   ],
+   "keys": [
+    [
+     "moon"
+    ],
+    [
+     "two high tides",
+     "twice",
+     "bulge"
+    ],
+    [
+     "sun"
+    ]
+   ]
+  },
+  {
+   "q": "What is a variable in programming?",
+   "facts": [
+    "A variable is a named place that stores a value.",
+    "Its value can change while the program runs.",
+    "For example, score = 10 stores the number 10 under the name score."
+   ],
+   "keys": [
+    [
+     "name"
+    ],
+    [
+     "change",
+     "update"
+    ],
+    [
+     "score"
+    ]
+   ]
+  },
+  {
+   "q": "What is the Pythagorean theorem?",
+   "facts": [
+    "It applies to right triangles.",
+    "It says a^2 + b^2 = c^2.",
+    "c is the hypotenuse, the longest side, opposite the right angle."
+   ],
+   "keys": [
+    [
+     "right"
+    ],
+    [
+     "a^2",
+     "a²",
+     "squared",
+     "square"
+    ],
+    [
+     "hypotenuse"
+    ]
+   ]
+  },
+  {
+   "q": "Why does ice float on water?",
+   "facts": [
+    "Ice is less dense than liquid water.",
+    "When water freezes, its molecules lock into an open hexagonal lattice.",
+    "Hydrogen bonds hold the molecules farther apart than in liquid water."
+   ],
+   "keys": [
+    [
+     "dens"
+    ],
+    [
+     "lattice",
+     "hexagon",
+     "crystal"
+    ],
+    [
+     "hydrogen bond"
+    ]
+   ]
+  },
+  {
+   "q": "How do supply and demand set prices?",
+   "facts": [
+    "Prices tend to rise when demand exceeds supply.",
+    "Prices tend to fall when supply exceeds demand.",
+    "The equilibrium price is where supply and demand match."
+   ],
+   "keys": [
+    [
+     "rise",
+     "increase",
+     "higher",
+     "go up",
+     "goes up"
+    ],
+    [
+     "fall",
+     "drop",
+     "decrease",
+     "lower",
+     "go down",
+     "goes down"
+    ],
+    [
+     "equilibrium"
+    ]
+   ]
+  },
+  {
+   "q": "What is the difference between weather and climate?",
+   "facts": [
+    "Weather is the short-term state of the atmosphere.",
+    "Climate is the average pattern of weather over decades.",
+    "A single cold day says nothing about long-term climate trends."
+   ],
+   "keys": [
+    [
+     "short"
+    ],
+    [
+     "average",
+     "decades"
+    ],
+    [
+     "single",
+     "one day",
+     "cold day",
+     "trend"
+    ]
+   ]
+  }
+ ],
+ "heldout": [
+  {
+   "q": "What is a prime number?",
+   "facts": [
+    "A prime number is a whole number greater than 1.",
+    "Its only divisors are 1 and itself.",
+    "2 is the only even prime number."
+   ],
+   "keys": [
+    [
+     "greater than 1",
+     "larger than 1",
+     "more than 1",
+     "bigger than 1"
+    ],
+    [
+     "itself"
+    ],
+    [
+     "even"
+    ]
+   ]
+  },
+  {
+   "q": "How does the heart pump blood?",
+   "facts": [
+    "The heart has four chambers.",
+    "The right side sends blood to the lungs.",
+    "The left side pumps oxygen-rich blood to the rest of the body."
+   ],
+   "keys": [
+    [
+     "four"
+    ],
+    [
+     "lung"
+    ],
+    [
+     "left"
+    ]
+   ]
+  },
+  {
+   "q": "What is gravity?",
+   "facts": [
+    "Gravity is a force that attracts objects with mass toward each other.",
+    "More mass means a stronger pull.",
+    "The pull gets weaker as distance increases."
+   ],
+   "keys": [
+    [
+     "attract"
+    ],
+    [
+     "more mass",
+     "stronger",
+     "greater mass",
+     "larger mass"
+    ],
+    [
+     "distance",
+     "farther",
+     "further"
+    ]
+   ]
+  },
+  {
+   "q": "What is the difference between a noun and a verb?",
+   "facts": [
+    "A noun names a person, place, thing, or idea.",
+    "A verb expresses an action or a state.",
+    "In 'The dog runs', dog is a noun and runs is a verb."
+   ],
+   "keys": [
+    [
+     "person",
+     "place",
+     "thing"
+    ],
+    [
+     "action"
+    ],
+    [
+     "dog"
+    ]
+   ]
+  },
+  {
+   "q": "What is the water cycle?",
+   "facts": [
+    "Water evaporates from oceans, lakes, and land.",
+    "The vapor condenses into clouds.",
+    "It returns to the surface as precipitation such as rain or snow."
+   ],
+   "keys": [
+    [
+     "evaporat"
+    ],
+    [
+     "condens"
+    ],
+    [
+     "precipitat",
+     "rain"
+    ]
+   ]
+  },
+  {
+   "q": "What is a fraction?",
+   "facts": [
+    "A fraction represents part of a whole.",
+    "The numerator, on top, says how many parts you have.",
+    "The denominator, on the bottom, says how many equal parts make the whole."
+   ],
+   "keys": [
+    [
+     "part"
+    ],
+    [
+     "numerator"
+    ],
+    [
+     "denominator"
+    ]
+   ]
+  },
+  {
+   "q": "Why does the Moon have phases?",
+   "facts": [
+    "Half of the Moon is always lit by the Sun.",
+    "As the Moon orbits Earth, we see different amounts of the lit half.",
+    "A full cycle of phases takes about 29.5 days."
+   ],
+   "keys": [
+    [
+     "half"
+    ],
+    [
+     "orbit"
+    ],
+    [
+     "29"
+    ]
+   ]
+  },
+  {
+   "q": "What is DNA?",
+   "facts": [
+    "DNA is a molecule that carries genetic instructions.",
+    "It has a double-helix shape.",
+    "Its code is written with four bases: A, T, C, and G."
+   ],
+   "keys": [
+    [
+     "genetic",
+     "instructions"
+    ],
+    [
+     "double helix",
+     "double-helix"
+    ],
+    [
+     "bases"
+    ]
+   ]
+  },
+  {
+   "q": "What is inflation in economics?",
+   "facts": [
+    "Inflation is a general rise in prices over time.",
+    "It reduces the purchasing power of money.",
+    "It is commonly measured with the consumer price index."
+   ],
+   "keys": [
+    [
+     "prices"
+    ],
+    [
+     "purchasing power",
+     "buys less",
+     "buy less"
+    ],
+    [
+     "consumer price index",
+     "cpi"
+    ]
+   ]
+  },
+  {
+   "q": "What is an algorithm?",
+   "facts": [
+    "An algorithm is a step-by-step procedure for solving a problem.",
+    "It takes an input and produces an output.",
+    "A recipe and a sorting method are both examples."
+   ],
+   "keys": [
+    [
+     "step"
+    ],
+    [
+     "input",
+     "output"
+    ],
+    [
+     "recipe",
+     "sort"
+    ]
+   ]
+  }
+ ],
+ "test": [
+  {
+   "q": "What is an ecosystem?",
+   "facts": [
+    "An ecosystem is a community of living things interacting with each other and their nonliving environment.",
+    "Energy flows from the Sun through producers to consumers.",
+    "Decomposers recycle nutrients back into the soil."
+   ],
+   "keys": [
+    [
+     "living"
+    ],
+    [
+     "producer",
+     "consumer"
+    ],
+    [
+     "decompos"
+    ]
+   ]
+  },
+  {
+   "q": "What is the difference between speed and velocity?",
+   "facts": [
+    "Speed is how much distance is covered per unit of time.",
+    "Velocity is speed together with a direction.",
+    "Speed is a scalar and velocity is a vector."
+   ],
+   "keys": [
+    [
+     "distance"
+    ],
+    [
+     "direction"
+    ],
+    [
+     "scalar",
+     "vector"
+    ]
+   ]
+  },
+  {
+   "q": "What is a percentage?",
+   "facts": [
+    "A percentage is a number expressed as a fraction of 100.",
+    "50% is the same as one half.",
+    "To turn a decimal into a percentage, multiply it by 100."
+   ],
+   "keys": [
+    [
+     "100"
+    ],
+    [
+     "half"
+    ],
+    [
+     "multiply",
+     "decimal"
+    ]
+   ]
+  },
+  {
+   "q": "What causes earthquakes?",
+   "facts": [
+    "Earth's crust is broken into tectonic plates.",
+    "Stress builds up along faults where plates meet.",
+    "When a fault slips suddenly, the energy is released as seismic waves."
+   ],
+   "keys": [
+    [
+     "plate"
+    ],
+    [
+     "fault",
+     "stress"
+    ],
+    [
+     "seismic",
+     "waves"
+    ]
+   ]
+  },
+  {
+   "q": "What is a metaphor?",
+   "facts": [
+    "A metaphor is a figure of speech that describes one thing as if it were another.",
+    "Unlike a simile, it does not use 'like' or 'as'.",
+    "'Time is a thief' is a metaphor."
+   ],
+   "keys": [
+    [
+     "figure of speech"
+    ],
+    [
+     "simile"
+    ],
+    [
+     "thief"
+    ]
+   ]
+  },
+  {
+   "q": "How do plants take up water?",
+   "facts": [
+    "Roots absorb water from the soil.",
+    "Water travels up the plant through tubes called xylem.",
+    "Transpiration from the leaves pulls the water upward."
+   ],
+   "keys": [
+    [
+     "root"
+    ],
+    [
+     "xylem"
+    ],
+    [
+     "transpir",
+     "leaves"
+    ]
+   ]
+  },
+  {
+   "q": "What is the difference between a virus and a bacterium?",
+   "facts": [
+    "Bacteria are single-celled living organisms.",
+    "Viruses are not cells and need a host cell to reproduce.",
+    "Antibiotics work against bacteria but not against viruses."
+   ],
+   "keys": [
+    [
+     "single-cell",
+     "single cell"
+    ],
+    [
+     "host"
+    ],
+    [
+     "antibiotic"
+    ]
+   ]
+  },
+  {
+   "q": "What is electric current?",
+   "facts": [
+    "Electric current is the flow of electric charge.",
+    "It is measured in amperes.",
+    "In metal wires the charge is carried by electrons."
+   ],
+   "keys": [
+    [
+     "flow"
+    ],
+    [
+     "ampere",
+     "amps"
+    ],
+    [
+     "electron"
+    ]
+   ]
+  },
+  {
+   "q": "What is a democracy?",
+   "facts": [
+    "In a democracy, power rests with the citizens.",
+    "They use it by voting, either directly or through elected representatives.",
+    "Free and fair elections are a core feature."
+   ],
+   "keys": [
+    [
+     "citizen",
+     "people"
+    ],
+    [
+     "vot",
+     "representative"
+    ],
+    [
+     "election"
+    ]
+   ]
+  },
+  {
+   "q": "What is the greenhouse effect?",
+   "facts": [
+    "Gases such as carbon dioxide and water vapor trap heat in the atmosphere.",
+    "Without it, Earth would be far colder.",
+    "Human emissions are strengthening the effect."
+   ],
+   "keys": [
+    [
+     "trap"
+    ],
+    [
+     "colder",
+     "cold"
+    ],
+    [
+     "emission",
+     "human"
+    ]
+   ]
+  }
+ ]
+}
