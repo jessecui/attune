@@ -16,7 +16,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
   return (
     <div>
       <p className="eyebrow">Result · {summary.rounds} questions</p>
-      <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Your model is trained.</h1>
+      <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Your personal AI model is ready.</h1>
       <p className="mt-4 max-w-3xl text-lg text-ink-2">
         {found.length > 0
           ? <>It learned that you prefer answers that are <strong className="font-semibold text-ink">{list(found.map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + (AS_ADJECTIVE[r.side] ?? r.side)))}</strong>.</>
@@ -96,7 +96,7 @@ function ModelCard({ session, mock, instructions }: { session: string; mock: boo
   return (
     <section className="sheet flex flex-col p-6" aria-labelledby="model">
       <h2 id="model" className="eyebrow">Your model</h2>
-      <p className="mt-4 text-xl font-semibold tracking-tight">Your fine-tuned model</p>
+      <p className="mt-4 text-xl font-semibold tracking-tight">Your personal model</p>
       <p className="mt-2 text-ink-2">
         A LoRA adapter for Qwen2.5-7B, trained on your picks in this session. The download includes the adapter, your profile
         and a script to run it.

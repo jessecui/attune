@@ -19,15 +19,15 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
     <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
       <section>
         <p className="eyebrow">Live fine-tuning · about {rounds} minutes</p>
-        <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Train your own AI model.</h1>
+        <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Train your own personal AI model.</h1>
         <p className="mt-4 text-lg text-ink-2">
-          Read four answers to a question and pick the best and the worst. Each pick fine-tunes a language model
-          to your style. After {rounds} questions, the model is yours to download.
+          Read four answers to a question and pick the one you like best and the one you like least. Each pick
+          fine-tunes a language model to your style. After {rounds} questions, the model is yours to download.
         </p>
         <ol className="mt-8 space-y-4">
-          {[['You pick', `${rounds} questions, four answers each. Mark the best and the least.`],
+          {[['You pick', `${rounds} everyday questions, four answers each. Mark your best and your least.`],
             ['The model trains', 'Every pick updates an open 7-billion-parameter model on a dedicated GPU, between questions.'],
-            ['You download it', 'The tuned model, a profile of the style it learned, and a script to run it.']].map(([t, d], i) => (
+            ['You keep it', 'Download the tuned model, a profile of the style it learned, and a script to run it.']].map(([t, d], i) => (
             <li key={t} className="flex gap-4">
               <span className="font-mono text-sm text-accent mt-0.5 w-5 shrink-0">{String(i + 1).padStart(2, '0')}</span>
               <span><span className="font-medium">{t}.</span> <span className="text-ink-2">{d}</span></span>
