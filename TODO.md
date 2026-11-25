@@ -48,6 +48,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [x] Backend (`app/backend`): password check, signed session cookie, and a private relay to Modal. Runs locally; a Dockerfile for Railway exists but is not deployed or tested there.
 - [x] Front end (`app/frontend`), first version: sign-in, welcome, questions, profile with four scales, before and after, round-by-round charts.
 - [ ] Serve the page from Railway so it loads instantly while the GPU starts; add loading states for the cold start.
+- [ ] "Try your model" on the results screen: the visitor types any text or question and sees the standard model's version beside their own model's, as with the prepared examples. This is the in-app form of converting text. Needs one endpoint that runs both models while the session's GPU is still up (it shuts down five minutes after last use, so the box must say when it has expired), a decision on prompt wording for rewording against answering, and a length limit on the input.
 - [ ] Honest wait indicators: tell the visitor what they are waiting for and why, from the server's real state, not a timer. Stages to report: GPU starting, model loading, writing the first answers; training on the last pick; writing the next answers; checking them (redraws); building the results; packaging the model. Needs the Modal service to expose its current stage (a status endpoint the page polls, or streamed progress).
 - [ ] Enforce the session time limit on the server.
 - [ ] Results screen: present the outcome as a profile, show the user's style against its opposite, keep the per-round charts and tracked answers.
@@ -66,7 +67,6 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Let visitors continue from a saved adapter: an upload (safetensors only, validated) or a server-side resume code.
 - [ ] Let visitors choose the number of rounds, within tested limits.
 - [ ] Let visitors choose which axes to tune. With fewer styles than answers per round, sampling must allow repeats.
-- [ ] "Try your model" box at the end of a session: paste a short text and have the tuned model reword it in the learned style. Small: one endpoint and a text box, while the session's container is still up.
 - [ ] A "convert" mode that skips the quiz: upload a saved adapter, paste text, and get it reworded straight away. Depends on the adapter download and upload items above, and on the file recording its base model, menu version and prompt setup.
 - [ ] Later, if convert gets used: saved per-setting profiles and a content check that works on pasted text.
 
