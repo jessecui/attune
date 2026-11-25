@@ -7,7 +7,7 @@ const SCALES: [string, string, string][] = [
 ]
 
 // Measured: the GPU starts in under a minute, and each question takes as long as you take to read it.
-const minutes = (rounds: number) => (rounds <= 5 ? 'under 5 minutes' : `about ${rounds} minutes`)
+const minutes = (rounds: number) => (rounds <= 5 ? 'a few minutes' : `about ${rounds} minutes`)
 
 export function Welcome({ choices, error, onStart }: { choices: number[]; error?: string; onStart: (rounds: number) => void }) {
   const [rounds, setRounds] = useState(choices[0])
@@ -15,7 +15,7 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
   return (
     <div className="grid gap-14 pt-6 lg:grid-cols-[1.25fr_1fr] lg:gap-20">
       <section>
-        <p className="eyebrow">Live fine-tuning · {minutes(rounds)}</p>
+        <p className="eyebrow">Live fine-tuning · takes {minutes(rounds)}</p>
         <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">Train your own <span className="mark">personal AI model</span>.</h1>
         <p className="mt-6 max-w-xl text-lg text-ink-2">
           Most assistants are written for an average reader. This one learns how you like to be answered, and the weights are yours to keep.
