@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, AS_ADJECTIVE, read, type ModelStatus, type Summary } from '../api'
 import { Scale } from '../components/Scale'
 import { Trajectory, sharedLimit } from '../components/Trajectory'
+import { Spinner } from '../components/Spinner'
 
 /** "warm, collaborative and formal" */
 const list = (words: string[]) => words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
@@ -105,7 +106,7 @@ function ModelCard({ session, mock, instructions }: { session: string; mock: boo
             : status?.configured === false ? <p className="hint">Downloads are not set up on this server.</p>
             : status?.ready ? <a className="btn btn-primary w-full" href={api.modelUrl(session)} download>Download{megabytes && ` (${megabytes})`}</a>
             : gaveUp ? <p className="text-red-700" role="alert">The model could not be packaged this time. Your results are unaffected.</p>
-            : <button className="btn btn-primary w-full" disabled>Packaging the model</button>}
+            : <button className="btn btn-primary w-full" disabled><Spinner />Packaging the model</button>}
           <p className="hint mt-2">Available for a day. Needs a GPU or a recent Mac to run.</p>
         </div>
       </div>

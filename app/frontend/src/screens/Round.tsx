@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api, type Round, type Summary } from '../api'
+import { Spinner } from '../components/Spinner'
 
 export function RoundScreen({ round, onNext, onExpired }:
   { round: Round; onNext: (next: Round | Summary) => void; onExpired: (e: unknown) => boolean }) {
@@ -33,7 +34,7 @@ export function RoundScreen({ round, onNext, onExpired }:
         {round.candidates.map((text, i) => {
           const state = best === i ? 'best' : worst === i ? 'worst' : null
           return (
-            <article key={i} className={`panel flex flex-col p-4 ${state === 'best' ? 'border-teal-600 ring-1 ring-teal-600' : state === 'worst' ? 'border-gray-500 ring-1 ring-gray-500' : ''}`}>
+            <article key={i} className={`panel flex flex-col p-4 transition-opacity ${busy ? 'opacity-60' : ''} ${state === 'best' ? 'border-teal-600 ring-1 ring-teal-600' : state === 'worst' ? 'border-gray-500 ring-1 ring-gray-500' : ''}`}>
               <div className="flex items-center justify-between">
                 <span className="hint font-medium">{'ABCD'[i]}</span>
                 {state && <span className={`text-xs font-medium ${state === 'best' ? 'text-teal-800' : 'text-gray-600'}`}>{state === 'best' ? 'Your best' : 'Your worst'}</span>}
@@ -50,12 +51,14 @@ export function RoundScreen({ round, onNext, onExpired }:
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-gray-600" role="status" aria-live="polite">
-          {error ? <span className="text-red-700">{error}</span> : busy ? (last ? 'Training on your last pick and building your results. About half a minute.' : 'Training on your pick.') : hint}
-        </p>
+      <div className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 ${busy ? 'border-teal-200 bg-teal-50' : 'border-transparent'}`}>
+        <div className="flex items-center gap-2.5 text-gray-600" role="status" aria-live="polite">
+          {error ? <span className="text-red-700">{error}</span>
+            : busy ? <><Spinner className="h-4 w-4 text-teal-700" /><span className="text-teal-900">{last ? 'Training on your last pick and building your results. About half a minute.' : 'Training on your pick and fetching the next question.'}</span></>
+            : hint}
+        </div>
         <button className="btn btn-primary" disabled={busy || best === null || worst === null} onClick={submit}>
-          {busy ? 'One moment' : last ? 'See results' : 'Next question'}
+          {last ? 'See results' : 'Next question'}
         </button>
       </div>
     </div>
