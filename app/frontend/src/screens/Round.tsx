@@ -25,8 +25,8 @@ export function RoundScreen({ round, onNext, onExpired }:
     : best === null && worst === null ? 'Mark one answer as best and one as worst'
     : best === null ? 'Now mark the best' : worst === null ? 'Now mark the worst' : 'Both marked'
   // The pill's colour says where things stand: waiting on a pick, ready, working, or failed.
-  const tone = error ? 'bg-red-50 text-red-800' : busy ? 'bg-teal-50 text-teal-900' : ready ? 'bg-teal-50 text-teal-900' : 'bg-amber-50 text-amber-900'
-  const dot = error ? 'bg-red-600' : ready ? 'bg-teal-600' : 'bg-amber-500'
+  const tone = error ? 'bg-red-50 text-red-800' : busy ? 'bg-teal-50 text-teal-900' : ready ? 'bg-teal-50 text-teal-900' : 'bg-gray-100 text-gray-700'
+  const dot = error ? 'bg-red-600' : ready ? 'bg-teal-600' : 'bg-gray-400'
 
   return (
     <div className="mx-auto max-w-5xl">
