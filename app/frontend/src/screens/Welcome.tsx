@@ -15,7 +15,7 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
   return (
     <div className="grid gap-14 pt-6 lg:grid-cols-[1.25fr_1fr] lg:gap-20">
       <section>
-        <p className="eyebrow">Live fine-tuning · takes {minutes(rounds)}</p>
+        <p className="eyebrow">Live fine-tuning in {minutes(rounds)}</p>
         <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">Train your own <span className="mark">personal AI model</span>.</h1>
         <p className="mt-6 max-w-xl text-lg text-ink-2">
           Most AI models are tuned for the average person. This app trains one that knows how you like to be spoken to,
