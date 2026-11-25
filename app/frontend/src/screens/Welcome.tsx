@@ -18,7 +18,8 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
         <p className="eyebrow">Live fine-tuning · takes {minutes(rounds)}</p>
         <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">Train your own <span className="mark">personal AI model</span>.</h1>
         <p className="mt-6 max-w-xl text-lg text-ink-2">
-          Most assistants are written for an average reader. This one learns how you like to be answered, and the weights are yours to keep.
+          Most LLMs are written for the average person. This app helps you create your own personal AI that knows how you
+          like to be spoken to. You can download your own AI model at the end.
         </p>
 
         <ol className="mt-10 space-y-4">
@@ -49,7 +50,7 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
       </section>
 
       <aside className="sheet self-start p-8">
-        <p className="eyebrow">What the model learns</p>
+        <p className="eyebrow leading-relaxed">What the model learns about your communication style</p>
         <ul className="mt-6 space-y-6">
           {SCALES.map(([key, low, high]) => (
             <li key={key}>
