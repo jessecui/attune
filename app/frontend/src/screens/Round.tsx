@@ -27,17 +27,17 @@ export function RoundScreen({ round, onNext, onExpired }:
       <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{round.question}</h1>
       <p className="mt-2 text-ink-2">Same advice, four styles. Mark the best and the least.</p>
 
-      <div className="mt-7 grid gap-4 md:grid-cols-2">
+      <div className="mt-10 grid gap-6 md:grid-cols-2">
         {round.candidates.map((text, i) => {
           const state = best === i ? 'best' : least === i ? 'least' : null
           return (
-            <article key={i} className={`sheet sheet-lift flex flex-col p-5 ${state === 'best' ? 'border-accent ring-1 ring-accent' : state === 'least' ? 'border-least ring-1 ring-least' : ''}`}>
+            <article key={i} className={`sheet sheet-lift flex flex-col p-6 ${state === 'best' ? 'border-accent ring-1 ring-accent' : state === 'least' ? 'border-least ring-1 ring-least' : ''}`}>
               <div className="flex items-center justify-between">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-page font-mono text-sm text-ink-2">{'ABCD'[i]}</span>
                 {state && <span className={`eyebrow ${state === 'best' ? '!text-accent-ink' : '!text-least'}`}>{state === 'best' ? 'Your best' : 'Your least'}</span>}
               </div>
-              <p className="mt-3 flex-1 whitespace-pre-line text-[1.02rem] leading-relaxed">{text}</p>
-              <div className="mt-5 flex gap-2">
+              <p className="mt-4 flex-1 whitespace-pre-line text-[1.02rem] leading-relaxed">{text}</p>
+              <div className="mt-6 flex gap-2">
                 <button aria-pressed={best === i} disabled={busy} onClick={() => mark('best', i)}
                   className={`btn flex-1 ${best === i ? 'bg-accent text-white' : 'btn-quiet'}`}>Best</button>
                 <button aria-pressed={least === i} disabled={busy} onClick={() => mark('least', i)}
@@ -48,7 +48,7 @@ export function RoundScreen({ round, onNext, onExpired }:
         })}
       </div>
 
-      <div className="sticky bottom-0 -mx-5 mt-8 border-t border-rule bg-page/95 px-5 py-4 backdrop-blur">
+      <div className="sticky bottom-0 -mx-5 mt-10 border-t border-rule bg-page/95 px-5 py-4 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-ink-2" role="status" aria-live="polite">
             {error ? <span className="text-danger">{error}</span> : busy ? (last ? 'Training on your last pick and building your results. About half a minute.' : 'Training on your pick.') : hint}
