@@ -164,6 +164,15 @@ GRIDS = {
                                  ("dpo-lr3e-5", ["--method", "dpo", "--lr", "3e-5"]),
                                  ("dpo-lr1e-5", ["--method", "dpo", "--lr", "1e-5"])]
               for p in LIVE_PERSONAS],
+    # The full GRPO-against-DPO comparison: three seeds, four simulated users, each method at two
+    # learning rates. Scored with `python -m bench.judge compare full`.
+    "full": [{"name": f"{tag}_{p}_s{seed}",
+              "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
+             for tag, extra in [("grpo-lr1e-5", ["--choice-clip", "0.2", "--lr", "1e-5"]),
+                                ("grpo-lr3e-5", ["--choice-clip", "0.2", "--lr", "3e-5"]),
+                                ("dpo-lr1e-5", ["--method", "dpo", "--lr", "1e-5"]),
+                                ("dpo-lr3e-5", ["--method", "dpo", "--lr", "3e-5"])]
+             for p in LIVE_PERSONAS for seed in (1, 2, 3)],
     "main": grid("rank4", ["grpo_style", "dpo"]),
     "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
     "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),

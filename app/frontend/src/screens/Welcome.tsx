@@ -6,9 +6,16 @@ const SCALES: [string, string, string][] = [
   ['formality', 'Formal', 'Casual'], ['depth', 'Just the advice', 'Explains why'],
 ]
 
+const WHY: [string, string][] = [
+  ['It answers in your style', 'Assistants are tuned for an average reader. This one learns whether you want warmth, instructions, formality and reasons, and writes that way without being told each time.'],
+  ['It is yours', 'You download the weights. They run on your own machine with an open base model: no account, no subscription, and nothing you type leaves your computer.'],
+  ['You see how it works', 'Training on human feedback is how labs shape their assistants. Here it runs live on your picks, and you get the round-by-round record of what changed.'],
+]
+
 export function Welcome({ choices, error, onStart }: { choices: number[]; error?: string; onStart: (rounds: number) => void }) {
   const [rounds, setRounds] = useState(choices[0])
   return (
+    <>
     <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
       <section>
         <p className="eyebrow">Live fine-tuning · about {rounds} minutes</p>
@@ -65,5 +72,18 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
         </p>
       </aside>
     </div>
+
+    <section className="mt-12 border-t border-rule pt-8" aria-labelledby="why">
+      <h2 id="why" className="eyebrow">Why train your own</h2>
+      <div className="mt-5 grid gap-8 md:grid-cols-3">
+        {WHY.map(([title, text]) => (
+          <div key={title}>
+            <h3 className="font-medium">{title}</h3>
+            <p className="mt-1.5 text-sm text-ink-2">{text}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+    </>
   )
 }

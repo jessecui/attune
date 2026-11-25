@@ -221,9 +221,15 @@ def compare(grid, scenario="data/advice.json"):
                 agg[name][k].append(v)
     print(f"{grid}: {len(runs)} runs, {len(need)} answers judged ({len(todo)} new)")
     print(f"  {'':18} runs | axes on the wanted side (of 4) | suits the user (-8 to 8) | facts covered | adds something")
+    def sd(v):
+        mu = sum(v) / len(v)
+        return (sum((x - mu) ** 2 for x in v) / max(1, len(v) - 1)) ** 0.5
     for name, a in agg.items():
         m = {k: sum(v) / len(v) for k, v in a.items()}
-        print(f"  {name:18} {len(a['axes']):4} | {m['axes']:30.2f} | {m['suit']:24.2f} | {m['facts']:13.2f} | {m['adds']:.0%}")
+        print(f"  {name:18} {len(a['axes']):4} | {m['axes']:21.2f} (sd {sd(a['axes']):.2f}) | "
+              f"{m['suit']:15.2f} (sd {sd(a['suit']):.2f}) | {m['facts']:13.2f} | {m['adds']:.0%}")
+    fell_back = sum(not r["judged"] for d in runs for r in d["rounds"])
+    print(f"  rounds where the judge was unavailable and word lists picked instead: {fell_back}")
 
 
 if __name__ == "__main__":
