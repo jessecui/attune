@@ -16,7 +16,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
   return (
     <div>
       <p className="eyebrow">Result · {summary.rounds} questions</p>
-      <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Your personal AI model is ready.</h1>
+      <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">Your personal AI model <span className="mark">is ready</span>.</h1>
       <p className="mt-4 max-w-3xl text-lg text-ink-2">
         {found.length > 0
           ? <>It learned that you prefer answers that are <strong className="font-semibold text-ink">{list(found.map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + (AS_ADJECTIVE[r.side] ?? r.side)))}</strong>.</>
@@ -94,28 +94,28 @@ function ModelCard({ session, mock, instructions }: { session: string; mock: boo
 
   const megabytes = status?.bytes ? `${Math.round(status.bytes / 1e6)} MB` : null
   return (
-    <section className="sheet flex flex-col p-6" aria-labelledby="model">
-      <h2 id="model" className="eyebrow">Your model</h2>
+    <section className="sheet model-card flex flex-col p-6" aria-labelledby="model">
+      <h2 id="model" className="eyebrow !text-white/60">Your model</h2>
       <p className="mt-4 text-xl font-semibold tracking-tight">Your personal model</p>
-      <p className="mt-2 text-ink-2">
+      <p className="mt-2 text-white/75">
         A LoRA adapter for Qwen2.5-7B, trained on your picks in this session. The download includes the adapter, your profile
         and a script to run it.
       </p>
       {instructions.length > 0 && (
         <div className="mt-4">
           <p className="text-sm font-medium">The style it settled on</p>
-          <ul className="mt-2 space-y-1.5 text-sm text-ink-2">
-            {instructions.map((c) => <li key={c} className="flex gap-2"><span className="text-accent" aria-hidden>—</span><span>{c}</span></li>)}
+          <ul className="mt-2 space-y-1.5 text-sm text-white/75">
+            {instructions.map((c) => <li key={c} className="flex gap-2"><span className="text-teal-300" aria-hidden>—</span><span>{c}</span></li>)}
           </ul>
         </div>
       )}
       <div className="mt-auto pt-6">
-        {mock ? <p className="text-sm text-muted">Downloads are switched off in demo mode.</p>
-          : status?.configured === false ? <p className="text-sm text-muted">Downloads are not set up on this server.</p>
-          : status?.ready ? <a className="btn btn-primary w-full" href={api.modelUrl(session)} download>Download your model{megabytes && ` (${megabytes})`}</a>
-          : gaveUp ? <p className="text-sm text-danger" role="alert">The model could not be packaged this time. Your profile above is unaffected.</p>
-          : <button className="btn btn-primary w-full" disabled>Packaging the model</button>}
-        <p className="mt-3 text-sm text-muted">Available for a day. Needs a GPU or a recent Mac to run.</p>
+        {mock ? <p className="text-sm text-white/60">Downloads are switched off in demo mode.</p>
+          : status?.configured === false ? <p className="text-sm text-white/60">Downloads are not set up on this server.</p>
+          : status?.ready ? <a className="btn w-full bg-white text-ink hover:bg-teal-50" href={api.modelUrl(session)} download>Download your model{megabytes && ` (${megabytes})`}</a>
+          : gaveUp ? <p className="text-sm text-orange-200" role="alert">The model could not be packaged this time. Your profile above is unaffected.</p>
+          : <button className="btn w-full bg-white/15 text-white" disabled>Packaging the model</button>}
+        <p className="mt-3 text-sm text-white/60">Available for a day. Needs a GPU or a recent Mac to run.</p>
       </div>
     </section>
   )

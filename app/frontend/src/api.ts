@@ -62,3 +62,6 @@ export const AS_ADJECTIVE: Record<string, string> = {
   warm: 'warm', neutral: 'matter-of-fact', directive: 'directive', collaborative: 'collaborative',
   casual: 'casual', formal: 'formal', 'explains why': 'explanatory', 'just the advice': 'concise',
 }
+
+// Each scale keeps one colour wherever it appears.
+export const axisColor = (axis: string) => `var(--color-${axis}, var(--color-accent))`

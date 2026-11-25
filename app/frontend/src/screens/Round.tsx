@@ -31,9 +31,9 @@ export function RoundScreen({ round, onNext, onExpired }:
         {round.candidates.map((text, i) => {
           const state = best === i ? 'best' : least === i ? 'least' : null
           return (
-            <article key={i} className={`sheet flex flex-col p-5 transition-colors ${state === 'best' ? 'border-accent ring-1 ring-accent' : state === 'least' ? 'border-least ring-1 ring-least' : ''}`}>
+            <article key={i} className={`sheet sheet-lift flex flex-col p-5 ${state === 'best' ? 'border-accent ring-1 ring-accent' : state === 'least' ? 'border-least ring-1 ring-least' : ''}`}>
               <div className="flex items-center justify-between">
-                <span className="font-mono text-sm text-muted">{'ABCD'[i]}</span>
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-page font-mono text-sm text-ink-2">{'ABCD'[i]}</span>
                 {state && <span className={`eyebrow ${state === 'best' ? '!text-accent-ink' : '!text-least'}`}>{state === 'best' ? 'Your best' : 'Your least'}</span>}
               </div>
               <p className="mt-3 flex-1 whitespace-pre-line text-[1.02rem] leading-relaxed">{text}</p>

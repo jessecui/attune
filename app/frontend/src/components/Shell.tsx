@@ -25,7 +25,10 @@ export function Shell({ children, mock, progress, onSignOut }:
           </div>
         )}
       </header>
-      <main className="flex-1 mx-auto w-full max-w-5xl px-5 py-10">{children}</main>
+      <main className="relative flex-1">
+        <div className="dots pointer-events-none absolute inset-x-0 top-0 h-72" aria-hidden />
+        <div className="relative mx-auto w-full max-w-5xl px-5 py-10">{children}</div>
+      </main>
       <footer className="border-t border-rule">
         <p className="mx-auto max-w-5xl px-5 py-5 text-sm text-muted">
           The answers you read demonstrate a style. They are not medical, legal or financial advice.

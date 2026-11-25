@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AXIS_NOTES } from '../api'
+import { AXIS_NOTES, axisColor } from '../api'
 
 const SCALES: [string, string, string][] = [
   ['warmth', 'Neutral', 'Warm'], ['directiveness', 'Collaborative', 'Directive'],
@@ -19,7 +19,7 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
     <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
       <section>
         <p className="eyebrow">Live fine-tuning · about {rounds} minutes</p>
-        <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Train your own personal AI model.</h1>
+        <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">Train your own <span className="mark">personal AI model</span>.</h1>
         <p className="mt-4 text-lg text-ink-2">
           Read four answers to a question and pick the one you like best and the one you like least. Each pick
           fine-tunes a language model to your style. After {rounds} questions, the model is yours to download.
@@ -29,7 +29,7 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
             ['The model trains', 'Every pick updates an open 7-billion-parameter model on a dedicated GPU, between questions.'],
             ['You keep it', 'Download the tuned model, a profile of the style it learned, and a script to run it.']].map(([t, d], i) => (
             <li key={t} className="flex gap-4">
-              <span className="font-mono text-sm text-accent mt-0.5 w-5 shrink-0">{String(i + 1).padStart(2, '0')}</span>
+              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent-soft font-mono text-xs font-medium text-accent-ink">{i + 1}</span>
               <span><span className="font-medium">{t}.</span> <span className="text-ink-2">{d}</span></span>
             </li>
           ))}
@@ -59,7 +59,7 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
           {SCALES.map(([key, low, high]) => (
             <li key={key} className="py-4 first:pt-0 last:pb-0">
               <div className="flex items-baseline justify-between gap-3">
-                <span className="font-medium">{AXIS_NOTES[key].title}</span>
+                <span className="flex items-center gap-2 font-medium"><span className="h-2.5 w-2.5 rounded-full" style={{ background: axisColor(key) }} aria-hidden />{AXIS_NOTES[key].title}</span>
                 <span className="font-mono text-xs text-muted">{low} ↔ {high}</span>
               </div>
               <p className="mt-1 text-sm text-ink-2">{AXIS_NOTES[key].about}</p>
