@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Attune's own look: a calm assessment instrument. Paper-grey page, white sheets, navy ink,
+   one teal accent, hairline rules, and monospace for labels and measurements. */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-page: #f4f6f8;
+  --color-sheet: #ffffff;
+  --color-ink: #0f1b2d;
+  --color-ink-2: #3a4658;
+  --color-muted: #5f6b7d;
+  --color-rule: #dde2e9;
+  --color-rule-strong: #c3cad5;
+  --color-accent: #0b6b63;
+  --color-accent-ink: #084f49;
+  --color-accent-soft: #e2f1ef;
+  --color-least: #8a4b14;
+  --color-least-soft: #f7ecdf;
+  --color-danger: #a4262c;
+}
+
+html { background: var(--color-page); color: var(--color-ink); }
+body { font-family: var(--font-sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+
+@layer components {
+  .eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-muted); }
+  .sheet { background: var(--color-sheet); border: 1px solid var(--color-rule); border-radius: 8px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 6px; padding: 0.6rem 1.1rem;
+         font-weight: 500; font-size: 0.95rem; border: 1px solid transparent; transition: background-color 120ms, border-color 120ms, color 120ms; cursor: pointer; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--color-accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: var(--color-accent-ink); }
+  .btn-quiet { background: var(--color-sheet); color: var(--color-ink); border-color: var(--color-rule-strong); }
+  .btn-quiet:hover:not(:disabled) { border-color: var(--color-ink-2); }
+}
+
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
+.indeterminate { animation: slide 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .indeterminate { animation: none; width: 100% !important; opacity: 0.4; } }

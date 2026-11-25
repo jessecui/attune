@@ -38,6 +38,50 @@ image = (
     .add_local_file("live_page.html", remote_path="/root/live_page.html")
 )
 hf_cache = modal.Volume.from_name("attune-hf-cache", create_if_missing=True)
+# Finished sessions' adapters, packaged for download. Kept for a day.
+adapters = modal.Volume.from_name("attune-adapters", create_if_missing=True)
+KEEP_ADAPTERS_SECONDS = 24 * 3600
+
+PACKAGE_README = """# Your Attune model
+
+This is a LoRA adapter for {base}, tuned on {date} in a {rounds}-round Attune session.
+
+- `adapter_model.safetensors`, `adapter_config.json`: the adapter, in the standard PEFT format.
+- `attune.json`: your profile, the style the tuned model chose, and the prompt format it was tuned with.
+- `example.py`: loads the base model with your adapter and rewrites or answers a piece of text in your style.
+
+What was tuned: the model learned which of sixteen style combinations you preferred, and its
+wording within that style, from the answers you marked best and least. It was tuned on short
+pieces of advice written from a fact sheet, so that is where it will behave most like your session.
+The answers are a demonstration of style, not advice.
+
+Requirements: `pip install torch transformers peft`, and a GPU or Apple-silicon Mac with about 16 GB free.
+"""
+
+PACKAGE_EXAMPLE = """\"\"\"Answer a question in your Attune style: python example.py "How do I ask for a raise?" \"\"\"
+import json
+import sys
+from pathlib import Path
+
+import torch
+from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+here = Path(__file__).parent
+meta = json.loads((here / "attune.json").read_text())
+device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+tok = AutoTokenizer.from_pretrained(meta["base_model"])
+base = AutoModelForCausalLM.from_pretrained(meta["base_model"], dtype=torch.bfloat16 if device == "cuda" else torch.float32)
+model = PeftModel.from_pretrained(base, str(here)).to(device).eval()
+
+question = sys.argv[1] if len(sys.argv) > 1 else "How do I ask for a raise?"
+style = "\\n".join(f"- {c}" for c in meta["style_instructions"])
+messages = [{"role": "system", "content": meta["system_prompt"]},
+            {"role": "user", "content": f"Question: {question}\\n\\nWrite your answer in this style:\\n{style}"}]
+ids = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to(device)
+out = model.generate(ids, max_new_tokens=160, do_sample=False)
+print(tok.decode(out[0, ids.shape[1]:], skip_special_tokens=True).strip())
+"""
 
 
 def key_ok(given, expected):
@@ -45,7 +89,8 @@ def key_ok(given, expected):
     return bool(expected) and hmac.compare_digest(given.encode(), expected.encode())
 
 
-@app.cls(image=image, gpu="L40S", volumes={"/cache": hf_cache}, max_containers=1, scaledown_window=300,
+@app.cls(image=image, gpu="L40S", volumes={"/cache": hf_cache, "/adapters": adapters}, max_containers=1,
+         scaledown_window=300,
          timeout=900, secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY})])
 @modal.concurrent(max_inputs=8)
 class Live:
@@ -113,9 +158,10 @@ class Live:
             text = self.sess.finish(out, [first], [item])[1][0]
             style = [m["options"][0 if R.AXES[m["axis"]][first] else 1][0] for m in self.menu]
         else:
-            text, style = plain, []
+            text, style, first = plain, [], None
         f = features(text)
         return {"lean": {a: round(v, 2) for a, v in lean.items()}, "style": style, "answer": text,
+                "clauses": [] if first is None else list(R.STYLE_CLAUSES[first]),
                 "words": f["words"], "sentences": f["sentences"], "exclamations": text.count("!"),
                 "warm_phrases": sum(text.lower().count(p) for p in WARM_PHRASES)}
 
@@ -160,8 +206,39 @@ class Live:
         examples = [{"question": it["q"], "before": b, "after": t}
                     for it, b, t in zip(self.scenario["heldout"], self.base_texts, texts)]
         keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases", "update_seconds")
-        return {"done": True, "axes": axes, "tracked_question": self.scenario["heldout"][0]["q"],
+        return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes,
+                "style_instructions": h[-1]["clauses"], "tracked_question": self.scenario["heldout"][0]["q"],
                 "track": [{k: r.get(k) for k in keep} for r in h], "examples": examples}
+
+    def _export(self, s, summary):
+        """Package the session's adapter as a zip on the adapters volume, for download."""
+        import json
+        import shutil
+        import time
+        import zipfile
+
+        root = Path("/adapters")
+        d = root / s["id"]
+        d.mkdir(parents=True, exist_ok=True)
+        self.policy.model.save_pretrained(str(d))   # PEFT writes the adapter only, not the base model
+        meta = {"base_model": MODEL, "created": time.strftime("%Y-%m-%d"), "rounds": s["rounds"],
+                "profile": [{"axis": a["axis"], "first": a["first"], "second": a["second"], "lean": a["lean"][-1]}
+                            for a in summary["axes"]],
+                "style_instructions": summary["style_instructions"], "system_prompt": self.scenario["system"],
+                "prompt_format": "Question, then the fact sheet if any, then 'Write your answer in this style:' "
+                                 "followed by the style instructions as a bulleted list, all in the user turn."}
+        (d / "attune.json").write_text(json.dumps(meta, indent=1))
+        (d / "README.md").write_text(PACKAGE_README.format(base=MODEL, date=meta["created"], rounds=s["rounds"]))
+        (d / "example.py").write_text(PACKAGE_EXAMPLE)
+        with zipfile.ZipFile(root / f"{s['id']}.zip.part", "w", zipfile.ZIP_STORED) as z:
+            for f in sorted(d.iterdir()):
+                z.write(f, f"attune-model/{f.name}")
+        (root / f"{s['id']}.zip.part").rename(root / f"{s['id']}.zip")
+        shutil.rmtree(d)
+        for old in root.glob("*.zip"):   # downloads are kept for a day
+            if time.time() - old.stat().st_mtime > KEEP_ADAPTERS_SECONDS:
+                old.unlink()
+        adapters.commit()
 
     # ---- web endpoints ---------------------------------------------------------------
 
@@ -234,6 +311,36 @@ class Live:
                 raise HTTPException(status_code=500, detail=s["error"])
             out = self._with(s, lambda: self._summary(s))
             del self.sessions[s["id"]]
+            # Package the adapter in the background; the download appears a few seconds later.
+            threading.Thread(target=lambda: self._with(s, lambda: self._export(s, out))).start()
             return {**out, "waited_seconds": round(time.time() - t, 1)}
 
         return api
+
+
+@app.function(image=image, volumes={"/adapters": adapters}, secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY})])
+@modal.asgi_app()
+def files():
+    """Serves packaged adapters from the volume, so a download does not need the GPU container."""
+    import os
+    import re
+
+    from fastapi import FastAPI, HTTPException
+    from fastapi.responses import FileResponse
+
+    api = FastAPI()
+
+    @api.get("/adapter/{session}")
+    def adapter(session: str, key: str = ""):
+        if not key_ok(key, os.environ.get("ATTUNE_KEY", "")):
+            raise HTTPException(status_code=401, detail="Missing or wrong key")
+        if not re.fullmatch(r"[0-9a-f]{32}", session):
+            raise HTTPException(status_code=404, detail="No such session")
+        adapters.reload()
+        path = Path("/adapters") / f"{session}.zip"
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Not ready yet, or older than a day")
+        return FileResponse(path, media_type="application/zip", filename="attune-model.zip")
+
+    return api
+

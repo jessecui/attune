@@ -1,0 +1,123 @@
+import { useEffect, useState } from 'react'
+import { api, AS_ADJECTIVE, read, type ModelStatus, type Summary } from '../api'
+import { Scale } from '../components/Scale'
+import { Trajectory, sharedLimit } from '../components/Trajectory'
+
+/** "warm, collaborative and formal" */
+const list = (words: string[]) => words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+
+export function Results({ summary, mock, onAgain }: { summary: Summary; mock: boolean; onAgain: () => void }) {
+  const readings = summary.axes.map((a) => ({ axis: a.axis, ...read(a) }))
+  const found = readings.filter((r) => r.strength !== 'none'), open = readings.filter((r) => r.strength === 'none')
+  const [shown, setShown] = useState(0)
+  const example = summary.examples[shown]
+  const limit = sharedLimit(summary.axes)
+
+  return (
+    <div>
+      <p className="eyebrow">Your result · {summary.rounds} questions</p>
+      <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Your communication profile</h1>
+      <p className="mt-4 max-w-3xl text-lg text-ink-2">
+        {found.length > 0
+          ? <>In this session you responded best to answers that are <strong className="font-semibold text-ink">{list(found.map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + (AS_ADJECTIVE[r.side] ?? r.side)))}</strong>.</>
+          : <>Your choices in this session did not point clearly one way on any scale.</>}
+        {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your choices showed no clear preference.</>}
+      </p>
+
+      <div className="mt-9 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <section className="sheet p-6" aria-labelledby="scales">
+          <h2 id="scales" className="eyebrow">Four scales</h2>
+          <div className="mt-5 divide-y divide-rule">{summary.axes.map((a) => <Scale key={a.axis} axis={a} />)}</div>
+          <p className="mt-5 border-t border-rule pt-4 text-sm text-muted">
+            The shaded middle of each scale is the range where the model did not commit either way. A marker shows where the
+            model ended this session, not how likely you are to get the same result again.
+          </p>
+        </section>
+
+        <ModelCard session={summary.session} mock={mock} instructions={summary.style_instructions} />
+      </div>
+
+      {example && (
+        <section className="mt-6 sheet p-6" aria-labelledby="difference">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="difference" className="eyebrow">The difference, on questions you have not seen</h2>
+            <div className="flex gap-1" role="tablist" aria-label="Example question">
+              {summary.examples.map((_, i) => (
+                <button key={i} role="tab" aria-selected={shown === i} onClick={() => setShown(i)}
+                  className={`rounded px-2.5 py-1 font-mono text-xs ${shown === i ? 'bg-accent-soft text-accent-ink' : 'text-muted hover:text-ink'}`}>{i + 1}</button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-4 text-lg font-medium">{example.question}</p>
+          <div className="mt-4 grid gap-5 md:grid-cols-2">
+            <div><p className="eyebrow">Standard model</p><p className="mt-2 whitespace-pre-line text-ink-2">{example.before}</p></div>
+            <div className="md:border-l md:border-rule md:pl-5"><p className="eyebrow !text-accent-ink">Your model</p><p className="mt-2 whitespace-pre-line">{example.after}</p></div>
+          </div>
+        </section>
+      )}
+
+      <details className="mt-6 sheet p-6">
+        <summary className="cursor-pointer font-medium">How the model got there, round by round</summary>
+        <p className="mt-3 max-w-3xl text-sm text-ink-2">
+          Each point is the model after one more of your choices. Above the line it leans to the style named at the top, below it
+          to the one at the bottom. The vertical scale is compressed: each step from the line is roughly ten times stronger.
+        </p>
+        <div className="mt-5 grid gap-6 sm:grid-cols-2">{summary.axes.map((a) => <Trajectory key={a.axis} axis={a} limit={limit} />)}</div>
+      </details>
+
+      <div className="mt-8 flex flex-wrap items-center gap-4">
+        <button className="btn btn-quiet" onClick={onAgain}>Take it again</button>
+        <span className="text-sm text-muted">Results can differ between sessions, as tastes and questions do.</span>
+      </div>
+    </div>
+  )
+}
+
+/** The payoff: the adapter tuned in this session, packaged a few seconds after the last round. */
+function ModelCard({ session, mock, instructions }: { session: string; mock: boolean; instructions: string[] }) {
+  const [status, setStatus] = useState<ModelStatus | null>(null), [gaveUp, setGaveUp] = useState(false)
+  useEffect(() => {
+    if (mock) return
+    let stop = false, tries = 0
+    const check = async () => {
+      try {
+        const s = await api.modelStatus(session)
+        if (stop) return
+        setStatus(s)
+        if (s.ready || s.configured === false) return
+      } catch { /* keep trying */ }
+      if (++tries >= 30) return setGaveUp(true)   // about two minutes
+      setTimeout(check, 4000)
+    }
+    check()
+    return () => { stop = true }
+  }, [session, mock])
+
+  const megabytes = status?.bytes ? `${Math.round(status.bytes / 1e6)} MB` : null
+  return (
+    <section className="sheet flex flex-col p-6" aria-labelledby="model">
+      <h2 id="model" className="eyebrow">Your model</h2>
+      <p className="mt-4 text-xl font-semibold tracking-tight">A model tuned to you, yours to keep.</p>
+      <p className="mt-2 text-ink-2">
+        While you chose, a language model was fine-tuned on your choices. The download holds those adjustments, your profile and
+        a short script to run it on your own machine.
+      </p>
+      {instructions.length > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-medium">The style it settled on</p>
+          <ul className="mt-2 space-y-1.5 text-sm text-ink-2">
+            {instructions.map((c) => <li key={c} className="flex gap-2"><span className="text-accent" aria-hidden>—</span><span>{c}</span></li>)}
+          </ul>
+        </div>
+      )}
+      <div className="mt-auto pt-6">
+        {mock ? <p className="text-sm text-muted">Downloads are switched off in demo mode.</p>
+          : status?.configured === false ? <p className="text-sm text-muted">Downloads are not set up on this server.</p>
+          : status?.ready ? <a className="btn btn-primary w-full" href={api.modelUrl(session)} download>Download your model{megabytes && ` (${megabytes})`}</a>
+          : gaveUp ? <p className="text-sm text-danger" role="alert">The model could not be packaged this time. Your profile above is unaffected.</p>
+          : <button className="btn btn-primary w-full" disabled>Packaging your model</button>}
+        <p className="mt-3 text-sm text-muted">Available for a day. It runs with the open Qwen2.5-7B model and needs a GPU or a recent Mac.</p>
+      </div>
+    </section>
+  )
+}

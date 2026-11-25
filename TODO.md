@@ -41,8 +41,8 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 
 ## Real app
 
-- [ ] Railway backend: password check, signed session cookie, and a private call to Modal so the GPU endpoint is never public.
-- [ ] Front end (React, Vite, Tailwind), designed from scratch with its own look.
+- [x] Backend (`app/backend`): password check, signed session cookie, and a private relay to Modal. Runs locally; a Dockerfile for Railway exists but is not deployed or tested there.
+- [x] Front end (`app/frontend`), first version: sign-in, welcome, questions, profile with four scales, before and after, round-by-round charts.
 - [ ] Serve the page from Railway so it loads instantly while the GPU starts; add loading states for the cold start.
 - [ ] Enforce the session time limit on the server.
 - [ ] Results screen: present the outcome as a profile, show the user's style against its opposite, keep the per-round charts and tracked answers.
@@ -52,7 +52,8 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] About 30% of answers "add something" by the judge's standard, before and after training alike. Decide how strict that standard should be when hand-labelling.
 - [ ] Decide what counts as a question the app accepts (requests for advice; the style menu does not fit trivia or creative writing) and what it declines.
 - [ ] Check that generated fact sheets are good enough: short, two distinct points, no risky specifics.
-- [ ] Offer the adapter for download, with the base model and menu version recorded in the file.
+- [x] Adapter download: packaged on Modal after the last round (adapter, profile, run script), kept for a day.
+- [ ] Try the downloaded package on a real machine: run `example.py` and check the output matches the session.
 - [ ] Never deploy while a session is in progress; a deploy drops it.
 
 ## Advanced options (later)

@@ -2,7 +2,7 @@
 
 Attune tunes a small language model to the way one person likes to be spoken to. You read four short answers, mark the one you like best and the one you like least, and after five rounds you have a model that answers in your style, plus a picture of what that style is.
 
-**Status:** early. The training method, a benchmark with simulated users, and a bare test page for live sessions exist. The real app does not yet.
+**Status:** early. The training method, a benchmark with simulated users and a judge model, and a first version of the app exist. The app runs locally; it is not deployed yet.
 
 ## How it works
 
@@ -27,6 +27,8 @@ Each answer is written in a combination of styles from a fixed menu:
 | `data/` | Questions, fact sheets and style menus |
 | `modal_app.py`, `bench/remote.py` | Run benchmark jobs on Modal and collect results |
 | `modal_live.py`, `live_page.html` | The live session service and a plain test page |
+| `app/backend/` | The app's server: password gate, and a private relay to the GPU service on Modal |
+| `app/frontend/` | The app's pages (React, Vite, Tailwind) |
 
 ## Running it
 
@@ -46,6 +48,15 @@ Benchmark jobs and the live session run on [Modal](https://modal.com). After `mo
 ```
 
 The live deploy prints a URL and writes an access key to `.live_key`. Open the URL with `?key=<the key>` appended.
+
+### The app, locally
+
+```
+scripts/app.sh mock    # a recorded session: no GPU, no cost; for working on the pages
+scripts/app.sh         # real sessions on the Modal GPU (deploy modal_live.py first)
+```
+
+Open http://localhost:5173. The password is `attune` unless `ATTUNE_PASSWORD` is set. At the end of a real session the tuned adapter can be downloaded as a zip with a script to run it.
 
 ## Limits
 
