@@ -60,16 +60,16 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           </section>
         )}
 
-        <details className="panel">
-          <summary className="panel-title cursor-pointer px-4 py-3">Training, question by question</summary>
-          <div className="border-t border-gray-200 p-4">
-            <p className="hint max-w-2xl">
-              Each point is the model after one more of your picks. Above the line it leans to the style named at the top, below it
-              to the one at the bottom. The vertical scale is compressed: each step from the line is roughly ten times stronger.
+        <section className="panel" aria-labelledby="training">
+          <h2 id="training" className="panel-title border-b border-gray-200 px-4 py-3">Training, question by question</h2>
+          <div className="p-4">
+            <div className="grid gap-5 sm:grid-cols-2">{summary.axes.map((a) => <Trajectory key={a.axis} axis={a} limit={limit} />)}</div>
+            <p className="hint mt-4 max-w-2xl">
+              Each point is the model after one more of your picks. The further from the line, the stronger the lean; the scale is
+              compressed, so each step away is roughly ten times stronger.
             </p>
-            <div className="mt-4 grid gap-5 sm:grid-cols-2">{summary.axes.map((a) => <Trajectory key={a.axis} axis={a} limit={limit} />)}</div>
           </div>
-        </details>
+        </section>
       </div>
     </div>
   )
