@@ -1,27 +1,12 @@
 @import "tailwindcss";
 
-/* Attune's own look: a calm instrument with a little lift. Paper-grey page, white sheets with a
-   soft shadow, navy ink, a teal accent, one colour per scale, and monospace for measurements. */
+/* An understated tool: system type, a grey page, white bordered panels, one teal accent.
+   Small text and plain controls; the only colour beyond the accent is one dot per scale. */
 @theme {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
-  --color-page: #f4f6f8;
-  --color-sheet: #ffffff;
-  --color-ink: #0f1b2d;
-  --color-ink-2: #3a4658;
-  --color-muted: #5f6b7d;
-  --color-rule: #dde2e9;
-  --color-rule-strong: #c3cad5;
-  --color-accent: #0b6b63;
-  --color-accent-ink: #084f49;
-  --color-accent-soft: #e2f1ef;
-  --color-least: #8a4b14;
-  --color-least-soft: #f7ecdf;
-  --color-danger: #a4262c;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* One colour per scale, checked for colour-blind separation. Always shown beside the scale's name.
-   Declared outside the theme so they are always emitted, whether or not a utility class uses them. */
+/* One colour per scale, checked for colour-blind separation and always shown beside the scale's name. */
 :root {
   --color-warmth: #d9480f;
   --color-directiveness: #3b5bdb;
@@ -29,31 +14,19 @@
   --color-depth: #ae3ec9;
 }
 
-html { background: var(--color-page); color: var(--color-ink); }
-body { font-family: var(--font-sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
-:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+body { @apply bg-[#f6f7f9] text-sm text-gray-800 antialiased; }
+#root { @apply min-h-screen; }
+:focus-visible { outline: 2px solid var(--color-teal-600); outline-offset: 2px; border-radius: 4px; }
 
 @layer components {
-  .eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-muted); }
-  .sheet { background: var(--color-sheet); border: 1px solid var(--color-rule); border-radius: 12px;
-           box-shadow: 0 1px 2px rgb(15 27 45 / 0.04), 0 6px 20px -6px rgb(15 27 45 / 0.08); }
-  .sheet-lift { transition: transform 140ms ease, box-shadow 140ms ease; }
-  .sheet-lift:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgb(15 27 45 / 0.05), 0 14px 28px -10px rgb(15 27 45 / 0.16); }
-  /* A highlighter stroke under a few words of a headline. */
-  .mark { background: linear-gradient(transparent 64%, color-mix(in srgb, var(--color-formality) 30%, transparent) 64%, color-mix(in srgb, var(--color-formality) 30%, transparent) 92%, transparent 92%); }
-  /* Graph-paper dots that fade out, behind the top of a page. */
-  .dots { background-image: radial-gradient(circle, var(--color-rule-strong) 1px, transparent 1.2px); background-size: 22px 22px;
-          mask-image: radial-gradient(ellipse 70% 100% at 30% 0%, #000 0%, transparent 75%); }
-  .model-card { background: linear-gradient(150deg, #0f1b2d 0%, #12314a 60%, #0f4a52 100%); color: #fff; border-color: transparent; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 8px; padding: 0.6rem 1.1rem;
-         font-weight: 500; font-size: 0.95rem; border: 1px solid transparent; transition: background-color 120ms, border-color 120ms, color 120ms; cursor: pointer; }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .btn-primary { background: var(--color-accent); color: #fff; box-shadow: 0 1px 2px rgb(8 79 73 / 0.3), 0 6px 14px -6px rgb(11 107 99 / 0.55); }
-  .btn-primary:hover:not(:disabled) { background: var(--color-accent-ink); }
-  .btn-quiet { background: var(--color-sheet); color: var(--color-ink); border-color: var(--color-rule-strong); }
-  .btn-quiet:hover:not(:disabled) { border-color: var(--color-ink-2); }
+  .panel { @apply rounded-lg border border-gray-200 bg-white; }
+  .panel-title { @apply text-sm font-semibold text-gray-900; }
+  .hint { @apply text-xs text-gray-500; }
+  .btn { @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-transparent px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply bg-teal-700 text-white hover:bg-teal-800 disabled:hover:bg-teal-700; }
+  .btn-quiet { @apply border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50; }
 }
 
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
 .indeterminate { animation: slide 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .indeterminate { animation: none; width: 100% !important; opacity: 0.4; } .sheet-lift:hover { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .indeterminate { animation: none; width: 100% !important; opacity: 0.4; } }

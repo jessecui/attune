@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '../api'
 
+/** The password prompt, shown as a dialog over the start screen. */
 export function Gate({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false)
   const submit = async (e: FormEvent) => {
@@ -8,16 +9,18 @@ export function Gate({ onDone }: { onDone: () => void }) {
     try { await api.login(password); onDone() } catch (err) { setError((err as Error).message) } finally { setBusy(false) }
   }
   return (
-    <div className="mx-auto max-w-sm pt-10">
-      <p className="eyebrow">Invitation only</p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-2 text-ink-2">Each session runs on a dedicated GPU, so access is by password.</p>
-      <form onSubmit={submit} className="sheet mt-6 p-5">
-        <label htmlFor="password" className="block text-sm font-medium">Password</label>
-        <input id="password" type="password" autoFocus autoComplete="current-password" value={password}
+    <div className="fixed inset-0 z-10 grid place-items-center bg-gray-900/40 p-4">
+      <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="gate-title" className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-7 w-7 place-items-center rounded-md bg-teal-700 text-sm font-semibold text-white" aria-hidden>A</span>
+          <h1 id="gate-title" className="text-lg font-semibold text-gray-900">Attune</h1>
+        </div>
+        <p className="mt-3 text-gray-500">Train your own personal AI model.</p>
+        <label htmlFor="password" className="mt-4 block font-medium text-gray-900">Each session runs on its own GPU, so access is by password.</label>
+        <input id="password" type="password" autoFocus autoComplete="current-password" placeholder="Password" value={password}
           onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error} aria-describedby={error ? 'gate-error' : undefined}
-          className="mt-1.5 w-full rounded-md border border-rule-strong bg-sheet px-3 py-2 focus:border-accent" />
-        {error && <p id="gate-error" role="alert" className="mt-2 text-sm text-danger">{error}</p>}
+          className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600" />
+        {error && <p id="gate-error" role="alert" className="mt-2 text-red-700">{error}</p>}
         <button className="btn btn-primary mt-4 w-full" disabled={busy || !password}>{busy ? 'Checking' : 'Continue'}</button>
       </form>
     </div>

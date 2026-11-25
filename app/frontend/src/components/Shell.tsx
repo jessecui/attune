@@ -1,38 +1,33 @@
 import type { ReactNode } from 'react'
 
-/** The frame around every screen: a quiet header, the page, and the standing note. */
+/** The frame around every screen: a compact header, the page, and the standing note. */
 export function Shell({ children, mock, progress, onSignOut }:
   { children: ReactNode; mock: boolean; progress?: { at: number; of: number }; onSignOut?: () => void }) {
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-rule bg-sheet">
-        <div className="mx-auto max-w-5xl px-5 h-14 flex items-center gap-4">
-          <div className="flex items-baseline gap-3">
-            <span className="text-lg font-semibold tracking-tight">Attune</span>
-            <span className="eyebrow hidden sm:inline">Live model fine-tuning</span>
-          </div>
+    <div className="flex min-h-screen flex-col">
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
+          <span className="grid h-7 w-7 place-items-center rounded-md bg-teal-700 text-sm font-semibold text-white" aria-hidden>A</span>
+          <span className="text-base font-semibold text-gray-900">Attune</span>
+          <span className="hidden h-5 w-px bg-gray-200 sm:block" aria-hidden />
+          <p className="hidden truncate text-gray-500 sm:block">Train your own personal AI model</p>
           <div className="ml-auto flex items-center gap-4">
-            {mock && <span className="eyebrow rounded border border-rule-strong px-2 py-0.5">Demo data</span>}
-            {progress && <span className="font-mono text-sm text-ink-2">Question {progress.at} of {progress.of}</span>}
-            {onSignOut && <button className="text-sm text-muted hover:text-ink underline-offset-4 hover:underline" onClick={onSignOut}>Sign out</button>}
+            {mock && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Demo data</span>}
+            {progress && <span className="text-gray-600">Question {progress.at} of {progress.of}</span>}
+            {onSignOut && <button className="text-gray-500 hover:text-gray-900" onClick={onSignOut}>Sign out</button>}
           </div>
         </div>
         {progress && (
-          <div className="mx-auto max-w-5xl px-5 pb-3 flex gap-1.5" aria-hidden>
+          <div className="mx-auto flex max-w-6xl gap-1 px-4 pb-2.5 sm:px-6" aria-hidden>
             {Array.from({ length: progress.of }, (_, i) => (
-              <div key={i} className={`h-1 flex-1 rounded-full ${i < progress.at - 1 ? 'bg-accent' : i === progress.at - 1 ? 'bg-accent/50' : 'bg-rule'}`} />
+              <div key={i} className={`h-1 flex-1 rounded-full ${i < progress.at - 1 ? 'bg-teal-700' : i === progress.at - 1 ? 'bg-teal-700/40' : 'bg-gray-200'}`} />
             ))}
           </div>
         )}
       </header>
-      <main className="relative flex-1">
-        <div className="dots pointer-events-none absolute inset-x-0 top-0 h-72" aria-hidden />
-        <div className="relative mx-auto w-full max-w-5xl px-5 py-14">{children}</div>
-      </main>
-      <footer className="border-t border-rule">
-        <p className="mx-auto max-w-5xl px-5 py-5 text-sm text-muted">
-          The answers you read demonstrate a style. They are not medical, legal or financial advice.
-        </p>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">{children}</main>
+      <footer className="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-6">
+        <p className="hint px-1">The answers you read demonstrate a style. They are not medical, legal or financial advice.</p>
       </footer>
     </div>
   )

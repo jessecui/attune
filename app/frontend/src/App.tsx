@@ -31,7 +31,8 @@ export default function App() {
   const progress = stage.name === 'round' ? { at: stage.round.round, of: stage.round.rounds } : undefined
   return (
     <Shell mock={!!me?.mock} progress={progress} onSignOut={stage.name !== 'gate' && stage.name !== 'loading' ? signOut : undefined}>
-      {stage.name === 'gate' && <Gate onDone={refresh} />}
+      {/* The password prompt sits over the start screen, which is inert until sign-in. */}
+      {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [5, 10]} onStart={() => {}} /></div><Gate onDone={refresh} /></>}
       {stage.name === 'welcome' && <Welcome choices={me?.round_choices ?? [5, 10]} error={stage.error} onStart={begin} />}
       {stage.name === 'starting' && <Starting />}
       {stage.name === 'round' && (
