@@ -18,14 +18,14 @@ export function RoundScreen({ round, onNext, onExpired }:
     try { onNext(await api.feedback(round.session, best, least)) }
     catch (e) { if (!onExpired(e)) { setError((e as Error).message); setBusy(false) } }
   }
-  const hint = best === null && least === null ? 'Mark one answer as best and one as least.'
-    : best === null ? 'Now mark the one you like best.' : least === null ? 'Now mark the one you like least.' : 'Both marked.'
+  const hint = best === null && least === null ? 'Mark one answer as best and one as worst.'
+    : best === null ? 'Now mark the best.' : least === null ? 'Now mark the worst.' : 'Both marked.'
 
   return (
     <div>
       <p className="eyebrow">Question {round.round} of {round.rounds}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{round.question}</h1>
-      <p className="mt-2 text-ink-2">Same advice, four styles. Mark the best and the least.</p>
+      <p className="mt-2 text-ink-2">Same advice, four styles. Mark the best and the worst.</p>
 
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         {round.candidates.map((text, i) => {
@@ -34,14 +34,14 @@ export function RoundScreen({ round, onNext, onExpired }:
             <article key={i} className={`sheet sheet-lift flex flex-col p-6 ${state === 'best' ? 'border-accent ring-1 ring-accent' : state === 'least' ? 'border-least ring-1 ring-least' : ''}`}>
               <div className="flex items-center justify-between">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-page font-mono text-sm text-ink-2">{'ABCD'[i]}</span>
-                {state && <span className={`eyebrow ${state === 'best' ? '!text-accent-ink' : '!text-least'}`}>{state === 'best' ? 'Your best' : 'Your least'}</span>}
+                {state && <span className={`eyebrow ${state === 'best' ? '!text-accent-ink' : '!text-least'}`}>{state === 'best' ? 'Your best' : 'Your worst'}</span>}
               </div>
               <p className="mt-4 flex-1 whitespace-pre-line text-[1.02rem] leading-relaxed">{text}</p>
               <div className="mt-6 flex gap-2">
                 <button aria-pressed={best === i} disabled={busy} onClick={() => mark('best', i)}
                   className={`btn flex-1 ${best === i ? 'bg-accent text-white' : 'btn-quiet'}`}>Best</button>
                 <button aria-pressed={least === i} disabled={busy} onClick={() => mark('least', i)}
-                  className={`btn flex-1 ${least === i ? 'bg-least text-white' : 'btn-quiet'}`}>Least</button>
+                  className={`btn flex-1 ${least === i ? 'bg-least text-white' : 'btn-quiet'}`}>Worst</button>
               </div>
             </article>
           )

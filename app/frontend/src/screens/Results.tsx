@@ -55,7 +55,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
       )}
 
       <details className="mt-8 sheet p-8">
-        <summary className="cursor-pointer font-medium">Training, round by round</summary>
+        <summary className="cursor-pointer font-medium">Training, question by question</summary>
         <p className="mt-3 max-w-3xl text-sm text-ink-2">
           Each point is the model after one more of your picks. Above the line it leans to the style named at the top, below it
           to the one at the bottom. The vertical scale is compressed: each step from the line is roughly ten times stronger.
@@ -101,7 +101,7 @@ function ModelCard({ session, mock, instructions }: { session: string; mock: boo
       </p>
       {instructions.length > 0 && (
         <div className="mt-8">
-          <p className="text-sm font-medium">The style it settled on</p>
+          <p className="text-sm font-medium">The instructions it settled on</p>
           <ul className="mt-3 space-y-2.5 text-sm text-white/75">
             {instructions.map((c) => <li key={c} className="flex gap-2"><span className="text-teal-300" aria-hidden>—</span><span>{c}</span></li>)}
           </ul>

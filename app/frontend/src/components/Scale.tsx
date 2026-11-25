@@ -7,7 +7,7 @@ export function Scale({ axis }: { axis: Axis }) {
   const result = r.strength === 'none' ? 'No clear preference' : r.strength === 'leans' ? `Leans ${r.side}` : capital(r.side)
   // Keep the marker inside the track so "over 95%" does not sit on the very edge.
   const left = Math.min(97, Math.max(3, r.position * 100))
-  const share = r.share > 0.95 ? 'over 95%' : `${Math.floor(r.share * 100)}%`
+  const share = r.share > 0.95 ? 'more than 95%' : `${Math.floor(r.share * 100)}%`
   return (
     <div className="py-7 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -24,7 +24,7 @@ export function Scale({ axis }: { axis: Axis }) {
       <div className="mt-2 flex justify-between font-mono text-xs text-muted">
         <span>{capital(axis.second)}</span><span>{capital(axis.first)}</span>
       </div>
-      <p className="mt-3 text-sm text-muted">The model ended {share} toward {r.side}.</p>
+      <p className="mt-3 text-sm text-muted">Ended {share} {r.side}.</p>
     </div>
   )
 }

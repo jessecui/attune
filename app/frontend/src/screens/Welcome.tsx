@@ -11,15 +11,15 @@ const minutes = (rounds: number) => (rounds <= 5 ? 'a few minutes' : `about ${ro
 
 export function Welcome({ choices, error, onStart }: { choices: number[]; error?: string; onStart: (rounds: number) => void }) {
   const [rounds, setRounds] = useState(choices[0])
-  const steps = [`Pick the best and the least of four answers, ${rounds} times.`, 'The model trains on each pick, live on a GPU.', 'Download your model and run it yourself.']
+  const steps = [`Pick the best and worst of four answers, ${rounds} times.`, 'The model trains on each pick, live on a GPU.', 'Run your model on your own machine.']
   return (
     <div className="grid gap-14 pt-6 lg:grid-cols-[1.25fr_1fr] lg:gap-20">
       <section>
         <p className="eyebrow">Live fine-tuning · takes {minutes(rounds)}</p>
         <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">Train your own <span className="mark">personal AI model</span>.</h1>
         <p className="mt-6 max-w-xl text-lg text-ink-2">
-          Most LLMs are written for the average person. This app helps you create your own personal AI that knows how you
-          like to be spoken to. You can download your own AI model at the end.
+          Most AI models are tuned for the average person. This app trains one that knows how you like to be spoken to,
+          and you can download it at the end.
         </p>
 
         <ol className="mt-10 space-y-4">
@@ -33,11 +33,12 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
 
         <fieldset className="mt-12">
           <legend className="text-sm font-medium">Session length</legend>
-          <div className="mt-2 inline-flex rounded-lg border border-rule-strong bg-sheet p-1">
+          <div className="mt-2 inline-flex gap-1 rounded-lg border border-rule-strong bg-sheet p-1">
             {choices.map((n, i) => (
-              <label key={n} className={`cursor-pointer rounded-md px-4 py-2 text-sm ${rounds === n ? 'bg-accent-soft text-accent-ink font-medium' : 'text-ink-2'}`}>
+              <label key={n} className={`cursor-pointer whitespace-nowrap rounded-md px-5 py-2 text-sm ${rounds === n ? 'bg-accent-soft text-accent-ink' : 'text-ink-2'}`}>
                 <input type="radio" name="rounds" className="sr-only" checked={rounds === n} onChange={() => setRounds(n)} />
-                {i === 0 ? 'Standard' : 'Extended'} <span className="font-mono text-xs ml-1">{n} questions · {minutes(n)}</span>
+                <span className="block font-medium">{i === 0 ? 'Standard' : 'Extended'}</span>
+                <span className="block font-mono text-xs">{n} questions</span>
               </label>
             ))}
           </div>
