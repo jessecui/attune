@@ -13,14 +13,17 @@ app = modal.App("attune-bench")
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
-    .pip_install("torch>=2.6", "transformers>=4.51", "peft>=0.15", "accelerate")
+    .pip_install("torch>=2.6", "transformers>=4.51", "peft>=0.15", "accelerate", "google-genai>=1.56.0")
     .env({"HF_HOME": "/cache/hf"})
     .add_local_python_source("bench")
     .add_local_dir("data", remote_path="/root/data")
 )
 hf_cache = modal.Volume.from_name("attune-hf-cache", create_if_missing=True)
 results = modal.Volume.from_name("attune-results", create_if_missing=True)
-COMMON = dict(image=image, volumes={"/cache": hf_cache, "/results": results}, timeout=30 * 60, max_containers=12)
+# The judge model's key (GEMINI_API_KEY): modal secret create attune-judge GEMINI_API_KEY=...
+judge_key = modal.Secret.from_name("attune-judge")
+COMMON = dict(image=image, volumes={"/cache": hf_cache, "/results": results}, secrets=[judge_key],
+              timeout=30 * 60, max_containers=12)
 
 
 def _run(job: dict) -> str:

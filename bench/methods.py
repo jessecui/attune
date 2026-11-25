@@ -154,10 +154,15 @@ class GRPOStyle:
     name = "grpo_style"
     latent = True
 
-    def __init__(self, policy, lr=1e-4, steps_per_round=8, clip=0.2, seed=0):
+    def __init__(self, policy, lr=1e-4, steps_per_round=8, clip=0.2, choice_clip=0.0, seed=0):
         self.policy = policy
         self.steps = steps_per_round
         self.clip = clip
+        # If set, the style choice is clipped as one action (the probability of the whole
+        # style line may move by at most this share per round) instead of token by token.
+        # Token-by-token clipping lets a 70-token line's probability move by many orders
+        # of magnitude in one round, which is how the policy over-commits.
+        self.choice_clip = choice_clip
         self.opt = torch.optim.AdamW(policy.trainable_parameters(), lr=lr, weight_decay=0.0)
 
     def update(self, groups, pool):
@@ -183,9 +188,12 @@ class GRPOStyle:
             self.opt.zero_grad()
             total = 0.0
             for cand, a, olds in zip(segs, adv, old):
-                for (p, c), o in zip(cand, olds):
-                    ratio = torch.exp(self.policy.token_logprobs(p, c, grad=True) - o)
-                    surrogate = torch.minimum(ratio * a, ratio.clamp(1 - self.clip, 1 + self.clip) * a)
+                for part, ((p, c), o) in enumerate(zip(cand, olds)):
+                    logp, clip = self.policy.token_logprobs(p, c, grad=True), self.clip
+                    if self.choice_clip and g.segments and part == 0:
+                        logp, o, clip = logp.sum(), o.sum(), self.choice_clip
+                    ratio = torch.exp(logp - o)
+                    surrogate = torch.minimum(ratio * a, ratio.clamp(1 - clip, 1 + clip) * a)
                     loss = -surrogate.sum() / n_tokens
                     loss.backward()
                     total += loss.item()

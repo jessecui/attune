@@ -85,6 +85,25 @@ def by_axes(**signs):
     return score
 
 
+# What each feature reads, on average, for an axis's two options (7B model, current menu wording;
+# from the menu check). Used to put the four live axes on one scale, so that a simulated user
+# cares about each axis equally even though the word lists are not equally sensitive.
+LIVE_RANGE = {"warm_words": (0.06, 0.38), "directive": (0.53, 0.81), "casual": (0.04, 0.35), "reasons": (0.08, 0.46)}
+
+
+def by_live_axes(**signs):
+    """A persona over the four live axes: +1 likes the axis's first option, -1 its second."""
+    def score(text):
+        f = features(text)
+        total = 0.0
+        for name, sign in signs.items():
+            lo, hi = LIVE_RANGE[name]
+            total += sign * max(-2.0, min(2.0, (f[name] - (lo + hi) / 2) / ((hi - lo) / 2)))
+        return total
+    score.signs = signs
+    return score
+
+
 PERSONAS = {
     "warm_brief": warm_brief,
     "thorough_formal": thorough_formal,
@@ -92,6 +111,12 @@ PERSONAS = {
     "gentle_guide": by_axes(short=-1, warm_words=+1, directive=-1, technical=-1, energy=-1),
     "brisk_expert": by_axes(short=+1, warm_words=-1, directive=+1, technical=+1, energy=-1),
     "upbeat_coach": by_axes(short=+1, warm_words=+1, directive=+1, technical=-1, energy=+1),
+    # For the four live axes (warmth, directiveness, formality, depth). Each axis is liked
+    # by two of the four and disliked by the other two.
+    "gentle_explainer": by_live_axes(warm_words=+1, directive=-1, casual=+1, reasons=+1),
+    "blunt_friend": by_live_axes(warm_words=-1, directive=+1, casual=+1, reasons=-1),
+    "kind_professional": by_live_axes(warm_words=+1, directive=+1, casual=-1, reasons=-1),
+    "reserved_analyst": by_live_axes(warm_words=-1, directive=-1, casual=-1, reasons=+1),
 }
 
 

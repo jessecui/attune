@@ -23,7 +23,7 @@ from pathlib import Path
 import torch
 
 from .methods import METHODS, Group
-from .personas import PERSONAS, facts_retained, features, rank
+from .personas import LIVE_RANGE, PERSONAS, by_live_axes, facts_retained, features, rank
 from .policy import Policy
 
 # Style menu. Worded concretely, because a small model ignores abstract instructions.
@@ -220,6 +220,12 @@ class Session:
         outs = self.policy.generate(contexts, max_new_tokens=self.args.max_new_tokens)
         mean = dists.mean(0)
         marginals = {f"p_{k}": mean[torch.tensor(mask)].sum().item() for k, mask in AXES.items()}
+        # How committed the choice is, and how far the wording has moved from the untouched
+        # model's: the base model's average surprise per token at the tuned answers.
+        marginals["style_top"] = dists.max(1).values.mean().item()
+        marginals["style_entropy"] = -(dists * dists.clamp_min(1e-12).log()).sum(1).mean().item()
+        base_lp = self.policy.logprobs(contexts, outs, use_adapter=False).float().cpu()
+        marginals["drift"] = (-base_lp / torch.tensor([len(o) for o in outs])).mean().item()
         return self.finish(outs, best, self.scenario[split])[1], marginals
 
 
@@ -243,6 +249,20 @@ def score_outputs(texts, scenario, persona, base_scores):
         wins = [1.0 if s > b else 0.5 if s == b else 0.0 for s, b in zip(scores, base_scores)]
         result["win_rate"] = sum(wins) / len(wins)
     return result
+
+
+def user_wants(persona, menu, flipped=False, flip_axes=None):
+    """axis -> +1 or -1 for a persona with signs, after any reversal (None if it has no signs)."""
+    signs = getattr(PERSONAS[persona], "signs", None)
+    feature = {m["axis"]: m["feature"] for m in menu or []}
+    if not signs or not all(feature.get(a) in signs for a in AXES):
+        return None
+    return {a: signs[feature[a]] * (-1 if flipped and (not flip_axes or a in flip_axes) else 1) for a in AXES}
+
+
+def axes_right(marg, wants):
+    """How many axes lean the way the simulated user wants."""
+    return sum((marg[f"p_{a}"] > 0.5) == (wants[a] > 0) for a in AXES)
 
 
 def line(r, ev, extra=""):
@@ -272,6 +292,16 @@ def main(argv=None):
                     help="bestworst: the user only marks their favourite and least favourite candidate")
     ap.add_argument("--picks", type=int, default=0,
                     help="if >0 the user picks their favourite N candidates instead of ranking all K")
+    ap.add_argument("--flip-at", type=int, default=0,
+                    help="after this round the simulated user's preferences reverse (0 = never)")
+    ap.add_argument("--flip-axes", default="",
+                    help="comma-separated axes that reverse at --flip-at (default: all of them)")
+    ap.add_argument("--judge-user", action="store_true",
+                    help="the simulated user reads answers with the judge model instead of word lists; "
+                         "falls back to the word lists for a round if the judge is unavailable")
+    ap.add_argument("--choice-clip", type=float, default=0.0,
+                    help="grpo_style: clip the style choice as one action, moving its probability by at most "
+                         "this share per round (0 = clip token by token)")
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--steps", type=int, default=8, help="gradient steps per round")
     ap.add_argument("--max-new-tokens", type=int, default=200)
@@ -308,6 +338,10 @@ def main(argv=None):
     policy = Policy(args.model)
     print(f"loaded {args.model} on {policy.device} in {time.time() - t0:.1f}s")
     extra = {"beta": args.beta} if args.beta is not None else {}
+    if args.choice_clip:
+        extra["choice_clip"] = args.choice_clip
+    menu = scenario.get("menu") if args.axes else None
+    flip_axes = set(filter(None, args.flip_axes.split(",")))
     method = METHODS[args.method](policy, lr=args.lr, steps_per_round=args.steps, seed=args.seed, **extra)
     latent = getattr(method, "latent", False)
     sess = Session(policy, scenario, args, latent)
@@ -319,6 +353,8 @@ def main(argv=None):
     if latent:
         texts, marg = sess.answer_heldout()
         init = {**score_outputs(texts, scenario, args.persona, base["scores"]), **marg}
+        if user_wants(args.persona, menu):
+            init["axes_right"] = axes_right(marg, user_wants(args.persona, menu))
         log["init"] = init
         print(line(0, init, " | untuned, with style line | " + " ".join(f"{k} {v:.2f}" for k, v in marg.items())),
               flush=True)
@@ -330,7 +366,29 @@ def main(argv=None):
         t_gen = time.time()
         picks, cands, cand_texts, redrawn, segments = sess.propose(i, rng)
         t_gen = time.time() - t_gen
-        order = rank(args.persona, cand_texts)
+        flipped = bool(args.flip_at) and r > args.flip_at
+        wants = user_wants(args.persona, menu, flipped, flip_axes)
+        judged = None
+        if args.judge_user and wants:
+            try:
+                from .judge import judge_many, style_score
+                item = scenario["train"][i]
+                verdicts = judge_many([(item["q"], item["facts"], t) for t in cand_texts])
+                marks = [style_score(v, wants) for v in verdicts]
+                order = sorted(range(len(marks)), key=lambda j: -marks[j])
+                judged = sorted({v["model"] for v in verdicts})
+            except Exception as e:  # noqa: BLE001 - a judge outage must not end the session
+                print(f"judge unavailable in round {r}, using word lists: {e}", flush=True)
+        if judged is None:
+            feature = {m["axis"]: m["feature"] for m in menu or []}
+            if wants and all(feature[a] in LIVE_RANGE for a in wants):
+                # The same user, read through the word lists (handles a partial reversal too).
+                score = by_live_axes(**{feature[a]: w for a, w in wants.items()})
+                order = sorted(range(len(cand_texts)), key=lambda j: -score(cand_texts[j]))
+            else:
+                order = rank(args.persona, cand_texts)
+                if flipped:
+                    order = order[::-1]
 
         t_upd = time.time()
         prompt = sess.train_prompt(i)
@@ -364,10 +422,13 @@ def main(argv=None):
         texts, marg = sess.answer_heldout()
         ev = score_outputs(texts, scenario, args.persona, base["scores"])
         info = {**info, **marg}
+        if latent and wants:
+            # Judged against what the user wanted during this round.
+            info["axes_right"] = axes_right(marg, wants)
         print(line(r, ev, f" | redrawn {redrawn} | gen {t_gen:4.1f}s | update {t_upd:5.1f}s | "
                    + " ".join(f"{k} {v:.3f}" for k, v in info.items())), flush=True)
         log["rounds"].append({"round": r, "styles": [STYLES[s] for s in picks], "candidates": cand_texts,
-                              "redrawn": redrawn, "order": order, "t_generate": t_gen, "t_update": t_upd,
+                              "redrawn": redrawn, "order": order, "flipped": flipped, "judged": judged, "t_generate": t_gen, "t_update": t_upd,
                               **info, **ev})
 
     out = Path(args.out or f"results/{args.method}_{args.persona}_s{args.seed}.json")

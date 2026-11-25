@@ -42,7 +42,35 @@ def learn(tag, axes, extra=()):
             for p in NEW_PERSONAS for s in (1, 2)]
 
 
+# The live setup: 7B, four axes, best-and-worst feedback, neutral start, both facts required.
+FOUR = "warmth,directiveness,formality,depth"
+LIVE = LEARN + STRICT + SEVEN_B + ["--feedback", "bestworst", "--neutral-start", "--axes", FOUR]
+LIVE_PERSONAS = ["gentle_explainer", "blunt_friend", "kind_professional", "reserved_analyst"]
+# Ways to make the update gentler. Ten rounds, with the user's preferences reversing after
+# round five: the first half shows how fast it learns, the second whether it can turn around.
+GENTLE = {"base": [], "lr1e-5": ["--lr", "1e-5"],
+          "cclip0.2": ["--choice-clip", "0.2"], "cclip0.5": ["--choice-clip", "0.5"],
+          "cclip0.2_lr1e-5": ["--choice-clip", "0.2", "--lr", "1e-5"]}
+
+
+def gentle(variants, seeds):
+    return [{"name": f"{tag}_{p}_s{s}",
+             "argv": LIVE + ["--rounds", "10", "--flip-at", "5", "--persona", p, "--seed", str(s), *GENTLE[tag]]}
+            for tag in variants for p in LIVE_PERSONAS for s in seeds]
+
+
 GRIDS = {
+    "gentle_smoke": [{"name": "gentle_smoke",
+                      "argv": LIVE + ["--rounds", "2", "--flip-at", "1", "--heldout", "3", "--choice-clip", "0.2",
+                                      "--persona", "gentle_explainer"]}],
+    "gentle": gentle(GENTLE, [1]),
+    "judge_smoke": [{"name": "judge_smoke",
+                     "argv": LIVE + ["--rounds", "2", "--flip-at", "1", "--flip-axes", "warmth,depth", "--heldout", "3",
+                                     "--judge-user", *GENTLE["cclip0.2_lr1e-5"], "--persona", "gentle_explainer"]}],
+    # The same comparison with the judge model as the simulated user (it can see formality, which
+    # the word lists cannot), and a milder reversal: two of the four axes flip after round five.
+    "gentle2": [{**j, "argv": j["argv"] + ["--judge-user", "--flip-axes", "warmth,depth"]}
+                for j in gentle(["base", "cclip0.2_lr1e-5"], [1, 2])],
     "smoke": [{"name": "smoke", "argv": ["--method", "grpo_style", "--rounds", "2", "--heldout", "3"]}],
     "smoke_guard": [{"name": "smoke_guard", "argv": ["--method", "dpo", "--rounds", "2", "--eval-split", "test",
                                                      "--heldout", "3", "--guard", "-1"]}],  # always rolls back
@@ -118,6 +146,11 @@ GRIDS = {
          "argv": ["--position", "user_bullets", "--scenario", "data/advice_b.json",
                   "--axes", "warmth,directiveness,formality,depth", *SEVEN_B]},
     ],
+    # The gentler update with the content check switched off: does content hold without it?
+    # Compared with the same runs in gentle2, and scored afterwards by the judge.
+    "nocheck": [{**j, "name": "nocheck_" + j["name"],
+                 "argv": j["argv"] + ["--judge-user", "--flip-axes", "warmth,depth", "--min-facts", "0"]}
+                for j in gentle(["cclip0.2_lr1e-5"], [1, 2])],
     "main": grid("rank4", ["grpo_style", "dpo"]),
     "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
     "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),

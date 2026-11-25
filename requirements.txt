@@ -3,3 +3,4 @@ transformers>=4.51
 peft>=0.15
 accelerate
 modal
+google-genai>=1.56.0

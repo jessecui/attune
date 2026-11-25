@@ -4,3 +4,4 @@ results/
 *.pyc
 .DS_Store
 .live_key
+.judge_key

@@ -194,7 +194,7 @@ class Live:
             check(key)
             s = {"id": uuid.uuid4().hex, "round": 0, "rng": random.Random(), "weights": self.fresh,
                  "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None,
-                 "method": GRPOStyle(self.policy, lr=3e-5, steps_per_round=8)}
+                 "method": GRPOStyle(self.policy, lr=1e-5, steps_per_round=8, choice_clip=0.2)}
             self.sessions[s["id"]] = s
             self._with(s, lambda: self._write(s, 1))
             if ROUNDS >= 2:  # get one round ahead straight away
