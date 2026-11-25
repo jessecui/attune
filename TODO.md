@@ -41,7 +41,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Watch for overlap between casual and warm, and between collaborative and "explains why".
 - [ ] Deal with warm and "explains why" answers running past three sentences before the cap.
 - [ ] Remove the retired axes (brevity, language, energy) and old grids from `data/advice.json` and `bench/remote.py`.
-- [ ] Settings: let the visitor choose who is speaking to them (for example a doctor, a tutor, a financial adviser, or general advice as now) and train a model for that setting. Each setting needs its own role in the system prompt and its own questions with fact sheets; the four scales can stay. Start with doctor and tutor, which match the target roles. The current ten questions mix settings (medication, a lease, a budget, studying), which may be one reason the user's own sessions came out differently each time. Record the setting in the downloaded package.
+- [ ] Write prepared question sets with checked fact sheets for doctor and tutor: the fallback when Gemini is down, the example chips, and settings the benchmark can be rerun on. (The built-in ten mix settings, which may be one reason the user's own sessions differed.)
 
 ## Real app
 
@@ -53,7 +53,12 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Enforce the session time limit on the server.
 - [ ] Results screen: present the outcome as a profile, show the user's style against its opposite, keep the per-round charts and tracked answers.
 - [ ] Add a visible note that the answers are a style demonstration, not advice.
-- [ ] Visitors' own questions (core, decided 2026-11-25; nothing pre-selected is forced on them): a start screen with editable suggested questions, all entered up front. While the GPU starts, Gemini screens each question and writes its two-point fact sheet.
+- [ ] **Next to build.** Dynamic settings and questions (decided 2026-11-25; replaces the separate "own questions" and "settings" items): on the start screen the visitor types who the model should speak as and about what (for example "a doctor explaining test results"), with a few example chips. While the GPU starts, Gemini writes the questions (5 or 10) and a two-point fact sheet for each; the visitor can edit or replace any question before round one. The four scales and the style menu stay fixed.
+  - Gemini declines settings that are harmful or that the style menu cannot serve, and keeps fact-sheet points general and uncontroversial.
+  - If Gemini is down, fall back to the built-in questions and say so.
+  - The setting and questions go into the downloaded package.
+  - The "not advice" note must be prominent, health settings especially.
+  - The benchmark covers only the built-in questions; say so wherever its numbers are quoted.
 - [ ] Live content check by the judge, as a filter (never a rewrite): optional, not required. Measured 2026-11-25 (8 runs each, gentler update, judge as user): with the keyword check off, shown answers missing a fact rose from about 7% to about 14%, learning was unchanged (3.62 against 3.50 axes right) and content did not collapse. Not tested: a user who prefers shorter answers, which is where dropping content would be rewarded. Gemini took 6 to 7 s per call that day.
 - [ ] About 30% of answers "add something" by the judge's standard, before and after training alike. Decide how strict that standard should be when hand-labelling.
 - [ ] Decide what counts as a question the app accepts (requests for advice; the style menu does not fit trivia or creative writing) and what it declines.
