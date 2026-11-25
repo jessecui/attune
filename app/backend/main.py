@@ -3,7 +3,7 @@
 The browser only ever talks to this server. The Modal URLs and key stay here, so the
 GPU endpoint is never exposed to visitors.
 
-    uvicorn main:app --reload --port 8000        # from app/backend, with the env vars below
+    uvicorn main:app --reload --port 8787        # from app/backend, with the env vars below
 
 Environment:
     ATTUNE_PASSWORD     the password visitors type (required)

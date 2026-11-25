@@ -56,7 +56,7 @@ scripts/app.sh mock    # a recorded session: no GPU, no cost; for working on the
 scripts/app.sh         # real sessions on the Modal GPU (deploy modal_live.py first)
 ```
 
-Open http://localhost:5173. The password is `attune` unless `ATTUNE_PASSWORD` is set. At the end of a real session the tuned adapter can be downloaded as a zip with a script to run it.
+Open http://localhost:5180. The password is `attune` unless `ATTUNE_PASSWORD` is set. At the end of a real session the tuned adapter can be downloaded as a zip with a script to run it.
 
 ## Limits
 
