@@ -41,7 +41,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Watch for overlap between casual and warm, and between collaborative and "explains why".
 - [ ] Deal with warm and "explains why" answers running past three sentences before the cap.
 - [ ] Remove the retired axes (brevity, language, energy) and old grids from `data/advice.json` and `bench/remote.py`.
-- [ ] Write a patient-communication scenario with its own fact sheets, then others (education, legal, finance, consulting).
+- [ ] Settings: let the visitor choose who is speaking to them (for example a doctor, a tutor, a financial adviser, or general advice as now) and train a model for that setting. Each setting needs its own role in the system prompt and its own questions with fact sheets; the four scales can stay. Start with doctor and tutor, which match the target roles. The current ten questions mix settings (medication, a lease, a budget, studying), which may be one reason the user's own sessions came out differently each time. Record the setting in the downloaded package.
 
 ## Real app
 
