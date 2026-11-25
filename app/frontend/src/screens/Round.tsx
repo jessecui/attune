@@ -19,8 +19,14 @@ export function RoundScreen({ round, onNext, onExpired }:
     try { onNext(await api.feedback(round.session, best, worst)) }
     catch (e) { if (!onExpired(e)) { setError((e as Error).message); setBusy(false) } }
   }
-  const hint = best === null && worst === null ? 'Mark one answer as best and one as worst.'
-    : best === null ? 'Now mark the best.' : worst === null ? 'Now mark the worst.' : 'Both marked.'
+  const ready = best !== null && worst !== null
+  const message = error ? error
+    : busy ? (last ? 'Training on your last pick and building your results, about half a minute' : 'Training on your pick and fetching the next question')
+    : best === null && worst === null ? 'Mark one answer as best and one as worst'
+    : best === null ? 'Now mark the best' : worst === null ? 'Now mark the worst' : 'Both marked'
+  // The pill's colour says where things stand: waiting on a pick, ready, working, or failed.
+  const tone = error ? 'bg-red-50 text-red-800' : busy ? 'bg-teal-50 text-teal-900' : ready ? 'bg-teal-50 text-teal-900' : 'bg-amber-50 text-amber-900'
+  const dot = error ? 'bg-red-600' : ready ? 'bg-teal-600' : 'bg-amber-500'
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -51,13 +57,18 @@ export function RoundScreen({ round, onNext, onExpired }:
         })}
       </div>
 
-      <div className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 ${busy ? 'border-teal-200 bg-teal-50' : 'border-transparent'}`}>
-        <div className="flex items-center gap-2.5 text-gray-600" role="status" aria-live="polite">
-          {error ? <span className="text-red-700">{error}</span>
-            : busy ? <><Spinner className="h-4 w-4 text-teal-700" /><span className="text-teal-900">{last ? 'Training on your last pick and building your results. About half a minute.' : 'Training on your pick and fetching the next question.'}</span></>
-            : hint}
+      {/* The action bar: what has been picked, what is needed next, and the way forward. */}
+      <div className="panel mt-4 flex flex-wrap items-center gap-3 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2" role="status" aria-live="polite">
+          <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-medium ${tone}`}>
+            {busy ? <Spinner className="h-3.5 w-3.5" /> : <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden />}
+            {message}
+          </span>
+          {!busy && !error && (
+            <span className="hint">Best: <b className="font-medium text-gray-700">{best === null ? 'none' : 'ABCD'[best]}</b> · Worst: <b className="font-medium text-gray-700">{worst === null ? 'none' : 'ABCD'[worst]}</b></span>
+          )}
         </div>
-        <button className="btn btn-primary" disabled={busy || best === null || worst === null} onClick={submit}>
+        <button className="btn btn-primary ml-auto" disabled={busy || best === null || worst === null} onClick={submit}>
           {last ? 'See results' : 'Next question'}
         </button>
       </div>
