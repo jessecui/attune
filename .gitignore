@@ -7,3 +7,4 @@ results/
 .judge_key
 node_modules/
 app/frontend/dist/
+*.tsbuildinfo
