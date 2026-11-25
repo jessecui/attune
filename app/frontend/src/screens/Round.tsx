@@ -25,7 +25,7 @@ export function RoundScreen({ round, onNext, onExpired }:
     <div>
       <p className="eyebrow">Question {round.round} of {round.rounds}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{round.question}</h1>
-      <p className="mt-2 text-ink-2">Same advice, four styles. Mark the best and the worst.</p>
+      <p className="mt-2 text-ink-2">Pick the answer you like best and the one you like worst.</p>
 
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         {round.candidates.map((text, i) => {
