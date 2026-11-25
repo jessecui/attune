@@ -1,0 +1,9 @@
+.git
+.venv
+results
+node_modules
+app/frontend/node_modules
+app/frontend/dist
+.live_key
+.judge_key
+__pycache__
