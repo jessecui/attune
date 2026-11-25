@@ -11,16 +11,16 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
   return (
     <div className="grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
       <section>
-        <p className="eyebrow">Assessment · about {rounds} minutes</p>
-        <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Find out how you like to be spoken to.</h1>
+        <p className="eyebrow">Live fine-tuning · about {rounds} minutes</p>
+        <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Train your own AI model.</h1>
         <p className="mt-4 text-lg text-ink-2">
-          You will read four short answers to an everyday question, then mark the one you like best and the one you like least.
-          With every choice, a language model adjusts itself to you.
+          Read four answers to a question and pick the best and the worst. Each pick fine-tunes a language model
+          to your style. After {rounds} questions, the model is yours to download.
         </p>
         <ol className="mt-8 space-y-4">
-          {[['Read and choose', `${rounds} questions, four answers each. There are no right answers.`],
-            ['See your profile', 'Where you sit on four scales of communication style, and how sure the result is.'],
-            ['Take your model with you', 'Download the model that was tuned to your choices and run it yourself.']].map(([t, d], i) => (
+          {[['You pick', `${rounds} questions, four answers each. Mark the best and the least.`],
+            ['The model trains', 'Every pick updates an open 7-billion-parameter model on a dedicated GPU, between questions.'],
+            ['You download it', 'The tuned model, a profile of the style it learned, and a script to run it.']].map(([t, d], i) => (
             <li key={t} className="flex gap-4">
               <span className="font-mono text-sm text-accent mt-0.5 w-5 shrink-0">{String(i + 1).padStart(2, '0')}</span>
               <span><span className="font-medium">{t}.</span> <span className="text-ink-2">{d}</span></span>
@@ -41,13 +41,13 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
         </fieldset>
         {error && <p role="alert" className="mt-5 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{error} Try again.</p>}
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <button className="btn btn-primary px-6 py-3 text-base" onClick={() => onStart(rounds)}>Begin the assessment</button>
-          <span className="text-sm text-muted">Starting takes a minute or two.</span>
+          <button className="btn btn-primary px-6 py-3 text-base" onClick={() => onStart(rounds)}>Start training</button>
+          <span className="text-sm text-muted">The GPU takes a minute or two to start.</span>
         </div>
       </section>
 
       <aside className="sheet self-start p-6">
-        <p className="eyebrow">What it measures</p>
+        <p className="eyebrow">What the model learns</p>
         <ul className="mt-4 divide-y divide-rule">
           {SCALES.map(([key, low, high]) => (
             <li key={key} className="py-4 first:pt-0 last:pb-0">
@@ -60,8 +60,8 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
           ))}
         </ul>
         <p className="mt-5 border-t border-rule pt-4 text-sm text-muted">
-          The scales are informed by research on interpersonal communication. Your result describes the choices you make in this
-          session. It is not a diagnosis, and it may differ next time.
+          Four scales of communication style, drawn from research on interpersonal communication. The result reflects
+          this session's picks and can differ next time.
         </p>
       </aside>
     </div>

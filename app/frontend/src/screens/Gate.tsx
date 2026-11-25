@@ -10,8 +10,8 @@ export function Gate({ onDone }: { onDone: () => void }) {
   return (
     <div className="mx-auto max-w-sm pt-10">
       <p className="eyebrow">Invitation only</p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in to begin</h1>
-      <p className="mt-2 text-ink-2">Each session reserves a GPU for one person, so access is by password.</p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in</h1>
+      <p className="mt-2 text-ink-2">Each session runs on a dedicated GPU, so access is by password.</p>
       <form onSubmit={submit} className="sheet mt-6 p-5">
         <label htmlFor="password" className="block text-sm font-medium">Password</label>
         <input id="password" type="password" autoFocus autoComplete="current-password" value={password}

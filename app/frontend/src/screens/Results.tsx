@@ -15,32 +15,31 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
 
   return (
     <div>
-      <p className="eyebrow">Your result · {summary.rounds} questions</p>
-      <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Your communication profile</h1>
+      <p className="eyebrow">Result · {summary.rounds} questions</p>
+      <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">Your model is trained.</h1>
       <p className="mt-4 max-w-3xl text-lg text-ink-2">
         {found.length > 0
-          ? <>In this session you responded best to answers that are <strong className="font-semibold text-ink">{list(found.map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + (AS_ADJECTIVE[r.side] ?? r.side)))}</strong>.</>
-          : <>Your choices in this session did not point clearly one way on any scale.</>}
-        {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your choices showed no clear preference.</>}
+          ? <>It learned that you prefer answers that are <strong className="font-semibold text-ink">{list(found.map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + (AS_ADJECTIVE[r.side] ?? r.side)))}</strong>.</>
+          : <>Your picks did not point clearly one way on any scale.</>}
+        {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
       </p>
 
-      <div className="mt-9 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="mt-9 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+        <ModelCard session={summary.session} mock={mock} instructions={summary.style_instructions} />
         <section className="sheet p-6" aria-labelledby="scales">
-          <h2 id="scales" className="eyebrow">Four scales</h2>
+          <h2 id="scales" className="eyebrow">What it learned</h2>
           <div className="mt-5 divide-y divide-rule">{summary.axes.map((a) => <Scale key={a.axis} axis={a} />)}</div>
           <p className="mt-5 border-t border-rule pt-4 text-sm text-muted">
             The shaded middle of each scale is the range where the model did not commit either way. A marker shows where the
             model ended this session, not how likely you are to get the same result again.
           </p>
         </section>
-
-        <ModelCard session={summary.session} mock={mock} instructions={summary.style_instructions} />
       </div>
 
       {example && (
         <section className="mt-6 sheet p-6" aria-labelledby="difference">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 id="difference" className="eyebrow">The difference, on questions you have not seen</h2>
+            <h2 id="difference" className="eyebrow">Standard model against yours, on new questions</h2>
             <div className="flex gap-1" role="tablist" aria-label="Example question">
               {summary.examples.map((_, i) => (
                 <button key={i} role="tab" aria-selected={shown === i} onClick={() => setShown(i)}
@@ -57,17 +56,17 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
       )}
 
       <details className="mt-6 sheet p-6">
-        <summary className="cursor-pointer font-medium">How the model got there, round by round</summary>
+        <summary className="cursor-pointer font-medium">Training, round by round</summary>
         <p className="mt-3 max-w-3xl text-sm text-ink-2">
-          Each point is the model after one more of your choices. Above the line it leans to the style named at the top, below it
+          Each point is the model after one more of your picks. Above the line it leans to the style named at the top, below it
           to the one at the bottom. The vertical scale is compressed: each step from the line is roughly ten times stronger.
         </p>
         <div className="mt-5 grid gap-6 sm:grid-cols-2">{summary.axes.map((a) => <Trajectory key={a.axis} axis={a} limit={limit} />)}</div>
       </details>
 
       <div className="mt-8 flex flex-wrap items-center gap-4">
-        <button className="btn btn-quiet" onClick={onAgain}>Take it again</button>
-        <span className="text-sm text-muted">Results can differ between sessions, as tastes and questions do.</span>
+        <button className="btn btn-quiet" onClick={onAgain}>Train another</button>
+        <span className="text-sm text-muted">Results can differ between sessions.</span>
       </div>
     </div>
   )
@@ -97,10 +96,10 @@ function ModelCard({ session, mock, instructions }: { session: string; mock: boo
   return (
     <section className="sheet flex flex-col p-6" aria-labelledby="model">
       <h2 id="model" className="eyebrow">Your model</h2>
-      <p className="mt-4 text-xl font-semibold tracking-tight">A model tuned to you, yours to keep.</p>
+      <p className="mt-4 text-xl font-semibold tracking-tight">Your fine-tuned model</p>
       <p className="mt-2 text-ink-2">
-        While you chose, a language model was fine-tuned on your choices. The download holds those adjustments, your profile and
-        a short script to run it on your own machine.
+        A LoRA adapter for Qwen2.5-7B, trained on your picks in this session. The download includes the adapter, your profile
+        and a script to run it.
       </p>
       {instructions.length > 0 && (
         <div className="mt-4">
@@ -115,8 +114,8 @@ function ModelCard({ session, mock, instructions }: { session: string; mock: boo
           : status?.configured === false ? <p className="text-sm text-muted">Downloads are not set up on this server.</p>
           : status?.ready ? <a className="btn btn-primary w-full" href={api.modelUrl(session)} download>Download your model{megabytes && ` (${megabytes})`}</a>
           : gaveUp ? <p className="text-sm text-danger" role="alert">The model could not be packaged this time. Your profile above is unaffected.</p>
-          : <button className="btn btn-primary w-full" disabled>Packaging your model</button>}
-        <p className="mt-3 text-sm text-muted">Available for a day. It runs with the open Qwen2.5-7B model and needs a GPU or a recent Mac.</p>
+          : <button className="btn btn-primary w-full" disabled>Packaging the model</button>}
+        <p className="mt-3 text-sm text-muted">Available for a day. Needs a GPU or a recent Mac to run.</p>
       </div>
     </section>
   )

@@ -25,7 +25,7 @@ export function RoundScreen({ round, onNext, onExpired }:
     <div>
       <p className="eyebrow">Question {round.round} of {round.rounds}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{round.question}</h1>
-      <p className="mt-2 text-ink-2">Four answers with the same advice, said in different ways. Which suits you?</p>
+      <p className="mt-2 text-ink-2">Same advice, four styles. Mark the best and the least.</p>
 
       <div className="mt-7 grid gap-4 md:grid-cols-2">
         {round.candidates.map((text, i) => {
@@ -51,10 +51,10 @@ export function RoundScreen({ round, onNext, onExpired }:
       <div className="sticky bottom-0 -mx-5 mt-8 border-t border-rule bg-page/95 px-5 py-4 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-ink-2" role="status" aria-live="polite">
-            {error ? <span className="text-danger">{error}</span> : busy ? (last ? 'Applying your last choice and preparing your profile. This can take half a minute.' : 'Learning from your choice.') : hint}
+            {error ? <span className="text-danger">{error}</span> : busy ? (last ? 'Training on your last pick and building your results. About half a minute.' : 'Training on your pick.') : hint}
           </p>
           <button className="btn btn-primary px-6" disabled={busy || best === null || least === null} onClick={submit}>
-            {busy ? 'One moment' : last ? 'See my profile' : 'Next question'}
+            {busy ? 'One moment' : last ? 'See results' : 'Next question'}
           </button>
         </div>
       </div>

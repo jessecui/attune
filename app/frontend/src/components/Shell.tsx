@@ -9,7 +9,7 @@ export function Shell({ children, mock, progress, onSignOut }:
         <div className="mx-auto max-w-5xl px-5 h-14 flex items-center gap-4">
           <div className="flex items-baseline gap-3">
             <span className="text-lg font-semibold tracking-tight">Attune</span>
-            <span className="eyebrow hidden sm:inline">Communication style assessment</span>
+            <span className="eyebrow hidden sm:inline">Live model fine-tuning</span>
           </div>
           <div className="ml-auto flex items-center gap-4">
             {mock && <span className="eyebrow rounded border border-rule-strong px-2 py-0.5">Demo data</span>}
