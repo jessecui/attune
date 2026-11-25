@@ -211,7 +211,11 @@ def compare(grid, scenario="data/advice.json"):
         def summary(texts):
             vs = [cache[it["q"] + "|" + t] for it, t in zip(items, texts)]
             n = len(vs)
+            marg = d["rounds"][-1]
             return {"axes": sum((sum(v[a] for v in vs) / n - 3) * w > 0 for a, w in wants.items()),
+                    # on how many axes the model's stated choice and its writing fall on the same side
+                    "agree": (sum((marg[f"p_{a}"] > 0.5) == (sum(v[a] for v in vs) / n > 3) for a in wants)
+                              if f"p_{AXES[0]}" in marg else float("nan")),
                     "suit": sum(style_score(v, wants) for v in vs) / n,
                     "facts": sum(sum(v["facts_covered"]) / len(v["facts_covered"]) for v in vs) / n,
                     "adds": sum(bool(v["added"]) for v in vs) / n}
@@ -227,7 +231,8 @@ def compare(grid, scenario="data/advice.json"):
     for name, a in agg.items():
         m = {k: sum(v) / len(v) for k, v in a.items()}
         print(f"  {name:18} {len(a['axes']):4} | {m['axes']:21.2f} (sd {sd(a['axes']):.2f}) | "
-              f"{m['suit']:15.2f} (sd {sd(a['suit']):.2f}) | {m['facts']:13.2f} | {m['adds']:.0%}")
+              f"{m['suit']:15.2f} (sd {sd(a['suit']):.2f}) | {m['facts']:13.2f} | {m['adds']:.0%}"
+              + ("" if m["agree"] != m["agree"] or name == "untouched model" else f" | choice matches writing on {m['agree']:.2f} of 4"))
     fell_back = sum(not r["judged"] for d in runs for r in d["rounds"])
     print(f"  rounds where the judge was unavailable and word lists picked instead: {fell_back}")
 

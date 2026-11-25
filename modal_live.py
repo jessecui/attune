@@ -31,7 +31,8 @@ KEY = _key_file.read_text().strip() if _key_file.exists() else ""
 app = modal.App("attune-live")
 image = (
     modal.Image.debian_slim(python_version="3.12")
-    .pip_install("torch>=2.6", "transformers>=4.51", "peft>=0.15", "accelerate", "fastapi[standard]")
+    .pip_install("torch>=2.6", "transformers>=4.51", "peft>=0.15", "accelerate", "fastapi[standard]",
+                 "google-genai>=1.56.0")
     .env({"HF_HOME": "/cache/hf"})
     .add_local_python_source("bench")
     .add_local_dir("data", remote_path="/root/data")
@@ -91,7 +92,8 @@ def key_ok(given, expected):
 
 @app.cls(image=image, gpu="L40S", volumes={"/cache": hf_cache, "/adapters": adapters}, max_containers=1,
          scaledown_window=300,
-         timeout=900, secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY})])
+         # the judge model's key, for rating the tuned model's writing after each round
+         timeout=900, secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY}), modal.Secret.from_name("attune-judge")])
 @modal.concurrent(max_inputs=8)
 class Live:
     @modal.enter()
@@ -122,6 +124,9 @@ class Live:
         # is the untouched model's, written with no style instructions.
         self.track0 = {"round": 0, **self._track(plain=self.base_texts[0])}
         self.sessions = {}
+        # The untouched model's writing, rated once: the starting point of every session's charts.
+        self.written0 = None
+        threading.Thread(target=lambda: setattr(self, "written0", self._written(self.base_texts))).start()
         hf_cache.commit()
 
     # ---- pieces of GPU work; each runs with one session's adapter loaded -------------
@@ -134,33 +139,48 @@ class Live:
             finally:
                 s["weights"] = self.policy.snapshot()
 
+    def _written(self, texts):
+        """The judge's average rating of these answers to the unseen questions, per axis (1 to 5).
+
+        None if the judge is unavailable; the page then falls back to the model's style choices.
+        """
+        try:
+            from bench.judge import judge_many
+            items = self.scenario["heldout"]
+            verdicts = judge_many([(it["q"], it["facts"], t) for it, t in zip(items, texts)])
+            return {a: round(sum(v[a] for v in verdicts) / len(verdicts), 2) for a in AXES}
+        except Exception as e:  # noqa: BLE001 - a judge outage must not end the session
+            print(f"judge unavailable: {e}", flush=True)
+            return None
+
     def _track(self, plain=None):
-        """What the current adapter prefers on each axis, and its answer to one fixed question."""
+        """What the current adapter prefers on each axis, and its answers to the unseen questions."""
         import torch
 
         from bench.personas import WARM_PHRASES, features
 
         R, n_styles = self.R, len(self.R.STYLES)
         prompts = self.sess.styled["heldout"]
-        lean, first = {a: 0.0 for a in AXES}, None
+        lean, firsts = {a: 0.0 for a in AXES}, []
         for j, p in enumerate(prompts):
             lp = self.sess.style_logp(p)
-            if j == 0:
-                first = int(lp.argmax())
+            firsts.append(int(lp.argmax()))
             for a in AXES:
                 m = torch.tensor(R.AXES[a])
                 # log-odds of the axis's first option over its second
                 lean[a] += (torch.logsumexp(lp[m], 0) - torch.logsumexp(lp[~m], 0)).item() / len(prompts)
-        item = self.scenario["heldout"][0]
+        items = self.scenario["heldout"]
         if plain is None:
-            out = self.policy.generate([self.sess.answer_prompt(item, first)],
-                                       max_new_tokens=self.args.max_new_tokens)
-            text = self.sess.finish(out, [first], [item])[1][0]
+            # One answer per unseen question, each in the style the model now favours for it.
+            outs = self.policy.generate([self.sess.answer_prompt(it, f) for it, f in zip(items, firsts)],
+                                        max_new_tokens=self.args.max_new_tokens)
+            texts = self.sess.finish(outs, firsts, items)[1]
+            text, first = texts[0], firsts[0]
             style = [m["options"][0 if R.AXES[m["axis"]][first] else 1][0] for m in self.menu]
         else:
-            text, style, first = plain, [], None
+            text, texts, style, first = plain, None, [], None
         f = features(text)
-        return {"lean": {a: round(v, 2) for a, v in lean.items()}, "style": style, "answer": text,
+        return {"lean": {a: round(v, 2) for a, v in lean.items()}, "style": style, "answer": text, "texts": texts,
                 "clauses": [] if first is None else list(R.STYLE_CLAUSES[first]),
                 "words": f["words"], "sentences": f["sentences"], "exclamations": text.count("!"),
                 "warm_phrases": sum(text.lower().count(p) for p in WARM_PHRASES)}
@@ -187,7 +207,13 @@ class Live:
         rewards[best], rewards[worst] = 1.0, -1.0
         s["method"].update([Group(None, c["answers"], list(range(K)), None, None,
                                   segments=c["segments"], rewards=rewards)], None)
-        s["history"].append({"round": n, "update_seconds": round(time.time() - t, 1), **self._track()})
+        entry = {"round": n, "update_seconds": round(time.time() - t, 1), **self._track()}
+        s["history"].append(entry)
+        # Rate the writing in the background (a network call), so the GPU can move on to the next answers.
+        import threading
+        job = threading.Thread(target=lambda: entry.update(written=self._written(entry["texts"])))
+        job.start()
+        s["judging"].append(job)
 
     def _after(self, s, n, best, worst):
         """Background work after round n's feedback: learn from it, then write round n+2."""
@@ -199,10 +225,16 @@ class Live:
             s["error"] = repr(e)[:300]
 
     def _summary(self, s):
-        texts, _ = self.sess.answer_heldout()
         h = s["history"]
+        for job in s["judging"]:
+            job.join(timeout=40)
+        # The page plots the writing's ratings when every round has one, else the model's choices.
+        written = [self.written0] + [r.get("written") for r in h[1:]]
+        rated = all(written)
         axes = [{"axis": m["axis"], "first": m["options"][0][0], "second": m["options"][1][0],
-                 "lean": [r["lean"][m["axis"]] for r in h]} for m in self.menu]
+                 "lean": [r["lean"][m["axis"]] for r in h],
+                 "written": [w[m["axis"]] for w in written] if rated else None} for m in self.menu]
+        texts = h[-1]["texts"]   # the tuned model's answers to the unseen questions, as rated
         examples = [{"question": it["q"], "before": b, "after": t}
                     for it, b, t in zip(self.scenario["heldout"], self.base_texts, texts)]
         keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases", "update_seconds")
@@ -273,7 +305,7 @@ class Live:
             if rounds not in (ROUNDS, LONG_ROUNDS):
                 raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
-                 "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None,
+                 "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None, "judging": [],
                  # The short session learns faster; the long one stays gentle, because ten rounds at the
                  # higher rate over-commit and drift in wording (benchmark of 2026-11-25).
                  "method": GRPOStyle(self.policy, lr=3e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,

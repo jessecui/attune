@@ -17,6 +17,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import math
 import os
 import secrets
 import time
@@ -123,6 +124,8 @@ def _mock_summary(s):
     # Soften the recording's leans so the mock profile shows every kind of result.
     scale = {"warmth": 0.45, "directiveness": 0.2, "formality": 0.15, "depth": 0.6}
     axes = [{**a, "lean": [round(v * scale[a["axis"]], 2) for v in fx["lean"][a["axis"]][: n + 1]]} for a in fx["axes"]]
+    for a in axes:  # stand-in ratings of the writing, 1 to 5, so the mock looks like a real session
+        a["written"] = [round(3 + 2 * math.tanh(v / 3), 1) for v in a["lean"]]
     return {"done": True, "session": s["id"], "rounds": n, "axes": axes, "examples": fx["examples"],
             "style_instructions": fx["style_instructions"], "tracked_question": fx["tracked_question"], "track": []}
 

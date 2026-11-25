@@ -269,6 +269,16 @@ def axes_right(marg, wants):
     return sum((marg[f"p_{a}"] > 0.5) == (wants[a] > 0) for a in AXES)
 
 
+def displayed_style(assigned, verdict):
+    """The menu style an answer actually shows, read from the judge's ratings.
+
+    On each axis a rating above 3 is the first option and below 3 the second; a rating
+    of exactly 3 keeps whatever the answer was assigned.
+    """
+    target = {a: (verdict[a] > 3) if verdict.get(a, 3) != 3 else AXES[a][assigned] for a in AXES}
+    return next(s for s in range(len(STYLES)) if all(AXES[a][s] == target[a] for a in AXES))
+
+
 def line(r, ev, extra=""):
     win = f" | win {ev['win_rate']:.2f}" if "win_rate" in ev else ""
     return f"round {r:2d} | score {ev['score']:.2f}{win} | words {ev['words']:5.1f} | facts {ev['facts']:.2f}{extra}"
@@ -303,6 +313,9 @@ def main(argv=None):
     ap.add_argument("--judge-user", action="store_true",
                     help="the simulated user reads answers with the judge model instead of word lists; "
                          "falls back to the word lists for a round if the judge is unavailable")
+    ap.add_argument("--relabel", action="store_true",
+                    help="grpo_style with --judge-user: credit each answer's reward to the style the judge says "
+                         "it displays, not the style it was assigned")
     ap.add_argument("--choice-clip", type=float, default=0.0,
                     help="grpo_style: clip the style choice as one action, moving its probability by at most "
                          "this share per round (0 = clip token by token)")
@@ -372,7 +385,7 @@ def main(argv=None):
         t_gen = time.time() - t_gen
         flipped = bool(args.flip_at) and r > args.flip_at
         wants = user_wants(args.persona, menu, flipped, flip_axes)
-        judged = None
+        judged, verdicts = None, None
         if args.judge_user and wants:
             try:
                 from .judge import judge_many, style_score
@@ -393,6 +406,14 @@ def main(argv=None):
                 order = rank(args.persona, cand_texts)
                 if flipped:
                     order = order[::-1]
+
+        relabelled = None
+        if args.relabel and latent and segments and judged:
+            # The reward follows what each answer did: its style choice is replaced by the style it
+            # displays. The answer itself stays paired with the instructions it was written under.
+            shown = [displayed_style(s, v) for s, v in zip(picks, verdicts)]
+            relabelled = sum(a != b for a, b in zip(picks, shown))
+            segments = [[(seg[0][0], sess.prefixes[lab]), seg[1]] for seg, lab in zip(segments, shown)]
 
         t_upd = time.time()
         prompt = sess.train_prompt(i)
@@ -433,7 +454,7 @@ def main(argv=None):
         print(line(r, ev, f" | redrawn {redrawn} | gen {t_gen:4.1f}s | update {t_upd:5.1f}s | "
                    + " ".join(f"{k} {v:.3f}" for k, v in info.items())), flush=True)
         log["rounds"].append({"round": r, "styles": [STYLES[s] for s in picks], "candidates": cand_texts,
-                              "redrawn": redrawn, "order": order, "flipped": flipped, "judged": judged, "t_generate": t_gen, "t_update": t_upd,
+                              "redrawn": redrawn, "order": order, "flipped": flipped, "judged": judged, "relabelled": relabelled, "t_generate": t_gen, "t_update": t_upd,
                               **info, **ev})
 
     out = Path(args.out or f"results/{args.method}_{args.persona}_s{args.seed}.json")

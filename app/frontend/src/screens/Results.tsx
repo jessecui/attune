@@ -20,6 +20,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
   const [shown, setShown] = useState(0)
   const example = summary.examples[shown]
   const limit = sharedLimit(summary.axes)
+  const rated = summary.axes.every((a) => a.written?.length)
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -43,7 +44,11 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
         <section className="panel" aria-labelledby="scales">
           <h2 id="scales" className="panel-title border-b border-gray-200 px-4 py-3">What it learned</h2>
           <div className="divide-y divide-gray-100">{summary.axes.map((a) => <Scale key={a.axis} axis={a} />)}</div>
-          <p className="hint border-t border-gray-100 px-4 py-3">In the darker middle, the model did not commit either way. Results can differ between sessions.</p>
+          <p className="hint border-t border-gray-100 px-4 py-3">
+            {rated ? 'Rated from what your model wrote on three questions it was not trained on, by a second AI model. The darker middle is no clear preference.'
+              : 'The writing could not be rated this time, so these show the styles your model chooses. The darker middle is no clear preference.'}
+            {' '}Results can differ between sessions.
+          </p>
         </section>
 
         {example && (
@@ -72,8 +77,8 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           <div className="p-4">
             <div className="grid gap-5 sm:grid-cols-2">{summary.axes.map((a) => <Trajectory key={a.axis} axis={a} limit={limit} />)}</div>
             <p className="hint mt-4 max-w-2xl">
-              Each point is the model after one more of your picks. The further from the line, the stronger the lean; the scale is
-              compressed, so each step away is roughly ten times stronger.
+              {rated ? 'Each point is how the model\u2019s writing was rated after one more of your picks, from 1 to 5. The first point is the standard model.'
+                : 'Each point is the model after one more of your picks. The further from the line, the stronger the lean; the scale is compressed, so each step away is roughly ten times stronger.'}
             </p>
           </div>
         </section>

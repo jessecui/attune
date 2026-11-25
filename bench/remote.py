@@ -170,6 +170,8 @@ GRIDS = {
               "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
              for tag, extra in [("grpo-lr1e-5", ["--choice-clip", "0.2", "--lr", "1e-5"]),
                                 ("grpo-lr3e-5", ["--choice-clip", "0.2", "--lr", "3e-5"]),
+                                # the reward goes to the style each answer displays (added 2026-11-25, evening)
+                                ("grpo-relabel-lr3e-5", ["--choice-clip", "0.2", "--lr", "3e-5", "--relabel"]),
                                 ("dpo-lr1e-5", ["--method", "dpo", "--lr", "1e-5"]),
                                 ("dpo-lr3e-5", ["--method", "dpo", "--lr", "3e-5"])]
              for p in LIVE_PERSONAS for seed in (1, 2, 3)],

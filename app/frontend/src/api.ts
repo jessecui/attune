@@ -1,7 +1,9 @@
 // Everything the page asks of the backend. The backend holds the GPU service's address and key.
 
 export type Round = { session: string; round: number; rounds: number; question: string; candidates: string[]; waited_seconds?: number }
-export type Axis = { axis: string; first: string; second: string; lean: number[] }
+// lean: the model's log-odds of choosing the first style, after each round.
+// written: the judge's 1-to-5 rating of the model's writing after each round (5 = first style), when available.
+export type Axis = { axis: string; first: string; second: string; lean: number[]; written?: number[] | null }
 export type Example = { question: string; before: string; after: string }
 export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; style_instructions: string[] }
 export type Me = { signed_in: boolean; mock: boolean; round_choices: number[] }
@@ -36,17 +38,25 @@ export const api = {
 // A lean is the model's log-odds for an axis's first style over its second.
 export const probability = (lean: number) => 1 / (1 + Math.exp(-lean))
 
-export type Reading = { side: string; other: string; strength: 'none' | 'leans' | 'clear'; share: number; position: number }
+export type Reading = { side: string; other: string; strength: 'none' | 'leans' | 'clear'; share: number; position: number; detail: string }
 
 /** What the profile says about one axis: under 75% either way is no clear preference,
  *  75% to 95% is a lean, above that is stated plainly. */
 export function read(a: Axis): Reading {
+  if (a.written?.length) {
+    // From the writing: within half a point of 3 is no clear preference, a full point or more is clear.
+    const rating = a.written[a.written.length - 1], off = Math.abs(rating - 3)
+    const side = rating >= 3 ? a.first : a.second, other = rating >= 3 ? a.second : a.first
+    return { side, other, strength: off < 0.5 ? 'none' : off < 1 ? 'leans' : 'clear', share: off / 2, position: (rating - 1) / 4,
+             detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${side}.` }
+  }
   const last = a.lean[a.lean.length - 1], prev = a.lean[a.lean.length - 2] ?? last
   const p = probability(last), share = Math.max(p, 1 - p)
   const side = last >= 0 ? a.first : a.second, other = last >= 0 ? a.second : a.first
   const settled = Math.sign(last) === Math.sign(prev) || prev === 0
   const strength = share < 0.75 || !settled ? 'none' : share < 0.95 ? 'leans' : 'clear'
-  return { side, other, strength, share, position: p }
+  return { side, other, strength, share, position: p,
+           detail: `Ended ${share > 0.95 ? 'more than 95%' : Math.floor(share * 100) + '%'} ${side} by its style choices.` }
 }
 
 export const AXIS_NOTES: Record<string, { title: string; about: string }> = {
