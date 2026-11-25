@@ -19,7 +19,8 @@ import modal
 
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
-ROUNDS, K = 6, 4
+ROUNDS, K = 5, 4
+LONG_ROUNDS = 10  # optional longer session: each of the ten questions once
 
 # Access key: generated once, kept out of git, sent to the container as a secret.
 _key_file = Path(__file__).parent / ".live_key"
@@ -66,7 +67,7 @@ class Live:
         R.use_menu(self.scenario["menu"], AXES)
         # Questions for tracking and the before/after comparison; never used in rounds.
         self.scenario["heldout"] = self.scenario["test"][:3]
-        self.args = argparse.Namespace(two_step=True, k=K, max_new_tokens=96, max_sentences=3,
+        self.args = argparse.Namespace(two_step=True, k=K, max_new_tokens=128, max_sentences=4,
                                        min_facts=1.0, strict_facts=True, redraws=3, neutral_start=True)
         self.policy = Policy(MODEL)
         self.fresh = self.policy.snapshot()  # the untouched adapter every session starts from
@@ -125,7 +126,7 @@ class Live:
         i = (n - 1) % len(self.scenario["train"])
         picks, answers, texts, redrawn, segments = self.sess.propose(i, s["rng"])
         s["cands"][n] = {"answers": answers, "segments": segments,
-                         "payload": {"session": s["id"], "round": n, "rounds": ROUNDS,
+                         "payload": {"session": s["id"], "round": n, "rounds": s["rounds"],
                                      "question": self.scenario["train"][i]["q"], "candidates": texts,
                                      "write_seconds": round(time.time() - t, 1)}}
 
@@ -146,7 +147,7 @@ class Live:
         """Background work after round n's feedback: learn from it, then write round n+2."""
         try:
             self._with(s, lambda: self._learn(s, n, best, worst))
-            if n + 2 <= ROUNDS:
+            if n + 2 <= s["rounds"]:
                 self._with(s, lambda: self._write(s, n + 2))
         except Exception as e:  # surfaced on the next request
             s["error"] = repr(e)[:300]
@@ -190,14 +191,16 @@ class Live:
             return Path("/root/live_page.html").read_text()
 
         @api.post("/api/start")
-        def start(key: str = ""):
+        def start(key: str = "", rounds: int = ROUNDS):
             check(key)
-            s = {"id": uuid.uuid4().hex, "round": 0, "rng": random.Random(), "weights": self.fresh,
+            if rounds not in (ROUNDS, LONG_ROUNDS):
+                raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
+            s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None,
                  "method": GRPOStyle(self.policy, lr=1e-5, steps_per_round=8, choice_clip=0.2)}
             self.sessions[s["id"]] = s
             self._with(s, lambda: self._write(s, 1))
-            if ROUNDS >= 2:  # get one round ahead straight away
+            if rounds >= 2:  # get one round ahead straight away
                 s["thread"] = threading.Thread(target=lambda: self._with(s, lambda: self._write(s, 2)))
                 s["thread"].start()
             return s["cands"][1]["payload"]
@@ -221,7 +224,7 @@ class Live:
             if s["error"]:
                 raise HTTPException(status_code=500, detail=s["error"])
             n = s["round"] = s["round"] + 1
-            if n < ROUNDS:
+            if n < s["rounds"]:
                 payload = {**s["cands"][n + 1]["payload"], "waited_seconds": round(time.time() - t, 1)}
                 s["thread"] = threading.Thread(target=self._after, args=(s, n, fb.best, fb.worst))
                 s["thread"].start()

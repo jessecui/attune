@@ -23,9 +23,10 @@ def grid(prefix, methods, extra=()):
             for m in methods for p in PERSONAS for s in SEEDS]
 
 
-# Short sessions on the advice scenario: two-step GRPO, three-sentence cap, six rounds.
+# Short sessions on the advice scenario: two-step GRPO, four-sentence cap, six rounds.
+# (Grids run before 2026-11-25 afternoon used three sentences and 96 tokens.)
 LEARN = ["--method", "grpo_style", "--two-step", "--scenario", "data/advice.json", "--rounds", "6",
-         "--max-new-tokens", "96", "--max-sentences", "3", "--min-facts", "0.5", "--eval-split", "test",
+         "--max-new-tokens", "128", "--max-sentences", "4", "--min-facts", "0.5", "--eval-split", "test",
          "--lr", "3e-5"]
 A3 = "warmth,directiveness,language"
 A4 = A3 + ",energy"
@@ -151,6 +152,18 @@ GRIDS = {
     "nocheck": [{**j, "name": "nocheck_" + j["name"],
                  "argv": j["argv"] + ["--judge-user", "--flip-axes", "warmth,depth", "--min-facts", "0"]}
                 for j in gentle(["cclip0.2_lr1e-5"], [1, 2])],
+    "menu_check14": [{"name": "four_sentences_two_paragraphs_7B", "module": "check_menu",   # new length and layout rule
+                      "argv": ["--position", "user_bullets", "--axes", FOUR, "--max-new-tokens", "128", *SEVEN_B]}],
+    "menu_check15": [{"name": "one_point_three_sentences_7B", "module": "check_menu",   # one point per question
+                      "argv": ["--position", "user_bullets", "--axes", FOUR, "--scenario", "data/advice_one.json", *SEVEN_B]}],
+    # Quick GRPO-against-DPO check on the live setup: judge as the user, best-and-worst feedback
+    # for both, five rounds, one seed. Scored afterwards with `python -m bench.judge compare quick`.
+    "quick": [{"name": f"{tag}_{p}_s1",
+               "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", "1", *extra]}
+              for tag, extra in [("grpo", GENTLE["cclip0.2_lr1e-5"]),
+                                 ("dpo-lr3e-5", ["--method", "dpo", "--lr", "3e-5"]),
+                                 ("dpo-lr1e-5", ["--method", "dpo", "--lr", "1e-5"])]
+              for p in LIVE_PERSONAS],
     "main": grid("rank4", ["grpo_style", "dpo"]),
     "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
     "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),

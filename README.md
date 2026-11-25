@@ -1,6 +1,6 @@
 # Attune
 
-Attune tunes a small language model to the way one person likes to be spoken to. You read four short answers, mark the one you like best and the one you like least, and after six rounds you have a model that answers in your style, plus a picture of what that style is.
+Attune tunes a small language model to the way one person likes to be spoken to. You read four short answers, mark the one you like best and the one you like least, and after five rounds you have a model that answers in your style, plus a picture of what that style is.
 
 **Status:** early. The training method, a benchmark with simulated users, and a bare test page for live sessions exist. The real app does not yet.
 

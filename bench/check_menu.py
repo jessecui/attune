@@ -67,11 +67,16 @@ def main(argv=None):
                 "words": sum(f["words"] for f in feats) / n,
                 "sentences": sum(f["sentences"] for f in feats) / n,
                 "over_3_sentences": sum(f["sentences"] > 3 for f in feats) / n,
+                "over_4_sentences": sum(f["sentences"] > 4 for f in feats) / n,
+                "has_line_break": sum("\n" in t for t in texts) / n,
+                # share of answers where some paragraph has more than two sentences
+                "long_paragraph": sum(any(features(par)["sentences"] > 2 for par in t.split("\n") if par.strip())
+                                      for t in texts) / n,
                 "cut_off": sum(o[-1] != policy.eos_id for o in outs) / n,
                 "facts": sum(facts_retained(t, it["keys"]) for t, (it, _) in zip(texts, picks)) / n,
             }
             report["samples"] += [{"axis": m["axis"], "option": name, "style": s, "q": it["q"], "text": t}
-                                  for (it, s), t in list(zip(picks, texts))[:3]]
+                                  for (it, s), t in list(zip(picks, texts))[:6]]
     return report
 
 

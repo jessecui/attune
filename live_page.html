@@ -42,9 +42,9 @@
 </head>
 <body>
 <h1>Attune: test session</h1>
-<p class="muted">Six rounds. Each round, mark the answer you like best and the one you like least.</p>
+<p class="muted">Five rounds, or ten for a longer session. Each round, mark the answer you like best and the one you like least.</p>
 <div id="status"></div>
-<div id="main"><button id="start">Start session</button></div>
+<div id="main"><button id="start">Start session (5 rounds)</button> <button id="start-long">Start long session (10 rounds)</button></div>
 <script>
 const key = new URLSearchParams(location.search).get("key") || "";
 const main = document.getElementById("main"), statusEl = document.getElementById("status");
@@ -59,13 +59,13 @@ function wait(msg) {
 }
 function ready(msg) { clearInterval(timer); statusEl.textContent = msg || ""; }
 
-async function call(path, body) {
-  const r = await fetch(path + "?key=" + encodeURIComponent(key),
+async function call(path, body, extra) {
+  const r = await fetch(path + "?key=" + encodeURIComponent(key) + (extra || ""),
     { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : null });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || ("HTTP " + r.status));
   return r.json();
 }
-function el(tag, text, cls) { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+function el(tag, text, cls) { const e = document.createElement(tag); if (text != null) { e.textContent = text; if (String(text).includes("\n")) e.style.whiteSpace = "pre-line"; } if (cls) e.className = cls; return e; }
 function svg(tag, attrs) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 
 function showRound(d) {
@@ -133,6 +133,20 @@ function panel(a, limit) {
 function showSummary(d) {
   ready("Session finished.");
   main.replaceChildren();
+  // The profile only states what the model is confident of: under 75% for either style is
+  // "no clear preference", 75% to 95% is a lean, and above 95% is stated plainly.
+  main.append(el("h2", "Your profile"));
+  const prof = el("table"), ph = el("tr");
+  [["Style", ""], ["Result", ""], ["How strongly it leans", "num"]].forEach(([h, c]) => ph.append(el("th", h, c))); prof.append(ph);
+  d.axes.forEach(a => {
+    const v = a.lean[a.lean.length - 1], prev = a.lean[a.lean.length - 2], side = v >= 0 ? a.first : a.second;
+    const settled = Math.sign(v) === Math.sign(prev);   // same side as the round before
+    const sure = 1 / (1 + Math.exp(-Math.abs(v)));     // the model's probability for the side it leans to
+    const result = sure < 0.75 || !settled ? "No clear preference" : sure < 0.95 ? "Leans " + side : side[0].toUpperCase() + side.slice(1);
+    const row = el("tr"); row.append(el("td", a.axis), el("td", result), el("td", (sure > 0.95 ? "over 95%" : Math.round(100 * sure) + "%") + " " + side, "num")); prof.append(row);
+  });
+  main.append(prof, el("p", "“No clear preference” means the model ended below 75% for either style, or changed sides in the last round. Your picks did not point consistently one way. The last column is how hard the model committed in this session, not how likely you are to get the same result again.", "muted"));
+
   main.append(el("h2", "How the model's preferences moved"),
     el("p", "One chart per style. Above the middle line the model leans to the style named at the top, below it to the one at the bottom. The further from the line, the stronger the lean; the scale is compressed, so each step away from the line is roughly ten times stronger. Each point is the model after one more round of your choices.", "muted"));
   const limit = Math.max(1, ...d.axes.flatMap(a => a.lean.map(v => Math.abs(squash(v)))));
@@ -160,14 +174,17 @@ function showSummary(d) {
     const c = el("div", null, "card");
     c.append(el("p", x.question, "muted"), el("p", "Before: " + x.before), el("p", "After: " + x.after)); main.append(c);
   });
-  const again = el("button", "Start another session"); again.onclick = start; main.append(again);
+  const again = el("button", "Start another session (5 rounds)"); again.onclick = () => start(5);
+  const longer = el("button", "Start a long session (10 rounds)"); longer.onclick = () => start(10); main.append(again, " ", longer);
 }
-async function start() {
+async function start(rounds) {
+  rounds = rounds === 10 ? 10 : 5;
   main.replaceChildren();
   wait("Starting the GPU and writing the first answers; the first start can take a minute or two");
-  try { showRound(await call("/api/start")); } catch (e) { ready("Error: " + e.message); main.append(Object.assign(el("button", "Try again"), { onclick: start })); }
+  try { showRound(await call("/api/start", null, "&rounds=" + rounds)); } catch (e) { ready("Error: " + e.message); main.append(Object.assign(el("button", "Try again"), { onclick: () => start(rounds) })); }
 }
-document.getElementById("start").onclick = start;
+document.getElementById("start").onclick = () => start(5);
+document.getElementById("start-long").onclick = () => start(10);
 </script>
 </body>
 </html>

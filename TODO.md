@@ -27,8 +27,8 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Let rounds shift gradually from style to wording, with no separate phase: draw each answer's style from the model's current preferences with repeats allowed, and shrink random exploration as confidence grows (never to zero). Needs the gentler update first, and a check that same-style answers differ enough in wording.
 - [ ] Idea only, not planned: a continuous dial per axis by steering the model's internal activations instead of using written instructions.
 - [ ] A person may like more than one combination (for example warm with formal, and neutral with casual). Decision (2026-11-25): keep it simple; a session finds one style the person likes, not all of them. Display only: once the update is gentler, list a runner-up combination in the results when it is close to the top one. No search for multiple peaks.
-- [ ] Repeatability as a pass criterion: two sessions by the same person should agree on every axis the model reports as confident. Two of the user's sessions on 2026-11-25 disagreed on three of four axes.
-- [ ] Show confidence per axis in the profile; an axis that crossed the middle line during the session reads as "no clear preference".
+- [ ] Repeatability is not a pass criterion (decided 2026-11-25): five sessions by the user gave five different profiles, and that is acceptable for a quiz, as with personality tests. The claim that the method learns a known preference rests on the benchmark with simulated users. Frame results as "your style in this session".
+- [x] Profile table on the test page: "no clear preference" under 75%, a lean up to 95%, stated plainly above; plus a 12-round option.
 - [ ] Run a QLoRA comparison: the same sessions with the model loaded in 4-bit and at full precision, reporting memory used, seconds per round, and any change in results.
 - [ ] Add an "axes right" summary to `bench/report.py` so analyses stop living in one-off scripts.
 

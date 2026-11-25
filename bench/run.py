@@ -75,8 +75,10 @@ def use_menu(menu, axes):
 
 
 def cap_sentences(text, k):
-    """The first k sentences of text."""
-    return " ".join(re.split(r"(?<=[.!?])\s+", text.strip())[:k])
+    """The first k sentences of text, with its line breaks kept."""
+    text = text.strip()
+    ends = [m.start() for m in re.finditer(r"(?<=[.!?])\s+", text)]
+    return text if len(ends) < k else text[:ends[k - 1]]
 
 
 STYLE_FORMAT = ("\nBegin your reply with one line that starts with 'Style:' and states the style "
@@ -163,7 +165,9 @@ class Session:
             picks = rng.sample(range(len(STYLES)), a.k)
 
         def context(s):
-            if self.two_step:
+            if self.two_step or (not self.latent and STYLE_CLAUSES):
+                # The style as bullets in the user turn. For dpo this instruction is hidden:
+                # the model is trained on the plain prompt to prefer the answers it led to.
                 return self.answer_prompt(item, s)
             if self.latent:
                 return self.styled["train"][i] + self.prefixes[s]
@@ -402,7 +406,8 @@ def main(argv=None):
         else:
             ref = policy.logprobs([prompt] * args.k, cands, use_adapter=False).detach().cpu()
             groups.append(Group(prompt, cands, order, ref, policy.style_features(cands),
-                                liked=order[: args.picks] if args.picks else None))
+                                liked=order[: args.picks] if args.picks else None,
+                                bestworst=args.feedback == "bestworst"))
         if args.guard:
             saved = policy.snapshot(), copy.deepcopy(method.opt.state_dict())
         info = method.update(groups, sess.plain["train"])

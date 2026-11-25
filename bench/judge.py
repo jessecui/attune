@@ -172,7 +172,63 @@ def content(grid, prefix="", scenario="data/advice.json"):
               f"adds something {add / n:.0%}")
 
 
+def compare(grid, scenario="data/advice.json"):
+    """Score each run's final answers to the test questions, grouped by the run name's prefix.
+
+    Works for any method, because it reads the answers and not the model's internals:
+    how many axes the answers sit on the side the simulated user wanted, how much better
+    they suit that user than the untouched model's, and what happened to the content.
+    """
+    import glob
+    from collections import defaultdict
+
+    from .personas import PERSONAS
+    sc = json.loads(Path(scenario).read_text())
+    feature = {m["axis"]: m["feature"] for m in sc["menu"]}
+    cache_file = Path(f"results/judge/{grid}_compare.json")
+    cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
+    runs = [json.loads(Path(f).read_text()) for f in sorted(glob.glob(f"results/modal/{grid}/*.json"))
+            if not f.endswith("calls.json")]
+    runs = [d for d in runs if "rounds" in d]
+    need = {}
+    for d in runs:
+        for texts in (d["base"]["texts"], d["rounds"][-1]["texts"]):
+            for it, t in zip(sc[d["args"]["eval_split"]], texts):
+                need.setdefault(it["q"] + "|" + t, (it["q"], it["facts"], t))
+    todo = [k for k in need if k not in cache]
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    for start in range(0, len(todo), 40):
+        chunk = todo[start:start + 40]
+        for k, v in zip(chunk, judge_many([need[k] for k in chunk])):
+            cache[k] = v
+        cache_file.write_text(json.dumps(cache))
+    agg = defaultdict(lambda: defaultdict(list))
+    for d in runs:
+        signs = PERSONAS[d["args"]["persona"]].signs
+        wants = {a: signs[feature[a]] for a in AXES}
+        items = sc[d["args"]["eval_split"]]
+
+        def summary(texts):
+            vs = [cache[it["q"] + "|" + t] for it, t in zip(items, texts)]
+            n = len(vs)
+            return {"axes": sum((sum(v[a] for v in vs) / n - 3) * w > 0 for a, w in wants.items()),
+                    "suit": sum(style_score(v, wants) for v in vs) / n,
+                    "facts": sum(sum(v["facts_covered"]) / len(v["facts_covered"]) for v in vs) / n,
+                    "adds": sum(bool(v["added"]) for v in vs) / n}
+        tag = d["name"].rsplit("_", 3)[0]
+        for name, texts in (("untouched model", d["base"]["texts"]), (tag, d["rounds"][-1]["texts"])):
+            for k, v in summary(texts).items():
+                agg[name][k].append(v)
+    print(f"{grid}: {len(runs)} runs, {len(need)} answers judged ({len(todo)} new)")
+    print(f"  {'':18} runs | axes on the wanted side (of 4) | suits the user (-8 to 8) | facts covered | adds something")
+    for name, a in agg.items():
+        m = {k: sum(v) / len(v) for k, v in a.items()}
+        print(f"  {name:18} {len(a['axes']):4} | {m['axes']:30.2f} | {m['suit']:24.2f} | {m['facts']:13.2f} | {m['adds']:.0%}")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["compare"]:
+        compare(*sys.argv[2:])
     if sys.argv[1:2] == ["content"]:
         content(*sys.argv[2:])
 

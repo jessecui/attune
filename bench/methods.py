@@ -16,11 +16,13 @@ import torch.nn.functional as F
 class Group:
     """One ranked round: prompt (unsteered), candidates, and their preference order."""
 
-    def __init__(self, prompt, completions, order, ref_logp, feats, liked=None, segments=None, rewards=None):
+    def __init__(self, prompt, completions, order, ref_logp, feats, liked=None, segments=None, rewards=None,
+                 bestworst=False):
         self.prompt = prompt
         self.completions = completions
         self.order = order            # indices, best first
         self.liked = liked            # indices the user picked, when feedback is "pick"
+        self.bestworst = bestworst    # the user only marked a favourite and a least favourite
         # Optional: per candidate, the (prompt, completion) pieces that make up its output,
         # for policies that act in more than one step.
         self.segments = segments
@@ -30,6 +32,9 @@ class Group:
 
     def pairs(self):
         """(preferred, less preferred) index pairs implied by the feedback."""
+        if self.bestworst:  # best beats every other; every other beats worst; the middle is unordered
+            best, worst, middle = self.order[0], self.order[-1], self.order[1:-1]
+            return [(best, i) for i in middle + [worst]] + [(i, worst) for i in middle]
         if self.liked is not None:  # picked beats not picked; no order within either set
             rest = [i for i in self.order if i not in self.liked]
             return [(w, l) for w in self.liked for l in rest]
