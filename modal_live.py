@@ -161,16 +161,19 @@ class Live:
         from bench.personas import WARM_PHRASES, features
 
         R, n_styles = self.R, len(self.R.STYLES)
-        prompts = self.sess.styled["heldout"]
-        lean, firsts = {a: 0.0 for a in AXES}, []
+        # The style choice is read on three of the unseen questions (it is the slow part, and it is
+        # no longer what the page plots); the style favoured across them is used for every answer.
+        prompts = self.sess.styled["heldout"][:3]
+        lean, total = {a: 0.0 for a in AXES}, 0
         for j, p in enumerate(prompts):
             lp = self.sess.style_logp(p)
-            firsts.append(int(lp.argmax()))
+            total = total + lp
             for a in AXES:
                 m = torch.tensor(R.AXES[a])
                 # log-odds of the axis's first option over its second
                 lean[a] += (torch.logsumexp(lp[m], 0) - torch.logsumexp(lp[~m], 0)).item() / len(prompts)
         items = self.scenario["heldout"]
+        firsts = [int(total.argmax())] * len(items)
         if plain is None:
             # One answer per unseen question, each in the style the model now favours for it.
             outs = self.policy.generate([self.sess.answer_prompt(it, f) for it, f in zip(items, firsts)],
