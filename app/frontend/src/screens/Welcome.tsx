@@ -50,7 +50,7 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
       </section>
 
       <aside className="sheet self-start p-8">
-        <p className="eyebrow leading-relaxed">What the model learns about your communication style</p>
+        <p className="eyebrow">What the model learns about you</p>
         <ul className="mt-6 space-y-6">
           {SCALES.map(([key, low, high]) => (
             <li key={key}>
