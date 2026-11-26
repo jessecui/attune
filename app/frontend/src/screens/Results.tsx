@@ -98,20 +98,24 @@ function TryBox({ session }: { session: string }) {
     } catch (err) { setError((err as Error).message) } finally { setBusy('') }
   }
   return (
-    <section className="panel" aria-labelledby="try">
-      <h2 id="try" className="panel-title border-b border-gray-200 px-4 py-3">Try your model</h2>
+    // The one interactive panel on the page, so it is set apart: a teal edge and a tinted header.
+    <section className="panel overflow-hidden border-teal-600/50" aria-labelledby="try">
+      <div className="border-b border-teal-600/20 bg-teal-50 px-4 py-3">
+        <h2 id="try" className="text-sm font-semibold text-teal-900">Try your model</h2>
+        <p className="mt-0.5 text-xs text-teal-800">Ask a question of your own and compare the two answers.</p>
+      </div>
       <div className="p-4">
         <form onSubmit={ask} className="flex gap-2">
           <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} disabled={!!busy} aria-label="Your question"
-            placeholder="Ask it a question of your own" autoComplete="off"
-            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
+            placeholder="Type a question" autoComplete="off"
+            className="min-w-0 flex-1 rounded-md border border-gray-300 bg-surface px-3 py-2.5 text-[15px] focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
           <button className="btn btn-primary shrink-0" disabled={!!busy || question.trim().length < 5}>
             {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing answers'}</> : 'Ask'}
           </button>
         </form>
         {error && <p role="alert" className="mt-3 text-red-700">{error}</p>}
         {answer && (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2">
             <div><p className="hint">Standard model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-600">{answer.before}</p></div>
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
