@@ -8,3 +8,4 @@ results/
 node_modules/
 app/frontend/dist/
 *.tsbuildinfo
+.env

@@ -7,3 +7,4 @@ app/frontend/dist
 .live_key
 .judge_key
 __pycache__
+**/.env

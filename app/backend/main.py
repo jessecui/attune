@@ -6,8 +6,8 @@ GPU endpoint is never exposed to visitors.
     uvicorn main:app --reload --port 8787        # from app/backend, with the env vars below
 
 Environment:
-    ATTUNE_PASSWORD     the password visitors type (required)
-    ATTUNE_SECRET       signs the session cookie (set it in production; random per start otherwise)
+    CREATOR_NAME        the name the access prompt asks for (required); matched ignoring case and spaces
+    ATTUNE_SECRET       signs the session cookie (optional; derived from the other settings if unset)
     ATTUNE_MODAL_URL    the live session service, e.g. https://...-live-web.modal.run
     ATTUNE_FILES_URL    the download service, e.g. https://...-files.modal.run
     ATTUNE_MODAL_KEY    the key both Modal services expect
@@ -19,7 +19,6 @@ import hmac
 import json
 import math
 import os
-import secrets
 import time
 import uuid
 from pathlib import Path
@@ -30,12 +29,19 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-PASSWORD = os.environ.get("ATTUNE_PASSWORD", "")
-SECRET = os.environ.get("ATTUNE_SECRET") or secrets.token_hex(32)
+def normalise(name: str) -> str:
+    """A name with case and all whitespace removed, so "Ada Lovelace", "ada lovelace" and " ADALOVELACE " match."""
+    return "".join(name.split()).casefold()
+
+
+CREATOR = normalise(os.environ.get("CREATOR_NAME", ""))
 MODAL_URL = os.environ.get("ATTUNE_MODAL_URL", "").rstrip("/")
 FILES_URL = os.environ.get("ATTUNE_FILES_URL", "").rstrip("/")
 MODAL_KEY = os.environ.get("ATTUNE_MODAL_KEY", "")
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
+# The cookie-signing secret. If none is set it is derived from the name and the GPU key, so it
+# survives restarts and changing either signs everyone out.
+SECRET = os.environ.get("ATTUNE_SECRET") or hashlib.sha256(f"attune-session|{CREATOR}|{MODAL_KEY}".encode()).hexdigest()
 COOKIE, COOKIE_SECONDS = "attune_session", 12 * 3600
 # One session length keeps the app simple and matches what the benchmark tested. The GPU service
 # still accepts 10 for experiments.
@@ -64,16 +70,16 @@ def require(token: str | None):
 
 
 class Login(BaseModel):
-    password: str
+    answer: str
 
 
 @app.post("/api/login")
 def login(body: Login, request: Request, response: Response):
-    if not PASSWORD:
-        raise HTTPException(status_code=500, detail="ATTUNE_PASSWORD is not set on the server")
-    if not hmac.compare_digest(body.password.encode(), PASSWORD.encode()):
+    if not CREATOR:
+        raise HTTPException(status_code=500, detail="CREATOR_NAME is not set on the server")
+    if not hmac.compare_digest(normalise(body.answer).encode(), CREATOR.encode()):
         time.sleep(0.5)  # slow down guessing
-        raise HTTPException(status_code=401, detail="That password is not right")
+        raise HTTPException(status_code=401, detail="That name doesn't match. Please try again.")
     expires = int(time.time()) + COOKIE_SECONDS
     response.set_cookie(COOKIE, f"{expires}.{sign(expires)}", max_age=COOKIE_SECONDS, httponly=True,
                         samesite="lax", secure=request.url.scheme == "https")

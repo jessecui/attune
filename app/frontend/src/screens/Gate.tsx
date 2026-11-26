@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Logo } from '../components/Logo'
 import { api } from '../api'
 
-/** The password prompt, shown as a dialog over the start screen. */
+/** The access prompt, shown as a dialog over the start screen: it asks for the creator's name. */
 export function Gate({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false)
   const submit = async (e: FormEvent) => {
@@ -17,8 +17,8 @@ export function Gate({ onDone }: { onDone: () => void }) {
           <h1 id="gate-title" className="text-lg font-semibold text-gray-900">Attune</h1>
         </div>
         <p className="mt-3 text-gray-500">Train your own custom AI model.</p>
-        <label htmlFor="password" className="mt-5 block font-medium leading-snug text-gray-900">Each session runs on its own GPU, so access is by password.</label>
-        <input id="password" type="password" autoFocus autoComplete="current-password" placeholder="Password" value={password}
+        <label htmlFor="password" className="mt-5 block font-medium leading-snug text-gray-900">To continue, enter the name of this project's creator.</label>
+        <input id="password" type="text" autoFocus autoComplete="off" placeholder="Full name" value={password}
           onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error} aria-describedby={error ? 'gate-error' : undefined}
           className="mt-4 w-full rounded-md border border-gray-300 bg-surface px-3 py-2.5 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
         {error && <p id="gate-error" role="alert" className="mt-2 text-red-700">{error}</p>}

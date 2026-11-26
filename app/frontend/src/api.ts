@@ -28,7 +28,7 @@ async function request<T>(path: string, body?: unknown, method = body === undefi
 
 export const api = {
   me: () => request<Me>('/api/me'),
-  login: (password: string) => request<{ signed_in: boolean }>('/api/login', { password }),
+  login: (answer: string) => request<{ signed_in: boolean }>('/api/login', { answer }),
   logout: () => request('/api/logout', {}),
   prepare: (setting: string, rounds: number) => request<Draft>('/api/session/prepare', { setting, rounds }),
   start: (rounds: number, draft?: Draft) =>

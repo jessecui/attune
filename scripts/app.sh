@@ -4,7 +4,9 @@
 #   scripts/app.sh          uses the GPU service on Modal (costs GPU time while a session runs)
 #   scripts/app.sh mock     replays a recorded session: no GPU, no cost, for working on the page
 cd "$(dirname "$0")/.."
-export ATTUNE_PASSWORD="${ATTUNE_PASSWORD:-attune}"
+# Settings come from app/backend/.env (not in git): at least CREATOR_NAME, the name the access prompt asks for.
+if [ -f app/backend/.env ]; then set -a; source app/backend/.env; set +a; fi
+if [ -z "$CREATOR_NAME" ]; then echo "Set CREATOR_NAME in app/backend/.env (see app/backend/.env.example)."; exit 1; fi
 if [ "$1" = "mock" ]; then
   export ATTUNE_MOCK=1
 else
@@ -22,5 +24,5 @@ fi
 backend=$!
 # On exit, stop the backend and wait for it, so its last log lines print before the prompt returns.
 trap "kill $backend 2>/dev/null; wait $backend 2>/dev/null" EXIT
-echo "Password: $ATTUNE_PASSWORD   Open http://localhost:5180"
+echo "Open http://localhost:5180 (the access prompt asks for the creator's name)"
 cd app/frontend && npm run dev
