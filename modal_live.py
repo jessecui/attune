@@ -45,20 +45,58 @@ hf_cache = modal.Volume.from_name("attune-hf-cache", create_if_missing=True)
 adapters = modal.Volume.from_name("attune-adapters", create_if_missing=True)
 KEEP_ADAPTERS_SECONDS = 24 * 3600
 
-PACKAGE_README = """# Your Attune model
+PACKAGE_README = """YOUR ATTUNE MODEL
 
-This is a LoRA adapter for {base}, tuned on {date} in a {rounds}-round Attune session.
+Trained on {date} from your picks in a {rounds}-question Attune session.
 
-- `adapter_model.safetensors`, `adapter_config.json`: the adapter, in the standard PEFT format.
-- `attune.json`: your profile, the style the tuned model chose, and the prompt format it was tuned with.
-- `example.py`: loads the base model with your adapter and rewrites or answers a piece of text in your style.
 
-What was tuned: the model learned which of sixteen style combinations you preferred, and its
-wording within that style, from the answers you marked best and least. It was tuned on short
-pieces of advice written from a fact sheet, so that is where it will behave most like your session.
-The answers are a demonstration of style, not advice.
+WHAT'S IN THIS FOLDER
 
-Requirements: `pip install torch transformers peft`, and a GPU or Apple-silicon Mac with about 16 GB free.
+  adapter_model.safetensors, adapter_config.json
+      Your model's trained part: the changes from your session. It runs on top of
+      the standard {base} model, which the script downloads.
+  attune.json
+      Your results, and the settings your model was trained with.
+  example.py
+      A script that asks your model a question.
+
+
+WHAT YOU NEED
+
+  - A Mac with Apple silicon and at least 24 GB of memory, or a computer with a
+    graphics card that has at least 16 GB.
+  - Python 3.10 or later.
+  - About 16 GB of free disk space. The first run downloads the standard model
+    (about 15 GB).
+
+
+HOW TO RUN IT
+
+  1. Open a terminal in this folder.
+
+  2. Set up Python and install what the script needs (a few minutes):
+
+       python3 -m venv .venv
+       .venv/bin/pip install torch transformers peft accelerate
+
+  3. Ask your model a question:
+
+       .venv/bin/python example.py "How do I ask for a raise?"
+
+     The first run downloads the standard model before it answers. After that,
+     it takes about a minute to load each time. Close other large apps first.
+
+  On Windows, use .venv\\Scripts\\ in place of .venv/bin/.
+
+
+GOOD TO KNOW
+
+  - It was trained on short pieces of advice, so that is where it sounds most
+    like your session.
+  - It knows no more than the standard model. Its answers show a style; they can
+    be wrong and are not medical, legal or financial advice.
+  - To free the disk space afterwards, delete this folder:
+      ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct
 """
 
 PACKAGE_EXAMPLE = """\"\"\"Answer a question in your Attune style: python example.py "How do I ask for a raise?" \"\"\"
@@ -74,7 +112,7 @@ here = Path(__file__).parent
 meta = json.loads((here / "attune.json").read_text())
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 tok = AutoTokenizer.from_pretrained(meta["base_model"])
-base = AutoModelForCausalLM.from_pretrained(meta["base_model"], dtype=torch.bfloat16 if device == "cuda" else torch.float32)
+base = AutoModelForCausalLM.from_pretrained(meta["base_model"], dtype=torch.float32 if device == "cpu" else torch.bfloat16)  # 16-bit on a GPU or Mac: about 15 GB
 model = PeftModel.from_pretrained(base, str(here)).to(device).eval()
 
 question = sys.argv[1] if len(sys.argv) > 1 else "How do I ask for a raise?"
@@ -307,7 +345,7 @@ class Live:
                 "prompt_format": "Question, then the fact sheet if any, then 'Write your answer in this style:' "
                                  "followed by the style instructions as a bulleted list, all in the user turn."}
         (d / "attune.json").write_text(json.dumps(meta, indent=1))
-        (d / "README.md").write_text(PACKAGE_README.format(base=MODEL, date=meta["created"], rounds=s["rounds"]))
+        (d / "instructions.txt").write_text(PACKAGE_README.format(base=MODEL, date=meta["created"], rounds=s["rounds"]))
         (d / "example.py").write_text(PACKAGE_EXAMPLE)
         with zipfile.ZipFile(root / f"{s['id']}.zip.part", "w", zipfile.ZIP_STORED) as z:
             for f in sorted(d.iterdir()):
