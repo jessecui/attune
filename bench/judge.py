@@ -142,7 +142,7 @@ def content(grid, prefix="", scenario="data/advice.json"):
     """Judge the content of what a grid's sessions showed and produced, by round.
 
     Shown: the four answers of every round. Tuned: the model's answers to the test
-    questions before round one, after round five and at the end.
+    questions before round one, after round five (when the run is longer) and at the end.
     """
     import glob
     from collections import defaultdict
@@ -158,7 +158,11 @@ def content(grid, prefix="", scenario="data/advice.json"):
         for r in d["rounds"]:
             item = sc["train"][(r["round"] - 1) % len(sc["train"])]
             rows += [(d["name"], "shown", r["round"], item["q"], item["facts"], t) for t in r["candidates"]]
-        for rnd, texts in [(0, d["init"]["texts"]), (5, d["rounds"][4]["texts"]), (10, d["rounds"][-1]["texts"])]:
+        # Before round one: "init" for runs that log it (latent methods), else the untouched model's answers.
+        start = (d.get("init") or d["base"])["texts"]
+        last = len(d["rounds"])
+        points = [(0, start)] + ([(5, d["rounds"][4]["texts"])] if last > 5 else []) + [(last, d["rounds"][-1]["texts"])]
+        for rnd, texts in points:
             rows += [(d["name"], "tuned", rnd, it["q"], it["facts"], t) for it, t in zip(test, texts)]
     todo = [r for r in rows if r[3] + "|" + r[5] not in cache]
     cache_file.parent.mkdir(parents=True, exist_ok=True)

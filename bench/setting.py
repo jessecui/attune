@@ -51,8 +51,12 @@ class Draft(BaseModel):
     items: list[Item]
 
 
-def _ask(prompt, schema, model=MODEL):
-    """One structured Gemini call, trying each model in turn (see judge.py)."""
+def _ask(prompt, schema, model=MODEL, check=None):
+    """One structured Gemini call, trying each model in turn (see judge.py).
+
+    check, if given, raises on a reply that parsed but is unusable (say, too few items), so that
+    reply is retried and then passed to the next model like any other failure.
+    """
     c = client()
     config = GenerateContentConfig(system_instruction=SYSTEM, temperature=0.7, response_mime_type="application/json",
                                    response_schema=schema, thinking_config=ThinkingConfig(thinking_level="low"))
@@ -60,7 +64,10 @@ def _ask(prompt, schema, model=MODEL):
     for m in dict.fromkeys([model, *FALLBACKS]):
         for attempt in range(2):
             try:
-                return schema.model_validate_json(c.models.generate_content(model=m, contents=prompt, config=config).text)
+                out = schema.model_validate_json(c.models.generate_content(model=m, contents=prompt, config=config).text)
+                if check:
+                    check(out)
+                return out
             except Exception as e:  # noqa: BLE001 - any failure moves on; the caller falls back
                 last = e
                 time.sleep(1 + attempt)
@@ -74,9 +81,10 @@ def clean(text, limit):
 
 def draft(setting, n):
     """A Draft for the visitor's setting with n items, as a dict. Raises if Gemini is unavailable."""
-    d = _ask(f"The visitor's description: {clean(setting, 300)}\n\nNumber of items: {n}", Draft)
-    if d.suitable and len(d.items) < n:
-        raise RuntimeError("could not prepare the setting: too few questions came back")
+    def enough(d):
+        if d.suitable and len(d.items) < n:
+            raise ValueError("too few questions came back")
+    d = _ask(f"The visitor's description: {clean(setting, 300)}\n\nNumber of items: {n}", Draft, check=enough)
     return {"suitable": d.suitable, "reason": clean(d.reason, 300), "role": clean(d.role, 80),
             "items": [{"question": clean(i.question, 200), "points": [clean(p, 200) for p in i.points]}
                       for i in d.items[:n]]}
@@ -85,11 +93,13 @@ def draft(setting, n):
 def points_for(role, questions):
     """Fact sheets for questions the visitor wrote or edited: a Draft dict with one item per question."""
     listing = "\n".join(f"{i + 1}. {clean(q, 200)}" for i, q in enumerate(questions))
+
+    def same_count(d):
+        if d.suitable and len(d.items) != len(questions):
+            raise ValueError("the questions came back changed")
     d = _ask(f"The role is: {clean(role, 80)}\n\nUse exactly these questions, in this order, and write the two "
              f"points for each. If any question is unsuitable, mark the whole request unsuitable.\n{listing}\n\n"
-             f"Number of items: {len(questions)}", Draft)
-    if d.suitable and len(d.items) != len(questions):
-        raise RuntimeError("could not prepare the setting: the questions came back changed")
+             f"Number of items: {len(questions)}", Draft, check=same_count)
     return {"suitable": d.suitable, "reason": clean(d.reason, 300),
             "items": [{"question": clean(q, 200), "points": [clean(p, 200) for p in i.points]}
                       for q, i in zip(questions, d.items)]}

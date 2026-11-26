@@ -13,4 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/backend/ ./
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
 # exec so uvicorn is PID 1 and shuts down cleanly
-CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# --forwarded-allow-ips: trust the host's TLS proxy (Railway), so the app sees https and marks the cookie Secure
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --forwarded-allow-ips='*'"]

@@ -79,6 +79,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Decide what counts as a question the app accepts (requests for advice; the style menu does not fit trivia or creative writing) and what it declines.
 - [ ] Check that generated fact sheets are good enough: short, two distinct points, no risky specifics.
 - [x] Adapter download: packaged on Modal after the last round (adapter, profile, run script), kept for a day.
+- [ ] The downloaded `example.py` asks without a fact sheet, though every training prompt had one (the try box gets one from Gemini). It ran fine on the user's Mac; if answers drift out of role, let the script take optional points: `python example.py "question" "point 1" "point 2"`.
 - [x] Try the downloaded package on a real machine (2026-11-26, the user's 24 GB M4 Pro): it runs, but with VS Code and Chrome open it nearly froze the Mac. The instructions now say to quit large apps and that 32 GB runs comfortably.
 - Rule: never deploy while a session is in progress; a deploy drops it.
 

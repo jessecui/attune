@@ -99,6 +99,12 @@ def me(attune_session: str | None = Cookie(default=None)):
 
 # ---- the session: forwarded to Modal, or replayed from a recording in mock mode --------------
 
+def _relayed(code: int) -> int:
+    """The status to pass on for an error from Modal. Its 401/403 mean our key is wrong, which is a
+    server problem: passing them through would look like the visitor's sign-in had lapsed."""
+    return 502 if code >= 500 or code in (401, 403) else code
+
+
 async def modal(path: str, params: dict | None = None, body: dict | None = None):
     if not (MODAL_URL and MODAL_KEY):
         raise HTTPException(status_code=500, detail="The GPU service is not configured on the server")
@@ -110,7 +116,7 @@ async def modal(path: str, params: dict | None = None, body: dict | None = None)
         raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
     if r.status_code >= 400:
         detail = r.json().get("detail") if r.headers.get("content-type", "").startswith("application/json") else None
-        raise HTTPException(status_code=502 if r.status_code >= 500 else r.status_code,
+        raise HTTPException(status_code=_relayed(r.status_code),
                             detail=detail or "The GPU service returned an error")
     return r.json()
 
@@ -192,7 +198,7 @@ async def prepare(body: Prepare, attune_session: str | None = Cookie(default=Non
         raise HTTPException(status_code=502, detail=f"Could not reach the setting service ({type(e).__name__})")
     if r.status_code >= 400:
         detail = r.json().get("detail") if r.headers.get("content-type", "").startswith("application/json") else None
-        raise HTTPException(status_code=502 if r.status_code >= 500 else r.status_code,
+        raise HTTPException(status_code=_relayed(r.status_code),
                             detail=detail or "Could not prepare that setting")
     return r.json()
 
@@ -223,6 +229,11 @@ async def feedback(body: Feedback, attune_session: str | None = Cookie(default=N
         s = _mock_sessions.get(body.session)
         if s is None:
             raise HTTPException(status_code=404, detail="Session expired; start again")
+        # The same checks as the GPU service, so mock mode doesn't hide mistakes.
+        if s["round"] >= s["rounds"]:
+            raise HTTPException(status_code=400, detail="This session has finished")
+        if body.best == body.worst or not {body.best, body.worst} <= set(range(4)):
+            raise HTTPException(status_code=400, detail="Pick two different answers")
         await asyncio.sleep(0.4)
         s["round"] += 1
         return _mock_summary(s) if s["round"] >= s["rounds"] else _mock_round(s, s["round"] + 1)
@@ -272,10 +283,13 @@ async def model_status(session: str, attune_session: str | None = Cookie(default
         return {"ready": False, "mock": True}
     if not (FILES_URL and MODAL_KEY):
         return {"ready": False, "configured": False}
-    async with httpx.AsyncClient(timeout=60) as client:
-        async with client.stream("GET", f"{FILES_URL}/adapter/{session}", params={"key": MODAL_KEY}) as r:
-            size = r.headers.get("content-length")
-            return {"ready": r.status_code == 200, "bytes": int(size) if size and r.status_code == 200 else None}
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            async with client.stream("GET", f"{FILES_URL}/adapter/{session}", params={"key": MODAL_KEY}) as r:
+                size = r.headers.get("content-length")
+                return {"ready": r.status_code == 200, "bytes": int(size) if size and r.status_code == 200 else None}
+    except httpx.HTTPError:
+        return {"ready": False, "bytes": None}  # a network hiccup: the page asks again shortly
 
 
 @app.get("/api/session/{session}/model")
@@ -285,8 +299,12 @@ async def model_download(session: str, attune_session: str | None = Cookie(defau
     if MOCK or not (FILES_URL and MODAL_KEY):
         raise HTTPException(status_code=404, detail="Downloads are not available in this mode")
     client = httpx.AsyncClient(timeout=None)
-    r = await client.send(client.build_request("GET", f"{FILES_URL}/adapter/{session}", params={"key": MODAL_KEY}),
-                          stream=True)
+    try:
+        r = await client.send(client.build_request("GET", f"{FILES_URL}/adapter/{session}", params={"key": MODAL_KEY}),
+                              stream=True)
+    except httpx.HTTPError as e:
+        await client.aclose()
+        raise HTTPException(status_code=502, detail=f"Could not reach the download service ({type(e).__name__})")
     if r.status_code != 200:
         await r.aclose()
         await client.aclose()
@@ -312,7 +330,16 @@ DIST = Path(__file__).parent.parent / "frontend" / "dist"
 if DIST.exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 
+    ROOT = DIST.resolve()
+
     @app.get("/{path:path}")
     def spa(path: str):
-        target = DIST / path
-        return FileResponse(target if path and target.is_file() else DIST / "index.html")
+        if path.startswith("api/"):   # a mistyped or retired API route: say so, not the page
+            raise HTTPException(status_code=404, detail="Not found")
+        # Only files inside dist; anything else (including "../" tricks) gets the page itself.
+        try:
+            target = (ROOT / path).resolve()
+            ok = bool(path) and target.is_relative_to(ROOT) and target.is_file()
+        except (ValueError, OSError):   # a NUL byte, or a name too long for the file system
+            ok = False
+        return FileResponse(target if ok else ROOT / "index.html")

@@ -136,7 +136,7 @@ function ModelCard({ session, mock }: { session: string; mock: boolean }) {
   const [status, setStatus] = useState<ModelStatus | null>(null), [gaveUp, setGaveUp] = useState(false)
   useEffect(() => {
     if (mock) return
-    let stop = false, tries = 0
+    let stop = false, tries = 0, timer: ReturnType<typeof setTimeout> | undefined
     const check = async () => {
       try {
         const s = await api.modelStatus(session)
@@ -144,11 +144,12 @@ function ModelCard({ session, mock }: { session: string; mock: boolean }) {
         setStatus(s)
         if (s.ready || s.configured === false) return
       } catch { /* keep trying */ }
+      if (stop) return
       if (++tries >= 30) return setGaveUp(true)   // about two minutes
-      setTimeout(check, 4000)
+      timer = setTimeout(check, 4000)
     }
     check()
-    return () => { stop = true }
+    return () => { stop = true; clearTimeout(timer) }
   }, [session, mock])
 
   const megabytes = status?.bytes ? `${Math.round(status.bytes / 1e6)} MB` : null

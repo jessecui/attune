@@ -53,7 +53,10 @@ export default function App() {
       {stage.name === 'starting' && <Starting />}
       {stage.name === 'round' && (
         <RoundScreen key={stage.round.round} round={stage.round} onExpired={expired}
-          onNext={(next) => setStage('done' in next ? { name: 'results', summary: next } : { name: 'round', round: next })} />
+          onNext={(next) => setStage((now) =>
+            // A reply for a session the visitor has since left (gone home, or started another) is dropped.
+            now.name !== 'round' || now.round.session !== next.session ? now
+              : 'done' in next ? { name: 'results', summary: next } : { name: 'round', round: next })} />
       )}
       {stage.name === 'results' && <Results summary={stage.summary} mock={!!me?.mock} onAgain={() => setStage({ name: 'welcome' })} />}
     </Shell>

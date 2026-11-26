@@ -27,7 +27,7 @@ Benchmarked with simulated users played by the judge model (each given a fixed s
 | GRPO against the untouched model | **91%** answer-level win rate (104 wins, 11 ties, 5 losses) |
 | GRPO against DPO, 28 matched runs | **57%** win rate (124 wins, 73 ties, 83 losses); scales on the wanted side 88% against 80% |
 | Answers adding advice not on the fact sheet | 14% for GRPO, 28% for DPO (**51% fewer**) |
-| Run-to-run variance | 31% lower for GRPO |
+| Run-to-run variance in scales learned | 31% lower for GRPO |
 
 Ties count as half a win. On the four standard simulated users the two methods tie; GRPO's lead comes from users who care about only two scales or pick at random part of the time. DPO, which trains on the text directly, follows a preference the menu has no scale for (shorter answers) further. Every run and setting is recorded in [`TODO.md`](TODO.md).
 

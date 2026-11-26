@@ -16,6 +16,7 @@ import argparse
 import copy
 import json
 import random
+import sys
 import re
 import time
 from pathlib import Path
@@ -232,6 +233,7 @@ class Session:
                 same = [j for j in range(a.k) if any(alike(texts[j], texts[i]) for i in range(j))]
                 if not same:
                     break
+                before = {j: picks[j] for j in same}
                 if self.latent:
                     # Writing it again in the same style tends to give the same words, so move the
                     # repeat to a style that differs from every other one shown on two axes or more.
@@ -244,6 +246,8 @@ class Session:
                 for j, o, t in zip(same, fresh, fresh_texts):
                     if facts_retained(t, item["keys"]) >= a.min_facts:
                         answers[j], texts[j] = o, t
+                    else:
+                        picks[j] = before[j]  # the old answer stays, so it keeps the style it was written in
         if self.two_step:
             # Each candidate is two pieces of the policy's output: the style it chose
             # and the answer it wrote under that style.
@@ -405,6 +409,8 @@ def main(argv=None):
     scenario = json.loads(Path(args.scenario).read_text())
     # Probe questions for the guardrail: never the ones used for evaluation or for rounds.
     scenario["probe"] = scenario["heldout"][:5] if args.eval_split != "heldout" else scenario["train"][10:12]
+    if args.guard and not scenario["probe"]:
+        sys.exit("--guard needs probe questions: use --eval-split test, or a scenario with more than 10 training questions")
     scenario["heldout"] = scenario[args.eval_split]
     if args.heldout:
         scenario["heldout"] = scenario["heldout"][: args.heldout]

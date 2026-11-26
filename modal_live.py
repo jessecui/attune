@@ -8,9 +8,9 @@ page is served from the same app; the real interface will live elsewhere.
 Each round the page shows four short answers and the person marks the best and the
 worst. To hide the wait, the server works one round ahead: while the person reads
 round N, it applies their round N-1 feedback and then writes round N+1's answers.
-So a round's feedback first shapes the answers two rounds later. After every update
-the server records what the model now prefers and how it answers one fixed question,
-and the page charts that at the end.
+So a round's feedback first shapes the answers two rounds later. Nothing is measured
+between rounds: at the end the tuned model answers unseen questions and a judge model
+rates them (see _summary).
 """
 import secrets as pysecrets
 from pathlib import Path
@@ -215,7 +215,7 @@ class Live:
 
         from bench.personas import WARM_PHRASES, features
 
-        R, n_styles = self.R, len(self.R.STYLES)
+        R = self.R
         # The style choice is read on three of the unseen questions (it is the slow part, and it is
         # no longer what the page plots); the style favoured across them is used for every answer.
         sess = s["sess"]
@@ -264,11 +264,8 @@ class Live:
                                      "write_seconds": round(time.time() - t, 1)}}
 
     def _learn(self, s, n, best, worst):
-        """Apply round n's feedback, then record what the model now prefers."""
-        import time
-
+        """Apply round n's feedback to the session's adapter."""
         from bench.methods import Group
-        t = time.time()
         c = s["cands"].pop(n)
         rewards = [0.0] * K
         rewards[best], rewards[worst] = 1.0, -1.0
@@ -447,7 +444,7 @@ class Live:
                 scenario, role = scenario_from(body.draft, rounds)
                 builtin = False
             # Sessions a visitor walked away from are dropped after half an hour without activity.
-            for sid in [k for k, old in self.sessions.items() if time.time() - old["touched"] > 1800]:
+            for sid in [k for k, old in list(self.sessions.items()) if time.time() - old["touched"] > 1800]:
                 del self.sessions[sid]
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "touched": time.time(),
@@ -485,27 +482,34 @@ class Live:
                 raise HTTPException(status_code=400, detail="This session has finished")
             if fb.best == fb.worst or not {fb.best, fb.worst} <= set(range(K)):
                 raise HTTPException(status_code=400, detail="Pick two different answers")
-            t = time.time()
-            if s["thread"]:
-                s["thread"].join()  # wait for the work started after the previous round
-            if s["error"]:
-                raise HTTPException(status_code=500, detail=s["error"])
-            n = s["round"] = s["round"] + 1
-            if n < s["rounds"]:
-                payload = {**s["cands"][n + 1]["payload"], "waited_seconds": round(time.time() - t, 1)}
-                s["thread"] = threading.Thread(target=self._after, args=(s, n, fb.best, fb.worst))
-                s["thread"].start()
-                return payload
-            self._after(s, n, fb.best, fb.worst)  # last round: nothing left to hide the wait behind
-            if s["error"]:
-                raise HTTPException(status_code=500, detail=s["error"])
-            out = self._with(s, lambda: self._summary(s))
-            # The finished session stays (until it has been idle for half an hour, or the GPU shuts
-            # down) so the visitor can try their model on questions of their own.
-            s["finished"] = True
-            # Package the adapter in the background; the download appears a few seconds later.
-            threading.Thread(target=lambda: self._with(s, lambda: self._export(s, out))).start()
-            return {**out, "waited_seconds": round(time.time() - t, 1)}
+            # One answer at a time per session: a repeated submit would otherwise count as the next round.
+            busy = s.setdefault("busy", threading.Lock())
+            if not busy.acquire(blocking=False):
+                raise HTTPException(status_code=409, detail="Still working on your last answer")
+            try:
+                t = time.time()
+                if s["thread"]:
+                    s["thread"].join()  # wait for the work started after the previous round
+                if s["error"]:
+                    raise HTTPException(status_code=500, detail=s["error"])
+                n = s["round"] = s["round"] + 1
+                if n < s["rounds"]:
+                    payload = {**s["cands"][n + 1]["payload"], "waited_seconds": round(time.time() - t, 1)}
+                    s["thread"] = threading.Thread(target=self._after, args=(s, n, fb.best, fb.worst))
+                    s["thread"].start()
+                    return payload
+                self._after(s, n, fb.best, fb.worst)  # last round: nothing left to hide the wait behind
+                if s["error"]:
+                    raise HTTPException(status_code=500, detail=s["error"])
+                out = self._with(s, lambda: self._summary(s))
+                # The finished session stays (until it has been idle for half an hour, or the GPU shuts
+                # down) so the visitor can try their model on questions of their own.
+                s["finished"] = True
+                # Package the adapter in the background; the download appears a few seconds later.
+                threading.Thread(target=lambda: self._with(s, lambda: self._export(s, out))).start()
+                return {**out, "waited_seconds": round(time.time() - t, 1)}
+            finally:
+                busy.release()
 
         class TryIn(BaseModel):
             session: str
