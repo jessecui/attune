@@ -63,8 +63,8 @@ WHAT'S IN THIS FOLDER
 
 WHAT YOU NEED
 
-  - A Mac with Apple silicon and at least 24 GB of memory, or a computer with a
-    graphics card that has at least 16 GB.
+  - A Mac with Apple silicon and at least 24 GB of memory (32 GB or more runs
+    comfortably), or a computer with a graphics card that has at least 16 GB.
   - Python 3.10 or later.
   - About 16 GB of free disk space. The first run downloads the standard model
     (about 15 GB).
@@ -79,12 +79,13 @@ HOW TO RUN IT
        python3 -m venv .venv
        .venv/bin/pip install torch transformers peft accelerate
 
-  3. Ask your model a question:
+  3. Quit your browser, code editors and other large apps first: with 24 GB of
+     memory, the model uses most of it. Then ask your model a question:
 
        .venv/bin/python example.py "How do I ask for a raise?"
 
      The first run downloads the standard model before it answers. After that,
-     it takes about a minute to load each time. Close other large apps first.
+     it takes about a minute to load each time.
 
   On Windows, use .venv\\Scripts\\ in place of .venv/bin/.
 
