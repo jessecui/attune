@@ -218,6 +218,19 @@ GRIDS = {
                                 ("short", lambda p: ["--prefer-short"])]
               for method, extra in [("grpo", SHIPPED), ("dpo", ["--method", "dpo", "--lr", "2e-5"])]
               for p in LIVE_PERSONAS for seed in (1, 2)],
+    # Rerun of the matched pairs after the sentence-cap fix (2026-11-26): styled answers had been cut at
+    # three sentences while plain ones (the standard model's, DPO's at evaluation) could use four.
+    # Score with `python -m bench.judge compare final4` and `python -m bench.judge users users4`.
+    "final4": [{"name": f"{tag}_{p}_s{seed}",
+                "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
+               for tag, extra in [("grpo", SHIPPED), ("dpo-lr2e-5", ["--method", "dpo", "--lr", "2e-5"])]
+               for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    "users4": [{"name": f"{kind}-{method}_{p}_s{seed}",
+                "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *how(p), *extra]}
+               for kind, how in [("two", lambda p: ["--care", CARE[p]]),
+                                 ("noisy", lambda p: ["--pick-noise", "0.25"])]
+               for method, extra in [("grpo", SHIPPED), ("dpo", ["--method", "dpo", "--lr", "2e-5"])]
+               for p in LIVE_PERSONAS for seed in (1, 2)],
     "main": grid("rank4", ["grpo_style", "dpo"]),
     "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
     "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),

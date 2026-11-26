@@ -58,6 +58,9 @@ def widen_menu():
 STYLE_CLAUSES = STYLE_CAPS = None  # per style: its instructions one by one, and its sentence cap
 
 
+NO_CAP = 99  # a style with no sentence cap of its own
+
+
 def use_menu(menu, axes):
     """Build the style menu from the named axes of a scenario's own menu definition."""
     global STYLES, AXES, STYLE_CLAUSES, STYLE_CAPS
@@ -65,11 +68,12 @@ def use_menu(menu, axes):
     assert len(chosen) == len(axes), f"unknown axis in {axes}"
     combos = [[]]  # each style is one (axis, option index, instruction, sentence cap) per axis
     for m in chosen:
-        combos = [c + [(m["axis"], i, o[1], o[2] if len(o) > 2 else 3)]
+        combos = [c + [(m["axis"], i, o[1], o[2] if len(o) > 2 else NO_CAP)]
                   for c in combos for i, o in enumerate(m["options"])]
     STYLES = [" ".join(t for _, _, t, _ in c) for c in combos]
     STYLE_CLAUSES = [[t for _, _, t, _ in c] for c in combos]
-    # An option may set its own sentence cap (e.g. "one sentence"); otherwise three.
+    # An option may set its own sentence cap (e.g. "one sentence"); otherwise only the overall limit
+    # (--max-sentences) applies, the same as for answers written without a style.
     STYLE_CAPS = [min(cap for *_, cap in c) for c in combos]
     # p_<axis> is the probability of that axis's first option
     AXES = {m["axis"]: [c[j][1] == 0 for c in combos] for j, m in enumerate(chosen)}
