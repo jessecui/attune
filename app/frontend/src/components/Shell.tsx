@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { Logo } from './Logo'
 
 /** The frame around every screen: a compact header, the page, and the standing note. */
-export function Shell({ children, mock, progress, onHome, onSignOut }:
-  { children: ReactNode; mock: boolean; progress?: { at: number; of: number }; onHome: () => void; onSignOut?: () => void }) {
+export function Shell({ children, mock, progress, onHome }:
+  { children: ReactNode; mock: boolean; progress?: { at: number; of: number }; onHome: () => void }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-gray-200 bg-white">
@@ -17,7 +17,6 @@ export function Shell({ children, mock, progress, onHome, onSignOut }:
           <div className="ml-auto flex items-center gap-4">
             {mock && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Demo data</span>}
             {progress && <span className="text-gray-600">Question {progress.at} of {progress.of}</span>}
-            {onSignOut && <button className="text-gray-500 hover:text-gray-900" onClick={onSignOut}>Sign out</button>}
           </div>
         </div>
         {progress && (

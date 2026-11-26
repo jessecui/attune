@@ -41,11 +41,10 @@ export default function App() {
   }
   // A lapsed sign-in sends the visitor back to the password screen.
   const expired = (e: unknown) => (e as { status?: number }).status === 401 && (setStage({ name: 'gate' }), true)
-  const signOut = () => api.logout().finally(() => setStage({ name: 'gate' }))
 
   const progress = stage.name === 'round' ? { at: stage.round.round, of: stage.round.rounds } : undefined
   return (
-    <Shell mock={!!me?.mock} progress={progress} onHome={goHome} onSignOut={stage.name !== 'gate' && stage.name !== 'loading' ? signOut : undefined}>
+    <Shell mock={!!me?.mock} progress={progress} onHome={goHome}>
       {/* The password prompt sits over the start screen, which is inert until sign-in. */}
       {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [5, 10]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
       {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [5, 10]} error={stage.error} onStart={(r) => begin(r)}
