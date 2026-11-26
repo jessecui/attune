@@ -24,7 +24,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
   return (
     <div className="mx-auto max-w-2xl pt-10 text-center sm:pt-20">
       <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train your own custom AI model</h1>
-      <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-gray-500">
+      <p className="mx-auto mt-4 max-w-xl text-balance text-lg leading-relaxed text-gray-500">
         Most AI models are tuned for the average person. Pick a situation and train one that speaks to you the way you like.
       </p>
 
