@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { api, AXIS_NOTES, axisColor, type Draft } from '../api'
+import { api, type Draft } from '../api'
 import { Spinner } from '../components/Spinner'
 
-const SCALES = ['warmth', 'directiveness', 'formality', 'depth']
 const EXAMPLES = ['My doctor explaining my test results', 'My tutor helping me study for a test', 'My manager giving me feedback', 'A financial adviser helping me save']
 
 /** The start screen: one question to the visitor, with the rest kept to a line each. */
@@ -25,9 +24,8 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
   return (
     <div className="mx-auto max-w-2xl pt-10 text-center sm:pt-20">
       <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train your own personal AI model</h1>
-      <p className="mx-auto mt-4 max-w-lg text-lg leading-relaxed text-gray-500">
+      <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-gray-500">
         Most AI models are tuned for the average person. Train one that knows how you like to be spoken to.
-        It takes a few minutes, and you can download your model at the end.
       </p>
 
       <form onSubmit={prepare} className="mt-10">
@@ -49,12 +47,6 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
         </div>
         {problem && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-red-800">{problem}</p>}
       </form>
-
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-gray-500">
-        {SCALES.map((key) => (
-          <span key={key} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: axisColor(key) }} aria-hidden />{AXIS_NOTES[key].title}</span>
-        ))}
-      </div>
     </div>
   )
 }
