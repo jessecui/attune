@@ -62,8 +62,12 @@ class Policy:
         return ids.to(self.device), mask.to(self.device)
 
     @torch.no_grad()
-    def generate(self, prompts, max_new_tokens=200, temperature=0.0, top_p=1.0, use_adapter=True):
-        """Completions as token-id lists; each ends with EOS if the model finished."""
+    def generate(self, prompts, max_new_tokens=200, temperature=0.0, top_p=1.0, use_adapter=True, adapters=None):
+        """Completions as token-id lists; each ends with EOS if the model finished.
+
+        adapters: optionally one entry per prompt, True to use the adapter and False for the
+        untouched model, so both can be written in a single pass.
+        """
         ids, mask = self._pad(prompts, "left")
         kwargs = dict(input_ids=ids, attention_mask=mask, max_new_tokens=max_new_tokens,
                       pad_token_id=self.pad_id, eos_token_id=self.eos_id,
@@ -72,7 +76,10 @@ class Policy:
             kwargs.update(do_sample=True, temperature=temperature, top_p=top_p)
         else:
             kwargs.update(do_sample=False, temperature=None, top_p=None)
-        if use_adapter:
+        if adapters is not None:
+            # PEFT's mixed-batch inference: "__base__" switches the adapter off for that row.
+            out = self.model.generate(**kwargs, adapter_names=["default" if a else "__base__" for a in adapters])
+        elif use_adapter:
             out = self.model.generate(**kwargs)
         else:
             with self.model.disable_adapter():

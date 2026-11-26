@@ -35,7 +35,8 @@ export const api = {
     request<Round>('/api/session/start', draft ? { rounds, draft: { role: draft.role, items: draft.items, measure: draft.measure } } : { rounds }),
   feedback: (session: string, best: number, worst: number) =>
     request<Round | Summary>('/api/session/feedback', { session, best, worst }),
-  tryModel: (session: string, question: string) => request<Example>(`/api/session/${session}/try`, { question }),
+  tryPrepare: (session: string, question: string) => request<{ prepared: boolean }>(`/api/session/${session}/try/prepare`, { question }),
+  tryAnswer: (session: string, question: string) => request<Example>(`/api/session/${session}/try/answer`, { question }),
   modelStatus: (session: string) => request<ModelStatus>(`/api/session/${session}/model/status`),
   modelUrl: (session: string) => `/api/session/${session}/model`,
 }

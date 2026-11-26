@@ -84,24 +84,30 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
 /** Ask the model anything: the standard model's answer beside the one just trained. Works while
  *  the session's GPU is still up, which is about five minutes after its last use. */
 function TryBox({ session }: { session: string }) {
-  const [question, setQuestion] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('')
+  // busy holds the step in progress, so the button can say which one it is waiting on
+  const [question, setQuestion] = useState(''), [busy, setBusy] = useState<'' | 'preparing' | 'writing'>(''), [error, setError] = useState('')
   const [answer, setAnswer] = useState<Example | null>(null)
   const ask = async (e: FormEvent) => {
     e.preventDefault()
     if (question.trim().length < 5) return
-    setBusy(true); setError('')
-    try { setAnswer(await api.tryModel(session, question.trim())) }
-    catch (err) { setError((err as Error).message) } finally { setBusy(false) }
+    setBusy('preparing'); setError('')
+    try {
+      await api.tryPrepare(session, question.trim())
+      setBusy('writing')
+      setAnswer(await api.tryAnswer(session, question.trim()))
+    } catch (err) { setError((err as Error).message) } finally { setBusy('') }
   }
   return (
     <section className="panel" aria-labelledby="try">
       <h2 id="try" className="panel-title border-b border-gray-200 px-4 py-3">Try your model</h2>
       <div className="p-4">
         <form onSubmit={ask} className="flex gap-2">
-          <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} disabled={busy} aria-label="Your question"
+          <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} disabled={!!busy} aria-label="Your question"
             placeholder="Ask it a question of your own" autoComplete="off"
             className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
-          <button className="btn btn-primary shrink-0" disabled={busy || question.trim().length < 5}>{busy ? <><Spinner />Answering</> : 'Ask'}</button>
+          <button className="btn btn-primary shrink-0" disabled={!!busy || question.trim().length < 5}>
+            {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing both answers'}</> : 'Ask'}
+          </button>
         </form>
         {error && <p role="alert" className="mt-3 text-red-700">{error}</p>}
         {answer && (

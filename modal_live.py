@@ -277,8 +277,14 @@ class Live:
         """
         sess, style = s["sess"], s["favoured"]
         plain = self.policy.prompt_ids(s["scenario"]["system"], self.R.user_message(item))
-        base = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, use_adapter=False, **SHOWN)
-        tuned = self.policy.generate([sess.answer_prompt(item, style)], max_new_tokens=self.args.max_new_tokens, **SHOWN)
+        styled = sess.answer_prompt(item, style)
+        try:   # both answers in one pass on the GPU
+            base, tuned = ([o] for o in self.policy.generate([plain, styled], max_new_tokens=self.args.max_new_tokens,
+                                                              adapters=[False, True], **SHOWN))
+        except Exception as e:  # noqa: BLE001 - fall back to one after the other
+            print(f"mixed batch failed, writing in turn: {e}", flush=True)
+            base = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, use_adapter=False, **SHOWN)
+            tuned = self.policy.generate([styled], max_new_tokens=self.args.max_new_tokens, **SHOWN)
         return {"question": item["q"], "before": sess.finish(base, items=[item])[1][0],
                 "after": sess.finish(tuned, [style], [item])[1][0]}
 
@@ -466,27 +472,51 @@ class Live:
             session: str
             question: str
 
-        @api.post("/api/try")
-        def try_model(body: TryIn, key: str = ""):
-            check(key)
-            s = self.sessions.get(body.session)
+        def finished(session):
+            s = self.sessions.get(session)
             if s is None or not s.get("finished"):
                 raise HTTPException(status_code=404, detail="This model is no longer loaded. Train another to try more questions.")
-            question = " ".join(body.question.split())[:300]
+            s["touched"] = time.time()
+            return s
+
+        def prepare_question(s, question):
+            """A fact sheet for the visitor's question (no GPU needed), as for every other question in
+            the app: without one the two models give different advice, and the tuned model, which
+            was trained on fact sheets, drifts out of its role."""
+            from bench import setting
+            question = " ".join(question.split())[:300]
             if len(question) < 5:
                 raise HTTPException(status_code=400, detail="Type a question first")
-            s["touched"] = time.time()
-            # A fact sheet for the question first (no GPU needed), as for every other question in the
-            # app: without one the two models give different advice, and the tuned model, which was
-            # trained on fact sheets, drifts out of its role.
-            from bench import setting
             try:
                 written = setting.points_for(s["role"], [question])
             except Exception:  # noqa: BLE001
                 raise HTTPException(status_code=502, detail="Could not prepare that question just now. Try again.")
             if not written["suitable"]:
                 raise HTTPException(status_code=400, detail=written["reason"] or "That question is not suitable")
-            item = setting.scenario_item(written["items"][0])
+            return setting.scenario_item(written["items"][0])
+
+        # The page calls these two in turn, so it can say which step it is waiting on.
+        @api.post("/api/try/prepare")
+        def try_prepare(body: TryIn, key: str = ""):
+            check(key)
+            s = finished(body.session)
+            s["try_item"] = prepare_question(s, body.question)
+            return {"prepared": True}
+
+        @api.post("/api/try/answer")
+        def try_answer(body: TryIn, key: str = ""):
+            check(key)
+            s = finished(body.session)
+            item = s.pop("try_item", None)
+            if item is None:
+                raise HTTPException(status_code=400, detail="Ask the question again")
+            return self._with(s, lambda: self._try(s, item))
+
+        @api.post("/api/try")   # both steps in one call
+        def try_model(body: TryIn, key: str = ""):
+            check(key)
+            s = finished(body.session)
+            item = prepare_question(s, body.question)
             return self._with(s, lambda: self._try(s, item))
 
         return api

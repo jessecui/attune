@@ -233,16 +233,27 @@ class Try(BaseModel):
     question: str
 
 
-@app.post("/api/session/{session}/try")
-async def try_model(session: str, body: Try, attune_session: str | None = Cookie(default=None)):
-    """A question of the visitor's own, answered by the standard model and by the model they just trained."""
+@app.post("/api/session/{session}/try/prepare")
+async def try_prepare(session: str, body: Try, attune_session: str | None = Cookie(default=None)):
+    """Step one of trying the model: a fact sheet is written for the visitor's question."""
+    require(attune_session)
+    _valid(session)
+    if MOCK:
+        await asyncio.sleep(0.8)
+        return {"prepared": True}
+    return await modal("/api/try/prepare", body={"session": session, "question": body.question})
+
+
+@app.post("/api/session/{session}/try/answer")
+async def try_answer(session: str, body: Try, attune_session: str | None = Cookie(default=None)):
+    """Step two: the standard model and the visitor's model both answer from that fact sheet."""
     require(attune_session)
     _valid(session)
     if MOCK:
         await asyncio.sleep(1.0)
         ex = _mock()["examples"][0]
         return {"question": body.question, "before": ex["before"], "after": ex["after"]}
-    return await modal("/api/try", body={"session": session, "question": body.question})
+    return await modal("/api/try/answer", body={"session": session, "question": body.question})
 
 
 # ---- the tuned model, as a download ----------------------------------------------------------
