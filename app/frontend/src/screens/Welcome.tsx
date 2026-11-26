@@ -31,7 +31,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
         <div className="relative mt-3">
           <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}
             placeholder="My doctor explaining my test results" autoComplete="off"
-            className="w-full rounded-xl border border-gray-200 bg-white py-4 pl-5 pr-32 text-base shadow-sm transition placeholder:text-gray-400 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
+            className="w-full rounded-xl border border-gray-200 bg-surface py-4 pl-5 pr-32 text-base shadow-sm transition placeholder:text-gray-400 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
           <button className="btn btn-primary absolute inset-y-2 right-2 rounded-lg px-5" disabled={busy || setting.trim().length < 3}>
             {busy ? <><Spinner />Writing</> : 'Start'}
           </button>
@@ -39,7 +39,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {EXAMPLES.map((ex) => (
             <button key={ex} type="button" disabled={busy} onClick={() => setSetting(ex)}
-              className="cursor-pointer rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600 transition hover:border-teal-600 hover:bg-teal-50 hover:text-teal-900 disabled:cursor-not-allowed">{ex}</button>
+              className="cursor-pointer rounded-full border border-gray-200 bg-surface px-3 py-1 text-xs text-gray-600 transition hover:border-teal-600 hover:bg-teal-50 hover:text-teal-900 disabled:cursor-not-allowed">{ex}</button>
           ))}
         </div>
         {problem && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-red-800">{problem}</p>}

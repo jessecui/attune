@@ -10,8 +10,8 @@ export function Gate({ onDone }: { onDone: () => void }) {
     try { await api.login(password); onDone() } catch (err) { setError((err as Error).message) } finally { setBusy(false) }
   }
   return (
-    <div className="fixed inset-0 z-10 grid place-items-center bg-gray-900/40 p-4">
-      <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="gate-title" className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-10 grid place-items-center bg-black/50 p-4">
+      <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="gate-title" className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
         <div className="flex items-center gap-2.5">
           <Logo />
           <h1 id="gate-title" className="text-lg font-semibold text-gray-900">Attune</h1>

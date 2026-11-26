@@ -2,8 +2,48 @@
 
 /* An understated tool: system type, a grey page, white bordered panels, one teal accent.
    Small text and plain controls; the only colour beyond the accent is one dot per scale. */
+/* Dark mode follows the "dark" class on <html>, set before first paint by the script in
+   index.html (the saved choice from the header toggle, else the system setting). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-page: #f6f7f9;      /* behind everything */
+  --color-surface: #ffffff;   /* panels, fields, the header */
+}
+
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
+/* The dark theme re-points the greys and tints the components already use, so each component is
+   written once. Greys run the other way (900 is the lightest text), and the pale teal and red
+   backgrounds become deep ones with light text on them. */
+.dark {
+  --color-page: #09090b;
+  --color-surface: #18181b;
+  --color-gray-50: #27272a;
+  --color-gray-100: #27272a;
+  --color-gray-200: #3f3f46;
+  --color-gray-300: #52525b;
+  --color-gray-400: #71717a;
+  --color-gray-500: #a1a1aa;
+  --color-gray-600: #d4d4d8;
+  --color-gray-700: #e4e4e7;
+  --color-gray-800: #e4e4e7;
+  --color-gray-900: #fafafa;
+  --color-teal-50: #10302d;
+  --color-teal-200: #115e59;
+  --color-teal-800: #5eead4;
+  --color-teal-900: #99f6e4;
+  --color-red-50: #2b1515;
+  --color-red-200: #7f1d1d;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+  /* the scale colours, a step lighter so they hold up on a dark surface */
+  --color-warmth: #f2835a;
+  --color-directiveness: #7b93f8;
+  --color-formality: #2dd4bf;
+  --color-depth: #cf8ae8;
 }
 
 /* One colour per scale, checked for colour-blind separation and always shown beside the scale's name. */
@@ -14,17 +54,17 @@
   --color-depth: #ae3ec9;
 }
 
-body { @apply bg-[#f6f7f9] text-sm text-gray-800 antialiased; }
+body { @apply bg-page text-sm text-gray-800 antialiased; }
 #root { @apply min-h-screen; }
 :focus-visible { outline: 2px solid var(--color-teal-600); outline-offset: 2px; border-radius: 4px; }
 
 @layer components {
-  .panel { @apply rounded-lg border border-gray-200 bg-white; }
+  .panel { @apply rounded-lg border border-gray-200 bg-surface; }
   .panel-title { @apply text-sm font-semibold text-gray-900; }
   .hint { @apply text-xs text-gray-500; }
   .btn { @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-transparent px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-primary { @apply bg-teal-700 text-white hover:bg-teal-800 disabled:hover:bg-teal-700; }
-  .btn-quiet { @apply border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50; }
+  .btn-primary { @apply bg-teal-700 text-white hover:bg-teal-600 disabled:hover:bg-teal-700; }
+  .btn-quiet { @apply border-gray-200 bg-surface text-gray-700 hover:border-gray-300 hover:bg-gray-50; }
 }
 
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(350%); } }

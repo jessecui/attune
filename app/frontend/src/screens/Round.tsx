@@ -53,7 +53,7 @@ export function RoundScreen({ round, onNext, onExpired }:
                 <button aria-pressed={best === i} disabled={busy} onClick={() => mark('best', i)}
                   className={`btn flex-1 py-1.5 ${best === i ? 'bg-teal-700 text-white' : 'btn-quiet'}`}>Best</button>
                 <button aria-pressed={worst === i} disabled={busy} onClick={() => mark('worst', i)}
-                  className={`btn flex-1 py-1.5 ${worst === i ? 'bg-gray-700 text-white' : 'btn-quiet'}`}>Worst</button>
+                  className={`btn flex-1 py-1.5 ${worst === i ? 'bg-slate-600 text-white' : 'btn-quiet'}`}>Worst</button>
               </div>
             </article>
           )

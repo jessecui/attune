@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Apply the theme before first paint so there is no light flash in dark mode: the saved
+      // choice from the header toggle, else the system setting. The key matches src/theme.ts.
+      (function () {
+        var saved = null;
+        try { saved = localStorage.getItem("attune:theme"); } catch (e) {}
+        var dark = saved === "dark" || (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) document.documentElement.classList.add("dark");
+      })();
+    </script>
     <title>Attune · Train your own custom AI model</title>
   </head>
   <body>

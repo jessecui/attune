@@ -118,7 +118,7 @@ function TryBox({ session }: { session: string }) {
 
 /** The key to the two markers on each scale. */
 const Marker = ({ hollow }: { hollow?: boolean }) => (
-  <span className={`mx-0.5 inline-block h-2.5 w-2.5 rounded-full align-[-1px] ${hollow ? 'border-2 border-gray-400 bg-white' : 'bg-gray-600'}`} aria-hidden />
+  <span className={`mx-0.5 inline-block h-2.5 w-2.5 rounded-full align-[-1px] ${hollow ? 'border-2 border-gray-400 bg-surface' : 'bg-gray-600'}`} aria-hidden />
 )
 
 /** The adapter tuned in this session, packaged a few seconds after the last question. */
