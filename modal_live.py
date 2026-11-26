@@ -473,7 +473,8 @@ class Live:
             self._with(s, lambda: self._open(s))
             self._with(s, lambda: self._write(s, 1))
             if rounds >= 2:  # get one round ahead straight away
-                s["thread"] = threading.Thread(target=self._background, args=(s, lambda: self._write(s, 2)))
+                s["thread"] = threading.Thread(target=self._background,
+                                               args=(s, lambda: self._with(s, lambda: self._write(s, 2))))
                 s["thread"].start()
             return s["cands"][1]["payload"]
 
