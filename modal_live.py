@@ -377,9 +377,11 @@ class Live:
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "scenario": scenario, "role": role, "builtin": builtin, "notice": None,
                  "cands": {}, "error": None, "thread": None,
-                 # The short session learns faster; the long one stays gentle, because ten rounds at the
-                 # higher rate over-commit and drift in wording (benchmark of 2026-11-25).
-                 "method": GRPOStyle(self.policy, lr=3e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,
+                 # 2e-5 for the five-question session: in the benchmark it kept nearly all of what 3e-5
+                 # learned (3.58 against 3.67 axes of 4) with the wording staying close to the standard
+                 # model's (drift 0.36 against 0.62), where 3e-5 settled on stock phrases in live sessions.
+                 # Ten rounds stay at 1e-5.
+                 "method": GRPOStyle(self.policy, lr=2e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,
                                      choice_clip=0.2)}
             self.sessions[s["id"]] = s
             self._with(s, lambda: self._open(s))
