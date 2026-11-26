@@ -163,7 +163,7 @@ function ModelCard({ session, mock }: { session: string; mock: boolean }) {
             : status?.ready ? <a className="btn btn-primary w-full" href={api.modelUrl(session)} download>Download{megabytes && ` (${megabytes})`}</a>
             : gaveUp ? <p className="text-red-700" role="alert">The model could not be packaged this time. Your results are unaffected.</p>
             : <button className="btn btn-primary w-full" disabled><Spinner />Packaging the model</button>}
-          <p className="hint mt-2">Available for a day. Running it needs a recent Mac or a computer with a graphics card.</p>
+          <p className="hint mt-2">Download it before you leave this page. Running it needs a recent Mac or a computer with a graphics card.</p>
         </div>
       </div>
     </section>
