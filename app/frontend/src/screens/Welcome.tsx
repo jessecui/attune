@@ -23,10 +23,10 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
 
   return (
     <div className="mx-auto max-w-2xl pt-10 text-center sm:pt-20">
-      <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train your own custom AI model</h1>
+      <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train a model</h1>
 
       <form onSubmit={prepare} className="mt-10">
-        <label htmlFor="setting" className="font-medium text-gray-900">Who is advising you? What about?</label>
+        <label htmlFor="setting" className="font-medium text-gray-900">Who is speaking to you? What about?</label>
         {/* One field with its button inside it */}
         <div className="relative mt-3">
           <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}

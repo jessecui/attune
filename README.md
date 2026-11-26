@@ -1,6 +1,6 @@
 # Attune
 
-Attune fine-tunes a 7B language model live on one person's feedback, so it learns how they like an adviser to speak to them. You say who is advising you and about what ("my doctor explaining my test results"), mark the best and worst of four answers to each of five questions, and get back a model trained on your picks, which you can download and run yourself.
+Attune fine-tunes a 7B language model live on one person's feedback, so it learns how they like an adviser to speak to them. You say who is speaking to you and about what ("my doctor explaining my test results"), mark the best and worst of four answers to each of five questions, and get back a model trained on your picks, which you can download and run yourself.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-round-dark.png">
@@ -151,7 +151,7 @@ Open http://localhost:5180. The backend runs on port 8787.
 
 ## Limits
 
-- Only advisers. A test with speakers who aren't advising (a student, a client) kept the styles but lost content, so the app asks who is advising you.
+- Advice only. A test with speakers who aren't advising (a student, a client) kept the styles but lost content, so the setting step treats every setting as advice and declines ones that aren't.
 - The judge rates style and content and has been spot-checked by eye, not against a full set of hand labels. It is loosest on depth, sometimes counting a short "to…" phrase as a reason. The live fact check before an answer is shown is keyword matching.
 - Results depend on how each style line is worded, and a tuned model can still settle on one opening phrase.
 - The answers demonstrate a style. They can be wrong and are not medical, legal or financial advice.
