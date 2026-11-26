@@ -156,15 +156,16 @@ function ModelCard({ session, mock }: { session: string; mock: boolean }) {
     <section className="panel" aria-labelledby="model">
       <h2 id="model" className="panel-title border-b border-gray-200 px-4 py-3">Your model</h2>
       <div className="p-4">
-        <p className="text-gray-600">Your own version of an open AI model with 7 billion parameters, trained on your picks. The download includes your results and everything needed to run it on your own computer.</p>
-        <p className="mt-3 text-gray-600">This model has only changed its communication style. It knows no more than the standard model and is no substitute for a professional.</p>
+        <p className="text-gray-600">You trained your own version of an open AI model with 7 billion parameters.</p>
+        <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-gray-700">Download it before you leave this page.</p>
         <div className="mt-4">
-          {mock ? <p className="hint">Downloads are switched off in demo mode.</p>
+          {mock ? <><button className="btn btn-primary w-full" disabled>Download</button><p className="hint mt-2">Downloads are switched off in demo mode.</p></>
             : status?.configured === false ? <p className="hint">Downloads are not set up on this server.</p>
             : status?.ready ? <a className="btn btn-primary w-full" href={api.modelUrl(session)} download>Download{megabytes && ` (${megabytes})`}</a>
             : gaveUp ? <p className="text-red-700" role="alert">The model could not be packaged this time. Your results are unaffected.</p>
             : <button className="btn btn-primary w-full" disabled><Spinner />Packaging the model</button>}
-          <p className="hint mt-2">Download it before you leave this page. Running it needs a recent Mac or a computer with a graphics card.</p>
+          <p className="hint mt-2">Includes your results and instructions to run it. Needs a recent Mac or a computer with a graphics card.</p>
+          <p className="hint mt-2">Your model has only changed its communication style. It knows no more than the standard model and is no substitute for a professional.</p>
         </div>
       </div>
     </section>
