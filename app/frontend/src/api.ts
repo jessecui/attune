@@ -56,10 +56,11 @@ export function read(a: Axis): Reading {
     const rating = a.written[a.written.length - 1], off = Math.abs(rating - 3)
     const side = rating >= 3 ? a.first : a.second, other = rating >= 3 ? a.second : a.first
     const moved = Math.abs(rating - a.written[0]) >= 0.5
+    const standard = (rating >= 3 ? a.written[0] : 6 - a.written[0]).toFixed(1)   // the standard model's rating for the same side
     return { side, other, strength: off < 0.5 ? 'none' : off < 1 ? 'leans' : 'clear', share: off / 2, position: (rating - 1) / 4, moved,
              // the standard model's rating on the same side, so "close" can be checked against the number
              detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${side}`
-               + (moved ? '.' : `, close to the standard model's ${(rating >= 3 ? a.written[0] : 6 - a.written[0]).toFixed(1)}.`) }
+               + (moved ? '.' : standard === (3 + off).toFixed(1) ? ', the same as the standard model.' : `, close to the standard model's ${standard}.`) }
   }
   const last = a.lean[a.lean.length - 1], prev = a.lean[a.lean.length - 2] ?? last
   const p = probability(last), share = Math.max(p, 1 - p)
