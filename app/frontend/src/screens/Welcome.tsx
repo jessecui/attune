@@ -45,11 +45,23 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
         <h1 className="text-lg font-semibold text-gray-900">Train your own personal AI model</h1>
         <p className="mt-2 max-w-2xl text-gray-600">
           Most AI models are tuned for the average person. This app trains one that knows how you like to be spoken to,
-          and you can download it at the end.
+          and you can download it at the end. It takes {rounds} questions and {minutes(rounds)}.
         </p>
+        <ol className="mt-4 space-y-2">
+          {[
+            ['Choose a setting', `Say who the model should be, such as your doctor or your manager. The app writes ${rounds} questions you might ask them.`],
+            ['Pick the best and worst', 'Each question gets four answers in different styles. The model trains on every pick.'],
+            ['See what changed', 'Compare your model with the standard one, then download it.'],
+          ].map(([title, text], i) => (
+            <li key={title} className="flex gap-3">
+              <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">{i + 1}</span>
+              <span><span className="font-medium text-gray-900">{title}.</span> <span className="text-gray-600">{text}</span></span>
+            </li>
+          ))}
+        </ol>
 
         <form onSubmit={prepare} className="mt-5 border-t border-gray-100 pt-4">
-          <label htmlFor="setting" className="font-medium text-gray-900">Who should the model be when it speaks to you, and about what?</label>
+          <label htmlFor="setting" className="font-medium text-gray-900">To start: who should the model be when it speaks to you, and about what?</label>
           <div className="mt-2 flex gap-2">
             <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}
               placeholder="e.g. My doctor, explaining test results" autoComplete="off"
@@ -81,9 +93,9 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
           </fieldset>
           )}
           <p className="hint mt-4">
-            You will pick the best and worst of four answers, {rounds} times, and the model trains on each pick. Takes {minutes(rounds)}.{' '}
+            Not sure what to type?{' '}
             <button type="button" className="underline underline-offset-2 hover:text-gray-900" disabled={busy} onClick={() => onStart(rounds)}>
-              Or use general everyday questions
+              Use general everyday questions instead
             </button>
           </p>
         </form>
