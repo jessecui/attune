@@ -1,8 +1,8 @@
 # Attune
 
-Attune tunes a small language model to the way one person likes to be spoken to. You say who the model should speak as (a doctor, a tutor, a manager), read four short answers to each of five questions, mark the best and the worst, and end up with a model that answers in your style, which you can download.
+Attune tunes a small language model to the way one person likes to be spoken to. You say who is advising you and about what (a doctor, a tutor, a manager), read four short answers to each of five questions, mark the best and the worst, and end up with a model that answers in your style, which you can download.
 
-**Status:** early. The training method, a benchmark with simulated users and a judge model, and a first version of the app exist. The app runs locally; it is not deployed yet.
+**Status:** the method is frozen and benchmarked, and the app runs locally against a GPU service on Modal. It is not deployed publicly yet.
 
 ## How it works
 
@@ -19,6 +19,18 @@ Each answer is written in a combination of styles from a fixed menu:
 - **Update:** GRPO, with your best and worst choices as the reward. The model first chooses a style, then writes the answer in it; both steps are trained.
 - **Content:** every question has a two-point fact sheet, written by hand for the built-in questions and by Gemini for a visitor's own setting. An answer missing a point is redrawn before you see it.
 - **Result:** at the end, a judge model (Gemini) rates the tuned model's answers to six unseen questions on each scale, beside the standard model's.
+
+## Results
+
+Benchmarked with simulated users played by the judge model, five feedback rounds per run, rated on six unseen questions.
+
+| Comparison | Result |
+|---|---|
+| GRPO against the untouched model | 91% answer-level win rate (104 wins, 11 ties, 5 losses) |
+| GRPO against DPO, 28 matched runs | 57% win rate (124 wins, 73 ties, 83 losses); scales right 88% against 80% |
+| Answers adding something not on the fact sheet | 14% for GRPO, 28% for DPO |
+
+Ties count as half a win. On the four standard simulated users the two methods tie; GRPO's lead comes from users who care about only two scales or pick at random part of the time. DPO follows a preference the menu has no scale for (shorter answers) further. Details and every run are in `TODO.md`.
 
 ## Layout
 
@@ -61,6 +73,7 @@ Open http://localhost:5180. The access prompt asks for the creator's name, set a
 
 ## Limits
 
-- The simulated users score answers with hand-written word lists, and the fact check is keyword matching.
+- The judge model rates style and content; it has not yet been checked against hand labels. The live fact check before an answer is shown is keyword matching.
+- Only advisers. A test with speakers who are not advising (a student, a client) kept the styles but lost content, so the app asks who is advising you.
 - Results depend on how each style is worded, and training can exaggerate a style late in a session.
 - The answers are a style demonstration, not advice.
