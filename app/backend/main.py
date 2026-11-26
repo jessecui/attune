@@ -106,6 +106,7 @@ def _forwarded(request: Request, header: str) -> str | None:
 
 def _address(request: Request) -> str:
     """The visitor's address: from the outermost trusted proxy, else the connection itself."""
+    topic: str = ""   # what the visitor wants to talk about; empty when they named only the role
     return _forwarded(request, "x-forwarded-for") or (request.client.host if request.client else "unknown")
 
 
@@ -240,7 +241,7 @@ async def prepare(body: Prepare, attune_session: str | None = Cookie(default=Non
     if MOCK:
         await asyncio.sleep(1.2)
         fx = _mock()
-        return {"suitable": True, "reason": "", "role": "an advisor (demo data ignores the setting)",
+        return {"suitable": True, "reason": "", "role": "an advisor (demo data ignores the setting)", "topic": "",
                 "items": [{"question": r["question"], "points": ["", ""]} for r in fx["rounds"][: body.rounds]],
                 "measure": [{"question": e["question"], "points": ["", ""]} for e in fx["examples"]] * 2}
     if not (FILES_URL and MODAL_KEY):

@@ -262,7 +262,8 @@ class Live:
         s["cands"][n] = {"answers": answers, "segments": segments,
                          "payload": {"session": s["id"], "round": n, "rounds": s["rounds"],
                                      "question": s["scenario"]["train"][i]["q"], "candidates": texts,
-                                     "role": s["role"], "builtin": s["builtin"], "notice": s["notice"],
+                                     "role": s["role"], "topic": s.get("topic", ""), "builtin": s["builtin"],
+                                     "notice": s["notice"],
                                      "write_seconds": round(time.time() - t, 1)}}
 
     def _learn(self, s, n, best, worst):
@@ -311,7 +312,7 @@ class Live:
                     for it, b, t in list(zip(s["scenario"]["heldout"], s["base_texts"], texts))[:EXAMPLES]]
         keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases")
         return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes, "role": s["role"],
-                "builtin": s["builtin"],
+                "topic": s.get("topic", ""), "builtin": s["builtin"],
                 "style_instructions": h[-1]["clauses"], "tracked_question": s["scenario"]["heldout"][0]["q"],
                 "track": [{k: r.get(k) for k in keep} for r in h], "examples": examples}
 
@@ -350,7 +351,7 @@ class Live:
         meta = {"base_model": MODEL, "created": time.strftime("%Y-%m-%d"), "rounds": s["rounds"],
                 "profile": [{"axis": a["axis"], "first": a["first"], "second": a["second"], "lean": a["lean"][-1]}
                             for a in summary["axes"]],
-                "speaking_as": s["role"], "questions": [it["q"] for it in s["scenario"]["train"][: s["rounds"]]],
+                "speaking_as": s["role"], "about": s.get("topic", ""), "questions": [it["q"] for it in s["scenario"]["train"][: s["rounds"]]],
                 "style_instructions": summary["style_instructions"], "system_prompt": s["scenario"]["system"],
                 "prompt_format": "Question, then the fact sheet if any, then 'Write your answer in this style:' "
                                  "followed by the style instructions as a bulleted list, all in the user turn."}
@@ -406,6 +407,7 @@ class Live:
 
         class DraftIn(BaseModel):
             role: str
+            topic: str = ""   # what the visitor wants to talk about; empty when they named only the role
             items: list[DraftItem]
             measure: list[DraftItem]
 
@@ -415,9 +417,10 @@ class Live:
 
         def scenario_from(draft, rounds):
             """The session's questions from a visitor's draft; fact sheets are written here for
-            any question they typed themselves. Returns (scenario, role)."""
+            any question they typed themselves. Returns (scenario, role, topic)."""
             from bench import setting
             role = setting.clean(draft.role, 80).rstrip(".") or "an advisor"
+            topic = setting.clean_topic(draft.topic)
             if len(draft.items) != rounds or len(draft.measure) != MEASURE or any(i.points is None for i in draft.measure):
                 raise HTTPException(status_code=400, detail="That set of questions is incomplete; start again")
             items = [{"question": setting.clean(i.question, 200),
@@ -428,7 +431,7 @@ class Live:
             typed = [i for i in items if i["points"] is None]
             if typed:
                 try:
-                    written = setting.points_for(role, [i["question"] for i in typed])
+                    written = setting.points_for(role, [i["question"] for i in typed], topic)
                 except Exception:  # noqa: BLE001
                     raise HTTPException(status_code=502, detail="Could not prepare your own questions just now. "
                                                                 "Try again, or use the suggested ones.")
@@ -441,9 +444,9 @@ class Live:
             opening = "You are an advisor answering a person's question."
             assert opening in self.builtin["system"]
             system = self.builtin["system"].replace(
-                opening, f"You are {role}. The person has come to you with a question. Answer them directly, "
-                         f"speaking as yourself in that role.", 1)
-            return {"system": system, "train": made[:rounds], "heldout": made[rounds:]}, role
+                opening, f"You are {role}. The person has come to you with a question{f' about {topic}' if topic else ''}. "
+                         f"Answer them directly, speaking as yourself in that role.", 1)
+            return {"system": system, "train": made[:rounds], "heldout": made[rounds:]}, role, topic
 
         @api.post("/api/start")
         def start(body: StartIn | None = None, key: str = "", rounds: int = ROUNDS):
@@ -451,16 +454,16 @@ class Live:
             rounds = (body and body.rounds) or rounds
             if rounds not in (ROUNDS, LONG_ROUNDS):
                 raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
-            scenario, role, builtin = self.builtin, "an advisor", True
+            scenario, role, topic, builtin = self.builtin, "an advisor", "", True
             if body and body.draft:
-                scenario, role = scenario_from(body.draft, rounds)
+                scenario, role, topic = scenario_from(body.draft, rounds)
                 builtin = False
             # Sessions a visitor walked away from are dropped after half an hour without activity.
             for sid in [k for k, old in list(self.sessions.items()) if time.time() - old["touched"] > 1800]:
                 self.sessions.pop(sid, None)   # another start may have dropped it already
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "touched": time.time(),
-                 "scenario": scenario, "role": role, "builtin": builtin, "notice": None,
+                 "scenario": scenario, "role": role, "topic": topic, "builtin": builtin, "notice": None,
                  "cands": {}, "error": None, "thread": None,
                  # 2e-5 for the five-question session: in the benchmark it kept nearly all of what 3e-5
                  # learned (3.58 against 3.67 axes of 4) with the wording staying close to the standard
@@ -555,7 +558,7 @@ class Live:
             if len(question) < 5:
                 raise HTTPException(status_code=400, detail="Type a question first")
             try:
-                written = setting.points_for(s["role"], [question])
+                written = setting.points_for(s["role"], [question], s.get("topic", ""))
             except Exception:  # noqa: BLE001
                 raise HTTPException(status_code=502, detail="Could not prepare that question just now. Try again.")
             if not written["suitable"]:
@@ -622,7 +625,7 @@ def files():
             d = setting.draft(body.setting, body.rounds + MEASURE)
         except Exception:  # noqa: BLE001
             raise HTTPException(status_code=502, detail="Could not prepare that setting just now")
-        return {"suitable": d["suitable"], "reason": d["reason"], "role": d["role"],
+        return {"suitable": d["suitable"], "reason": d["reason"], "role": d["role"], "topic": d["topic"],
                 "items": d["items"][: body.rounds], "measure": d["items"][body.rounds:]}
 
     @api.get("/adapter/{session}")

@@ -15,7 +15,7 @@ export function Review({ draft, onStart, onBack }: { draft: Draft; onStart: (dra
     <div className="panel mx-auto max-w-3xl">
       <div className="border-b border-gray-200 px-4 py-3">
         <h1 className="panel-title">Your questions</h1>
-        <p className="mt-0.5 text-gray-600">The model will speak to you as <span className="font-medium text-gray-900">{draft.role}</span>. These are questions you might ask them; edit or replace any.</p>
+        <p className="mt-0.5 text-gray-600">The model will speak to you as <span className="font-medium text-gray-900">{draft.role}</span>{draft.topic && <>, about <span className="font-medium text-gray-900">{draft.topic}</span></>}. These are questions you might ask them; edit or replace any.</p>
       </div>
       <ol className="divide-y divide-gray-100">
         {questions.map((q, i) => (

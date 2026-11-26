@@ -18,8 +18,11 @@ export function Results({ summary, mock, onAgain, onExpired }: { summary: Summar
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
   const found = readings.filter((r) => r.strength !== 'none' && r.moved), open = readings.filter((r) => r.strength === 'none')
   const same = readings.filter((r) => r.strength !== 'none' && !r.moved)
-  // "when speaking with a workplace manager": the setting the visitor chose, if they chose one
-  const setting = summary.role && !summary.builtin ? ` when speaking with ${summary.role},` : ''
+  // "when asking for a promotion with a team manager": the setting the visitor chose, if they chose one. A topic
+  // is drafted as an "-ing" phrase; one that is not falls back to "when speaking with ... about ...".
+  const { role, topic } = summary
+  const setting = !role || summary.builtin ? '' : !topic ? ` when speaking with ${role},`
+    : /^\w+ing\b/i.test(topic) ? ` when ${topic} with ${role},` : ` when speaking with ${role} about ${topic},`
   const [shown, setShown] = useState(0)
   const example = summary.examples[shown]
   const rated = summary.axes.every((a) => a.written?.length)

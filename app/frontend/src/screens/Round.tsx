@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, type Round, type Summary } from '../api'
+import { api, capital, type Round, type Summary } from '../api'
 import { Spinner } from '../components/Spinner'
 
 export function RoundScreen({ round, onNext, onExpired }:
@@ -33,6 +33,8 @@ export function RoundScreen({ round, onNext, onExpired }:
       <div className="panel p-5">
         <p className="hint">
           Question {round.round} of {round.rounds}
+          {/* the visitor's own setting: what it is about, then who is answering */}
+          {!round.builtin && round.topic && <> · <span className="font-medium text-gray-700">{capital(round.topic)}</span></>}
           {round.role && !round.builtin && <> · Answered as <span className="font-medium text-gray-700">{round.role}</span></>}
         </p>
         <h1 className="mt-1 text-lg font-semibold text-gray-900">{round.question}</h1>

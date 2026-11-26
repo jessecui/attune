@@ -1,15 +1,16 @@
 // Everything the page asks of the backend. The backend holds the GPU service's address and key.
 
-export type Round = { session: string; round: number; rounds: number; question: string; candidates: string[]; waited_seconds?: number; role?: string; builtin?: boolean }
+export type Round = { session: string; round: number; rounds: number; question: string; candidates: string[]; waited_seconds?: number; role?: string; topic?: string; builtin?: boolean }
 // A visitor's setting, drafted by the server: who speaks, the session's questions, and the questions the model is rated on.
 // points is null for a question the visitor wrote or edited; the server writes its fact sheet at the start.
 export type DraftItem = { question: string; points: string[] | null }
-export type Draft = { suitable: boolean; reason: string; role: string; items: DraftItem[]; measure: DraftItem[] }
+/** topic: what the visitor wants to talk about, as it reads after "about"; empty when they named only the role */
+export type Draft = { suitable: boolean; reason: string; role: string; topic?: string; items: DraftItem[]; measure: DraftItem[] }
 // lean: the model's log-odds of choosing the first style: [standard model, your model].
 // written: the judge's 1-to-5 rating of the writing (5 = first style): [standard model, your model], when available.
 export type Axis = { axis: string; first: string; second: string; lean: number[]; written?: number[] | null }
 export type Example = { question: string; before: string; after: string }
-export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; style_instructions: string[]; role?: string; builtin?: boolean }
+export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; style_instructions: string[]; role?: string; topic?: string; builtin?: boolean }
 export type Me = { signed_in: boolean; mock: boolean; round_choices: number[] }
 export type ModelStatus = { ready: boolean; bytes?: number | null; mock?: boolean; configured?: boolean }
 
@@ -32,7 +33,7 @@ export const api = {
   logout: () => request('/api/logout', {}),
   prepare: (setting: string, rounds: number) => request<Draft>('/api/session/prepare', { setting, rounds }),
   start: (rounds: number, draft?: Draft) =>
-    request<Round>('/api/session/start', draft ? { rounds, draft: { role: draft.role, items: draft.items, measure: draft.measure } } : { rounds }),
+    request<Round>('/api/session/start', draft ? { rounds, draft: { role: draft.role, topic: draft.topic ?? '', items: draft.items, measure: draft.measure } } : { rounds }),
   feedback: (session: string, round: number, best: number, worst: number) =>
     request<Round | Summary>('/api/session/feedback', { session, round, best, worst }),
   tryPrepare: (session: string, question: string) => request<{ prepared: boolean }>(`/api/session/${session}/try/prepare`, { question }),

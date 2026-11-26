@@ -32,8 +32,13 @@ or dangerous; speaking as a real, named person; or anything that is not advice (
 If suitable:
 - role: who is speaking to the visitor, as a short noun phrase that completes "You are ...", such as \
 "a family doctor" or "a team manager". Do not mention the visitor in it.
+- topic: what the visitor wants to talk to that role about, as a short phrase of at most 8 words that starts \
+with a verb ending in "-ing" and names what the visitor is doing, such as "asking for a promotion" or "studying \
+for a chemistry test". It must read naturally after "when ..." and after "about ...". No capital letter, no full stop. \
+Take it from the description (or from the topic you are given); leave it empty if only the role is named.
 - items: exactly the number of items asked for. Each has a question the visitor would put to that role about \
-their own situation, in the first person, at most 15 words, and all on different matters; and exactly two points.
+their own situation, in the first person, at most 15 words, and all on different matters; and exactly two points. \
+With a topic, every question is about that topic, each on a different part of it.
 - Each point is one thing that role would tell the visitor to do in reply, as a bare instruction of at most \
 12 words. Do not give the reason for it. Keep it general and uncontroversial: no doses, figures, legal or \
 medical specifics, and nothing a professional would dispute."""
@@ -48,6 +53,7 @@ class Draft(BaseModel):
     suitable: bool
     reason: str
     role: str
+    topic: str
     items: list[Item]
 
 
@@ -86,18 +92,27 @@ def draft(setting, n):
             raise ValueError("too few questions came back")
     d = _ask(f"The visitor's description: {clean(setting, 300)}\n\nNumber of items: {n}", Draft, check=enough)
     return {"suitable": d.suitable, "reason": clean(d.reason, 300), "role": clean(d.role, 80),
+            "topic": clean_topic(d.topic),
             "items": [{"question": clean(i.question, 200), "points": [clean(p, 200) for p in i.points]}
                       for i in d.items[:n]]}
 
 
-def points_for(role, questions):
-    """Fact sheets for questions the visitor wrote or edited: a Draft dict with one item per question."""
+def clean_topic(text):
+    """A topic as it reads after "about": one short line, no closing full stop."""
+    return clean(text, 80).rstrip(".")
+
+
+def points_for(role, questions, topic=""):
+    """Fact sheets for questions the visitor wrote or edited: a Draft dict with one item per question.
+
+    The topic is what the session is about, so a short question ("How do I bring it up?") is read in context."""
     listing = "\n".join(f"{i + 1}. {clean(q, 200)}" for i, q in enumerate(questions))
 
     def same_count(d):
         if d.suitable and len(d.items) != len(questions):
             raise ValueError("the questions came back changed")
-    d = _ask(f"The role is: {clean(role, 80)}\n\nUse exactly these questions, in this order, and write the two "
+    about = f"\nThe topic is: {clean_topic(topic)}" if clean_topic(topic) else ""
+    d = _ask(f"The role is: {clean(role, 80)}{about}\n\nUse exactly these questions, in this order, and write the two "
              f"points for each. If any question is unsuitable, mark the whole request unsuitable.\n{listing}\n\n"
              f"Number of items: {len(questions)}", Draft, check=same_count)
     return {"suitable": d.suitable, "reason": clean(d.reason, 300),
