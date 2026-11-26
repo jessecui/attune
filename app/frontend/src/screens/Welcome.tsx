@@ -10,7 +10,6 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
   { choices: number[]; error?: string; onDraft: (rounds: number, draft: Draft) => void; onStart: (rounds: number) => void; onExpired: (e: unknown) => boolean }) {
   const rounds = choices[0]
   const [setting, setSetting] = useState(''), [busy, setBusy] = useState(false), [problem, setProblem] = useState(error ?? '')
-  const steps = [['Choose a setting', `We write ${rounds} questions for it.`], ['Pick the best and worst', 'The model trains on each pick.'], ['Keep your model', 'See what changed, then download it.']]
 
   const prepare = async (e?: FormEvent) => {
     e?.preventDefault()
@@ -28,6 +27,9 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
       <h1 className="text-center text-3xl font-semibold tracking-tight text-gray-900">Train your own personal AI model</h1>
       <p className="mx-auto mt-3 max-w-lg text-center text-base text-gray-600">
         Most AI models are tuned for the average person. Train one that knows how you like to be spoken to.
+      </p>
+      <p className="mt-3 text-center font-medium text-gray-900">
+        {rounds} questions <span className="font-normal text-gray-400">·</span> a few minutes <span className="font-normal text-gray-400">·</span> yours to download
       </p>
 
       <form onSubmit={prepare} className="panel mt-8 p-5">
@@ -51,22 +53,11 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
         {problem && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800">{problem}</p>}
       </form>
 
-      <ol className="mt-10 grid gap-6 sm:grid-cols-3">
-        {steps.map(([title, text], i) => (
-          <li key={title}>
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-teal-50 text-xs font-semibold text-teal-800">{i + 1}</span>
-            <p className="mt-2 font-medium text-gray-900">{title}</p>
-            <p className="mt-0.5 text-gray-600">{text}</p>
-          </li>
-        ))}
-      </ol>
-
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-gray-200 pt-5 text-gray-600">
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-gray-600">
         <span className="hint">It learns your taste on</span>
         {SCALES.map((key) => (
           <span key={key} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: axisColor(key) }} aria-hidden />{AXIS_NOTES[key].title}</span>
         ))}
-        <span className="hint">· about five minutes</span>
       </div>
     </div>
   )
