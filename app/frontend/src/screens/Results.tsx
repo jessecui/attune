@@ -19,7 +19,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
   const found = readings.filter((r) => r.strength !== 'none' && r.moved), open = readings.filter((r) => r.strength === 'none')
   const same = readings.filter((r) => r.strength !== 'none' && !r.moved)
   // "when working with a workplace manager": the setting the visitor chose, if they chose one
-  const setting = summary.role && !summary.builtin ? ` when working with ${summary.role}` : ''
+  const setting = summary.role && !summary.builtin ? ` when working with ${summary.role},` : ''
   const [shown, setShown] = useState(0)
   const example = summary.examples[shown]
   const rated = summary.axes.every((a) => a.written?.length)
@@ -37,7 +37,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           <h1 className="mt-1 text-lg font-semibold text-gray-900">Your personal AI model is ready</h1>
           <p className="mt-2 text-gray-600">
             {found.length > 0
-              ? <>It learned that{setting}, you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
+              ? <>It learned that{setting} you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
               : <>Your picks did not move the model clearly on any scale.</>}
             {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
             {same.length > 0 && <> On {list(same.map((r) => r.axis))}, it writes much as the standard model already does.</>}
