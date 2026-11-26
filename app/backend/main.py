@@ -13,6 +13,9 @@ Environment:
     ATTUNE_FILES_URL    the download service, e.g. https://...-files.modal.run
     ATTUNE_MODAL_KEY    the key both Modal services expect
     ATTUNE_MOCK=1       answer from a recorded session instead of calling Modal (no GPU, no cost)
+    ATTUNE_TRUSTED_PROXIES  how many proxies sit in front of this server (default 0; 1 on Railway). Their
+                        X-Forwarded-For and X-Forwarded-Proto entries are believed; anything further out
+                        was written by the visitor and is ignored
 """
 import asyncio
 import hashlib
@@ -41,6 +44,7 @@ MODAL_URL = os.environ.get("ATTUNE_MODAL_URL", "").rstrip("/")
 FILES_URL = os.environ.get("ATTUNE_FILES_URL", "").rstrip("/")
 MODAL_KEY = os.environ.get("ATTUNE_MODAL_KEY", "")
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
+TRUSTED_PROXIES = max(0, int(os.environ.get("ATTUNE_TRUSTED_PROXIES") or 0))
 # The cookie-signing secret. If none is set it is derived from the name and the GPU key, so it
 # survives restarts and changing either signs everyone out. Without the GPU key (mock mode) the
 # name alone would be guessable, so a random secret is used and a restart signs everyone out.
@@ -83,13 +87,26 @@ MAX_FAILED, FAILED_WINDOW, MAX_TRACKED = 10, 15 * 60, 10_000
 _failed: dict[str, list[float]] = {}
 
 
+def _forwarded(request: Request, header: str) -> str | None:
+    """A forwarded header's value as written by the outermost trusted proxy, or None without one.
+
+    Each proxy appends one entry (to the header, or as another header line), so with N trusted
+    proxies the N-th entry from the end is the outermost one's. Entries before it were written by
+    the visitor. The header is read here, not through uvicorn's --forwarded-allow-ips, which takes
+    the first entry once every proxy is trusted.
+    """
+    if not TRUSTED_PROXIES:
+        return None
+    entries = [e.strip() for line in request.headers.getlist(header) for e in line.split(",") if e.strip()]
+    if not entries:
+        return None
+    # Fewer entries than proxies: some proxy added none, so the first entry is the furthest out there is.
+    return entries[-TRUSTED_PROXIES] if len(entries) >= TRUSTED_PROXIES else entries[0]
+
+
 def _address(request: Request) -> str:
-    """The visitor's address. The server trusts any proxy (--forwarded-allow-ips='*', for the scheme), so
-    uvicorn's client address is the first X-Forwarded-For entry, which the visitor can write. The last
-    entry is the one the platform's own proxy added, so that is the one counted. Run without a proxy
-    (locally), the visitor can write that one too, which only matters on a public server."""
-    hops = [h.strip() for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
-    return hops[-1] if hops else (request.client.host if request.client else "unknown")
+    """The visitor's address: from the outermost trusted proxy, else the connection itself."""
+    return _forwarded(request, "x-forwarded-for") or (request.client.host if request.client else "unknown")
 
 
 def _recent_failures(address: str, now: float) -> list[float]:
@@ -118,7 +135,7 @@ async def login(body: Login, request: Request, response: Response):  # async: on
         raise HTTPException(status_code=401, detail="That name doesn't match. Please try again.")
     expires = int(time.time()) + COOKIE_SECONDS
     response.set_cookie(COOKIE, f"{expires}.{sign(expires)}", max_age=COOKIE_SECONDS, httponly=True,
-                        samesite="lax", secure=request.url.scheme == "https")
+                        samesite="lax", secure=(_forwarded(request, "x-forwarded-proto") or request.url.scheme) == "https")
     return {"signed_in": True}
 
 

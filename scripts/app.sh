@@ -20,7 +20,7 @@ if lsof -nP -iTCP:$ATTUNE_BACKEND_PORT -sTCP:LISTEN >/dev/null || lsof -nP -iTCP
   echo "Port $ATTUNE_BACKEND_PORT or 5180 is already in use. Stop whatever is using it, or the earlier copy of this script."; exit 1
 fi
 # --reload: the backend picks up code changes itself, as the page already does
-(cd app/backend && ../../.venv/bin/uvicorn main:app --reload --timeout-graceful-shutdown 2 --port $ATTUNE_BACKEND_PORT) &
+(cd app/backend && ../../.venv/bin/uvicorn main:app --reload --no-proxy-headers --timeout-graceful-shutdown 2 --port $ATTUNE_BACKEND_PORT) &
 backend=$!
 # On exit, stop the backend and wait for it, so its last log lines print before the prompt returns.
 trap "kill $backend 2>/dev/null; wait $backend 2>/dev/null" EXIT

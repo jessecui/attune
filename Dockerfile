@@ -12,6 +12,8 @@ COPY app/backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app/backend/ ./
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
-# exec so uvicorn is PID 1 and shuts down cleanly
-# --forwarded-allow-ips: trust the host's TLS proxy (Railway), so the app sees https and marks the cookie Secure
-CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --forwarded-allow-ips='*'"]
+# exec so uvicorn is PID 1 and shuts down cleanly. Forwarded headers are read by the app itself, which
+# believes only the entries from ATTUNE_TRUSTED_PROXIES proxies (one: Railway's); --no-proxy-headers keeps
+# uvicorn from rewriting the client address from them first.
+ENV ATTUNE_TRUSTED_PROXIES=1
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --no-proxy-headers"]
