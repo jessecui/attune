@@ -73,6 +73,12 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Try the downloaded package on a real machine: run `example.py` and check the output matches the session.
 - [ ] Never deploy while a session is in progress; a deploy drops it.
 
+## Scope decisions (2026-11-25)
+
+- The app offers one session length, five questions. Ten is still accepted by the GPU service for experiments.
+- Next after the wording fix: the "try your model" box on the results screen (type a question, see the standard model's answer beside your model's). No LLM commentary on the difference; the two answers side by side are the point.
+- Not planned: uploading a saved model, continuing training across sessions, and the standalone convert mode. The downloadable model stays.
+
 ## Advanced options (later)
 
 - [ ] Let visitors continue from a saved adapter: an upload (safetensors only, validated) or a server-side resume code.

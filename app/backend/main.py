@@ -37,7 +37,9 @@ FILES_URL = os.environ.get("ATTUNE_FILES_URL", "").rstrip("/")
 MODAL_KEY = os.environ.get("ATTUNE_MODAL_KEY", "")
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
 COOKIE, COOKIE_SECONDS = "attune_session", 12 * 3600
-ROUND_CHOICES = (5, 10)
+# One session length keeps the app simple and matches what the benchmark tested. The GPU service
+# still accepts 10 for experiments.
+ROUND_CHOICES = (5,)
 
 app = FastAPI(title="Attune")
 

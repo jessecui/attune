@@ -67,6 +67,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
           </div>
           {problem && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800">{problem}</p>}
 
+          {choices.length > 1 && (
           <fieldset className="mt-5">
             <legend className="hint">Session length</legend>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -78,6 +79,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
               ))}
             </div>
           </fieldset>
+          )}
           <p className="hint mt-4">
             You will pick the best and worst of four answers, {rounds} times, and the model trains on each pick. Takes {minutes(rounds)}.{' '}
             <button type="button" className="underline underline-offset-2 hover:text-gray-900" disabled={busy} onClick={() => onStart(rounds)}>
