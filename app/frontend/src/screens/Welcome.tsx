@@ -29,7 +29,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
       </p>
 
       <form onSubmit={prepare} className="mt-10">
-        <label htmlFor="setting" className="font-medium text-gray-900">What situation is it for? Say who is speaking to you.</label>
+        <label htmlFor="setting" className="font-medium text-gray-900">Who is speaking to you? What situation is it for?</label>
         {/* One field with its button inside it */}
         <div className="relative mt-3">
           <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}
