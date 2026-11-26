@@ -10,7 +10,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 ## Features
 
 - 🎯 **Live RLHF**: GRPO on a LoRA adapter, with your best and worst picks as the reward; one update per question, about five minutes for a session
-- 🧭 **Four style scales**: warmth, directiveness, formality and depth, each answer drawn from a menu of 16 style combinations
+- 🧭 **Four style scales**: warmth, directiveness, formality and depth, each answer drawn from a menu of style combinations
 - 🩺 **Any adviser, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
 - ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
 - 📏 **Measured result**: a judge model rates your tuned model on six questions it was not trained on, beside the standard model
@@ -39,47 +39,40 @@ Ties count as half a win. On the four standard simulated users the two methods t
 ## Architecture
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "15px", "lineColor": "#94a3b8", "textColor": "#64748b", "clusterBkg": "transparent", "clusterBorder": "#94a3b8", "titleColor": "#64748b", "edgeLabelBackground": "transparent"}, "flowchart": {"curve": "basis", "nodeSpacing": 45, "rankSpacing": 45, "padding": 20, "wrappingWidth": 400}}}%%
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "15px", "lineColor": "#94a3b8", "textColor": "#64748b", "clusterBkg": "transparent", "clusterBorder": "#94a3b8", "titleColor": "#64748b"}, "flowchart": {"curve": "basis", "nodeSpacing": 45, "rankSpacing": 40, "padding": 20, "wrappingWidth": 400}}}%%
 flowchart TB
     UI(["Browser<br/>adviser + topic"])
 
-    subgraph APP["#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;App server (FastAPI)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
-        A["Name gate<br/>signed cookie"] --> RL["Private relay<br/>to the GPU service"]
+    subgraph APP["App server (FastAPI)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
+        A["Name gate + private relay<br/>signed cookie"]
     end
 
-    subgraph LIVE["#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;Live session (Modal, L40S GPU)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
-        D["Draft the setting<br/>5 questions + fact sheets"] --> C["Choose 4 styles<br/>from the 16-line menu"]
-        C --> W["Write 4 answers<br/>Qwen2.5-7B + LoRA"]
-        W --> F["Check facts<br/>redraw if a point is missing"]
-        U["GRPO update<br/>best and worst as reward"] -->|next question| C
-        U -->|after 5| M["Answer 6 unseen questions"]
+    subgraph LIVE["Live session (Modal, L40S GPU)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
+        D["Draft the setting<br/>5 questions + fact sheets · Gemini"]
+        C["Choose 4 styles<br/>from the style menu"]
+        W["Write 4 answers<br/>Qwen2.5-7B + LoRA"]
+        F["Check facts<br/>redraw if a point is missing"]
+        PICK(["Browser<br/>mark best + worst"])
+        U["GRPO update<br/>best and worst as reward<br/>repeat for each of 5 questions"]
+        M["Measure<br/>6 unseen questions · rated by Gemini"]
+        D --> C --> W --> F --> PICK --> U
+        U -.-> C
+        U --> M
     end
 
-    PICK(["Browser<br/>mark best + worst"])
-    G["Gemini 3.8 Flash<br/>drafts settings · rates answers"]
     PKG["Package the adapter<br/>Modal CPU function"]
-    VOL[("Modal volumes<br/>model cache · adapters")]
     OUT(["Browser<br/>results · try it · download"])
 
-    UI --> A
-    RL --> D
-    F --> PICK
-    PICK --> U
-    D -.- G
-    M -.- G
+    UI --> A --> D
     M --> OUT
-    U -.- VOL
-    VOL -.- PKG
-    PKG --> OUT
+    U --> PKG --> OUT
 
     classDef step fill:#f0fdfa,stroke:#94a3b8,stroke-width:1px,color:#0f172a
     classDef model fill:#ccfbf1,stroke:#0f766e,stroke-width:2px,color:#0f172a
-    classDef store fill:#f1f5f9,stroke:#64748b,stroke-width:1.5px,color:#0f172a
     classDef client fill:#0f766e,stroke:#0f766e,color:#ffffff
 
-    class A,RL,D,C,F,M,PKG step
-    class W,U,G model
-    class VOL store
+    class A,D,C,F,M,PKG step
+    class W,U model
     class UI,PICK,OUT client
     linkStyle default stroke:#94a3b8,stroke-width:1.5px
 ```
