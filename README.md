@@ -10,7 +10,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 ## Features
 
 - 🎯 **Live RLHF**: GRPO on a LoRA adapter, with your best and worst picks as the reward; one update per question, about five minutes for a session
-- 🧭 **Four style scales**: warmth, directiveness, formality and depth, each answer drawn from a menu of style combinations
+- 🧭 **Four style scales**: empathy, directiveness, formality and depth, each answer drawn from a menu of style combinations
 - 🩺 **Any adviser, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
 - ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
 - 📏 **Measured result**: a judge model rates your tuned model on six questions it was not trained on, beside the standard model

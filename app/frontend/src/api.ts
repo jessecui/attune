@@ -61,7 +61,7 @@ export function read(a: Axis): Reading {
     const standard = (rating >= 3 ? a.written[0] : 6 - a.written[0]).toFixed(1)   // the standard model's rating for the same side
     return { side, other, strength: off < 0.5 ? 'none' : off < 1 ? 'leans' : 'clear', share: off / 2, position: (rating - 1) / 4, moved,
              // the standard model's rating on the same side, so "close" can be checked against the number
-             detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${side}`
+             detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${shown(side)}`
                + (moved ? '.' : standard === (3 + off).toFixed(1) ? ', the same as the standard model.' : `, close to the standard model's ${standard}.`) }
   }
   const last = a.lean[a.lean.length - 1], prev = a.lean[a.lean.length - 2] ?? last
@@ -70,21 +70,23 @@ export function read(a: Axis): Reading {
   const settled = Math.sign(last) === Math.sign(prev) || prev === 0
   const strength = share < 0.75 || !settled ? 'none' : share < 0.95 ? 'leans' : 'clear'
   return { side, other, strength, share, position: p, moved: true,
-           detail: `Ended ${share > 0.95 ? 'more than 95%' : Math.floor(share * 100) + '%'} ${side} by its style choices.` }
+           detail: `Ended ${share > 0.95 ? 'more than 95%' : Math.floor(share * 100) + '%'} ${shown(side)} by its style choices.` }
 }
 
 export const AXIS_NOTES: Record<string, { title: string; about: string }> = {
-  warmth: { title: 'Warmth', about: 'Whether an answer first acknowledges how you might feel, or goes straight to the point.' },
+  warmth: { title: 'Empathy', about: 'Whether an answer first acknowledges how you might feel, or goes straight to the point.' },
   directiveness: { title: 'Directiveness', about: 'Whether you are told what to do, or shown what works and left to decide.' },
   formality: { title: 'Formality', about: 'A relaxed, conversational register, or a formal one.' },
   depth: { title: 'Depth', about: 'Whether each piece of advice comes with its reason.' },
 }
 export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+// The service calls the empathy scale's first style "warm"; the page shows it under the scale's own name.
+export const shown = (style: string) => (style === 'warm' ? 'empathetic' : style)
 
-// How each style reads in a sentence ("answers that are warm, collaborative and formal").
+// How each style reads in a sentence ("answers that are empathetic, collaborative and formal").
 // Depth is about reasons, not length, so it is phrased as what the answers do, not as "concise".
 export const AS_ADJECTIVE: Record<string, string> = {
-  warm: 'warm', neutral: 'matter-of-fact', directive: 'directive', collaborative: 'collaborative', casual: 'casual', formal: 'formal',
+  warm: 'empathetic', neutral: 'matter-of-fact', directive: 'directive', collaborative: 'collaborative', casual: 'casual', formal: 'formal',
 }
 export const AS_CLAUSE: Record<string, string> = { 'explains why': 'explain the reasons', 'just the advice': 'give the advice without the reasons' }
 

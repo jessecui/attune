@@ -189,6 +189,12 @@ GRIDS = {
                                "--scenario", f, *SEVEN_B]}
                      for tag, f in [("current", "data/advice.json"), ("loose", "data/advice_warm_loose.json"),
                                     ("anywhere", "data/advice_warm_anywhere.json")]],
+    # Mood-matching wordings of the warm option against the current one, with six good-news questions added
+    # to the ten training questions: does the opening follow the mood, and is it less of a stock phrase?
+    "menu_check18": [{"name": f"mood_{tag}_7B", "module": "check_menu",
+                      "argv": ["--position", "user_bullets", "--axes", FOUR, "--max-new-tokens", "128", "--save-all",
+                               "--per-option", "36", "--scenario", f"data/advice_mood_{tag}.json", *SEVEN_B]}
+                     for tag in ("current", "feeling", "mood")],
     # Train the wording more gently than the style choice, to stop the model settling on one stock
     # phrasing or writing the same answer in every style (seen in live sessions at 3e-5).
     "wording": [{"name": f"{tag}_{p}_s{seed}",

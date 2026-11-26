@@ -1,15 +1,15 @@
-import { AXIS_NOTES, axisColor, capital, read, type Axis } from '../api'
+import { AXIS_NOTES, axisColor, capital, read, shown, type Axis } from '../api'
 
 /** One axis of the profile as a two-ended scale. The result is shown on the scale itself: the end
  *  the model landed on is in bold, so no separate label sits above the opposite end. */
 export function Scale({ axis }: { axis: Axis }) {
   const r = read(axis), note = AXIS_NOTES[axis.axis]
-  const result = r.strength === 'none' ? 'No clear preference' : r.strength === 'leans' ? `Leans ${r.side}` : capital(r.side)
+  const result = r.strength === 'none' ? 'No clear preference' : r.strength === 'leans' ? `Leans ${shown(r.side)}` : capital(shown(r.side))
   // Keep the marker inside the track so an extreme result does not sit on the very edge.
   const left = Math.min(97, Math.max(3, r.position * 100))
   const end = (name: string) => {
     const chosen = r.strength !== 'none' && r.side === name
-    return <span className={chosen ? 'font-semibold text-gray-900' : ''}>{chosen && r.strength === 'leans' ? `Leans ${name}` : capital(name)}</span>
+    return <span className={chosen ? 'font-semibold text-gray-900' : ''}>{chosen && r.strength === 'leans' ? `Leans ${shown(name)}` : capital(shown(name))}</span>
   }
   return (
     <div className="px-4 py-3.5">

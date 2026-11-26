@@ -3,10 +3,10 @@ import { api, AS_ADJECTIVE, AS_CLAUSE, read, type Example, type ModelStatus, typ
 import { Scale } from '../components/Scale'
 import { Spinner } from '../components/Spinner'
 
-/** "warm, collaborative and formal" */
+/** "empathetic, collaborative and formal" */
 const list = (words: string[]) => words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
 
-/** "are warm, collaborative and formal, and give the advice without the reasons" */
+/** "are empathetic, collaborative and formal, and give the advice without the reasons" */
 function describe(found: { side: string; strength: string }[]) {
   const adjectives = found.filter((r) => AS_ADJECTIVE[r.side]).map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + AS_ADJECTIVE[r.side])
   const clauses = found.filter((r) => AS_CLAUSE[r.side]).map((r) => (r.strength === 'leans' ? 'mostly ' : '') + AS_CLAUSE[r.side])
