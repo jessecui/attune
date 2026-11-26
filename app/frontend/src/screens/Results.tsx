@@ -18,8 +18,8 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
   const found = readings.filter((r) => r.strength !== 'none' && r.moved), open = readings.filter((r) => r.strength === 'none')
   const same = readings.filter((r) => r.strength !== 'none' && !r.moved)
-  // "when working with a workplace manager": the setting the visitor chose, if they chose one
-  const setting = summary.role && !summary.builtin ? ` when working with ${summary.role},` : ''
+  // "when talking with a workplace manager": the setting the visitor chose, if they chose one
+  const setting = summary.role && !summary.builtin ? ` when talking with ${summary.role},` : ''
   const [shown, setShown] = useState(0)
   const example = summary.examples[shown]
   const rated = summary.axes.every((a) => a.written?.length)
