@@ -120,7 +120,7 @@ function TryBox({ session }: { session: string }) {
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
         )}
-        <p className="hint mt-3">Both models are given the same two points to make, so the difference you see is style. Available for a few minutes after your session.</p>
+        <p className="hint mt-3">Both models are given the same two points to make, so the difference you see is style. Check anything that matters with a real professional. Available for a few minutes after your session.</p>
       </div>
     </section>
   )
@@ -156,7 +156,7 @@ function ModelCard({ session, mock }: { session: string; mock: boolean }) {
     <section className="panel" aria-labelledby="model">
       <h2 id="model" className="panel-title border-b border-gray-200 px-4 py-3">Your model</h2>
       <div className="p-4">
-        <p className="text-gray-600">Your own version of an open AI model with 7 billion parameters, trained on your picks. The download includes your results and everything needed to run it on your own computer.</p>
+        <p className="text-gray-600">Your own version of an open AI model with 7 billion parameters, trained on your picks. It knows no more than the standard model and is no substitute for a professional. The download includes your results and everything needed to run it on your own computer.</p>
         <div className="mt-4">
           {mock ? <p className="hint">Downloads are switched off in demo mode.</p>
             : status?.configured === false ? <p className="hint">Downloads are not set up on this server.</p>

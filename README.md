@@ -1,79 +1,168 @@
 # Attune
 
-Attune tunes a small language model to the way one person likes to be spoken to. You say who is advising you and about what (a doctor, a tutor, a manager), read four short answers to each of five questions, mark the best and the worst, and end up with a model that answers in your style, which you can download.
+Attune fine-tunes a 7B language model live on one person's feedback, so it learns how they like an adviser to speak to them. You say who is advising you and about what ("my doctor explaining my test results"), mark the best and worst of four answers to each of five questions, and get back a model trained on your picks, which you can download and run yourself.
 
-**Status:** the method is frozen and benchmarked, and the app runs locally against a GPU service on Modal. It is not deployed publicly yet.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-round-dark.png">
+  <img alt="A training round: four answers to &quot;I keep forgetting to take my daily medication&quot;, each in a different style, with one marked best and one marked worst" src="docs/screenshot-round-light.png">
+</picture>
 
-## How it works
+## Features
 
-Each answer is written in a combination of styles from a fixed menu:
-
-| Axis | One end | Other end |
-|---|---|---|
-| Warmth | Opens by recognising how you may feel | Goes straight to the advice |
-| Directiveness | Tells you what to do | Describes what works and leaves the decision to you |
-| Formality | Relaxed and conversational | Formal |
-| Depth | Explains why | Just the advice |
-
-- **Model:** [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) with a LoRA adapter.
-- **Update:** GRPO, with your best and worst choices as the reward. The model first chooses a style, then writes the answer in it; both steps are trained.
-- **Content:** every question has a two-point fact sheet, written by hand for the built-in questions and by Gemini for a visitor's own setting. An answer missing a point is redrawn before you see it.
-- **Result:** at the end, a judge model (Gemini) rates the tuned model's answers to six unseen questions on each scale, beside the standard model's.
+- 🎯 **Live RLHF**: GRPO on a LoRA adapter, with your best and worst picks as the reward; one update per question, about five minutes for a session
+- 🧭 **Four style scales**: warmth, directiveness, formality and depth, each answer drawn from a menu of 16 style combinations
+- 🩺 **Any adviser, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
+- ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
+- 📏 **Measured result**: a judge model rates your tuned model on six questions it was not trained on, beside the standard model
+- 💬 **Try it**: ask your own question and compare the standard model's answer with yours
+- 📦 **Download**: the adapter as a zip, with your results and a script to run it
+- 🌓 **Light and dark themes**
 
 ## Results
 
-Benchmarked with simulated users played by the judge model, five feedback rounds per run, rated on six unseen questions.
+Benchmarked with simulated users played by the judge model (each given a fixed set of preferences), five feedback rounds per run, rated on unseen questions:
 
 | Comparison | Result |
 |---|---|
-| GRPO against the untouched model | 91% answer-level win rate (104 wins, 11 ties, 5 losses) |
-| GRPO against DPO, 28 matched runs | 57% win rate (124 wins, 73 ties, 83 losses); scales right 88% against 80% |
-| Answers adding something not on the fact sheet | 14% for GRPO, 28% for DPO |
+| GRPO against the untouched model | **91%** answer-level win rate (104 wins, 11 ties, 5 losses) |
+| GRPO against DPO, 28 matched runs | **57%** win rate (124 wins, 73 ties, 83 losses); scales on the wanted side 88% against 80% |
+| Answers adding advice not on the fact sheet | 14% for GRPO, 28% for DPO (**51% fewer**) |
+| Run-to-run variance | 31% lower for GRPO |
 
-Ties count as half a win. On the four standard simulated users the two methods tie; GRPO's lead comes from users who care about only two scales or pick at random part of the time. DPO follows a preference the menu has no scale for (shorter answers) further. Details and every run are in `TODO.md`.
+Ties count as half a win. On the four standard simulated users the two methods tie; GRPO's lead comes from users who care about only two scales or pick at random part of the time. DPO, which trains on the text directly, follows a preference the menu has no scale for (shorter answers) further. Every run and setting is recorded in [`TODO.md`](TODO.md).
 
-## Layout
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-results-dark.png">
+  <img alt="The results page: what the model learned on each of the four scales, rated from its writing, with the standard model's rating shown as a hollow marker" src="docs/screenshot-results-light.png">
+</picture>
+
+## Architecture
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "15px", "lineColor": "#94a3b8", "textColor": "#64748b", "clusterBkg": "transparent", "clusterBorder": "#94a3b8", "titleColor": "#64748b", "edgeLabelBackground": "transparent"}, "flowchart": {"curve": "basis", "nodeSpacing": 45, "rankSpacing": 45, "padding": 20, "wrappingWidth": 400}}}%%
+flowchart TB
+    UI(["Browser<br/>adviser + topic"])
+
+    subgraph APP["#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;App server (FastAPI)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
+        A["Name gate<br/>signed cookie"] --> RL["Private relay<br/>to the GPU service"]
+    end
+
+    subgraph LIVE["#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;Live session (Modal, L40S GPU)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
+        D["Draft the setting<br/>5 questions + fact sheets"] --> C["Choose 4 styles<br/>from the 16-line menu"]
+        C --> W["Write 4 answers<br/>Qwen2.5-7B + LoRA"]
+        W --> F["Check facts<br/>redraw if a point is missing"]
+        U["GRPO update<br/>best and worst as reward"] -->|next question| C
+        U -->|after 5| M["Answer 6 unseen questions"]
+    end
+
+    PICK(["Browser<br/>mark best + worst"])
+    G["Gemini 3.8 Flash<br/>drafts settings · rates answers"]
+    PKG["Package the adapter<br/>Modal CPU function"]
+    VOL[("Modal volumes<br/>model cache · adapters")]
+    OUT(["Browser<br/>results · try it · download"])
+
+    UI --> A
+    RL --> D
+    F --> PICK
+    PICK --> U
+    D -.- G
+    M -.- G
+    M --> OUT
+    U -.- VOL
+    VOL -.- PKG
+    PKG --> OUT
+
+    classDef step fill:#f0fdfa,stroke:#94a3b8,stroke-width:1px,color:#0f172a
+    classDef model fill:#ccfbf1,stroke:#0f766e,stroke-width:2px,color:#0f172a
+    classDef store fill:#f1f5f9,stroke:#64748b,stroke-width:1.5px,color:#0f172a
+    classDef client fill:#0f766e,stroke:#0f766e,color:#ffffff
+
+    class A,RL,D,C,F,M,PKG step
+    class W,U,G model
+    class VOL store
+    class UI,PICK,OUT client
+    linkStyle default stroke:#94a3b8,stroke-width:1.5px
+```
+
+**How the update works.** The model makes two choices for each answer: first a style line from the menu, then the answer written in that style. GRPO compares the four answers to one question, so the best pick's choices are reinforced and the worst's discouraged. The style choice is clipped as a single action (ratio 0.2), the wording is trained at 0.3 of that strength so the model doesn't settle on one stock phrase, and 30% of styles are drawn at random to keep exploring. The four styles in a round differ on at least two scales.
+
+**Benchmark.** The same session code runs on Modal with a simulated user in place of the browser: the judge model, given a persona, picks best and worst. GRPO and DPO (trained on the same best-and-worst pairs) run on matched personas and seeds, and the judge rates each run's answers to unseen questions.
+
+## Tech Stack
+
+- **Frontend**: Vite 7, React 19, TypeScript, Tailwind CSS v4
+- **Backend**: FastAPI, Python
+- **Model**: [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) with a LoRA adapter (r 16), PyTorch, Transformers, PEFT
+- **Training**: GRPO with human best/worst feedback; DPO as the baseline
+- **GPU**: [Modal](https://modal.com), one L40S for live sessions, more for benchmarks
+- **Drafting and judging**: Gemini 3.8 Flash, falling back to 3.6 Flash and then 3.5 Flash
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.10+, Node.js 20.19+ or 22.12+
+- A [Modal](https://modal.com) account (for real sessions and benchmarks)
+- A Google AI Studio API key for Gemini, saved as `.judge_key` and as the Modal secret `attune-judge` (`GEMINI_API_KEY`)
+
+### 1. Install
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cd app/frontend && npm install
+```
+
+### 2. Configure
+
+Copy `app/backend/.env.example` to `app/backend/.env` and set `CREATOR_NAME`, the name the access prompt asks for (case and spaces are ignored).
+
+### 3. Run the app
+
+```bash
+scripts/app.sh mock    # a recorded session: no GPU, no cost
+scripts/app.sh         # real sessions on Modal (deploy the live service first, below)
+```
+
+Open http://localhost:5180. The backend runs on port 8787.
+
+### 4. The GPU service and benchmarks
+
+```bash
+.venv/bin/modal deploy modal_live.py               # live session service; writes its access key to .live_key
+.venv/bin/modal deploy modal_app.py                # benchmark app
+.venv/bin/python -m bench.remote launch final      # start a set of runs; returns at once
+.venv/bin/python -m bench.remote status final      # progress; downloads finished results
+.venv/bin/python -m bench.judge compare final      # judge the runs' answers and summarise
+```
+
+### Checking the judge
+
+```bash
+.venv/bin/python -m bench.handlabel make       # 30 answers to rate yourself, in labels/handlabel.csv
+.venv/bin/python -m bench.handlabel compare    # agreement with the judge, per scale
+```
+
+---
+
+## Project Structure
 
 | Path | What it is |
 |---|---|
-| `bench/` | Simulated sessions, the update rules (GRPO, plus DPO for comparison), simulated users, and a check of whether a model follows each menu option |
-| `data/` | Questions, fact sheets and style menus |
-| `modal_app.py`, `bench/remote.py` | Run benchmark jobs on Modal and collect results |
-| `modal_live.py`, `live_page.html` | The live session service and a plain test page |
-| `app/backend/` | The app's server: password gate, and a private relay to the GPU service on Modal |
-| `app/frontend/` | The app's pages (React, Vite, Tailwind) |
-
-## Running it
-
-```
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-```
-
-Benchmark jobs and the live session run on [Modal](https://modal.com). After `modal setup`:
-
-```
-.venv/bin/modal deploy modal_app.py                # benchmark app
-.venv/bin/python -m bench.remote launch neutral    # start a set of runs; returns at once
-.venv/bin/python -m bench.remote status neutral    # progress, and download finished results
-
-.venv/bin/modal deploy modal_live.py               # live session
-```
-
-The live deploy prints a URL and writes an access key to `.live_key`. Open the URL with `?key=<the key>` appended.
-
-### The app, locally
-
-```
-scripts/app.sh mock    # a recorded session: no GPU, no cost; for working on the pages
-scripts/app.sh         # real sessions on the Modal GPU (deploy modal_live.py first)
-```
-
-Open http://localhost:5180. The access prompt asks for the creator's name, set as `CREATOR_NAME` in `app/backend/.env` (copy `.env.example`); case and spaces are ignored. At the end of a real session the tuned adapter can be downloaded as a zip with a script to run it.
+| `bench/` | Session simulation, GRPO and DPO, simulated users, the judge, setting drafts, hand-label check |
+| `data/` | Built-in questions, fact sheets and the style menu |
+| `modal_live.py` | The live session service: generation, updates, results, try box, adapter packaging |
+| `modal_app.py`, `bench/remote.py` | Benchmark jobs on Modal |
+| `app/backend/` | FastAPI server: name gate, private relay to Modal, mock mode |
+| `app/frontend/` | The pages (React, Vite, Tailwind) |
+| `scripts/` | `app.sh` to run the app locally, `feed.sh` to queue benchmark runs |
+| `docs/` | Screenshots |
 
 ## Limits
 
-- The judge model rates style and content; it has not yet been checked against hand labels. The live fact check before an answer is shown is keyword matching.
-- Only advisers. A test with speakers who are not advising (a student, a client) kept the styles but lost content, so the app asks who is advising you.
-- Results depend on how each style is worded, and training can exaggerate a style late in a session.
-- The answers are a style demonstration, not advice.
+- Only advisers. A test with speakers who aren't advising (a student, a client) kept the styles but lost content, so the app asks who is advising you.
+- The judge rates style and content; it is being checked against hand labels (`bench.handlabel`). The live fact check before an answer is shown is keyword matching.
+- Results depend on how each style line is worded, and a tuned model can still settle on one opening phrase.
+- The answers demonstrate a style. They can be wrong and are not medical, legal or financial advice.

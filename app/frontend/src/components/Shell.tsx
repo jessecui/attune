@@ -16,7 +16,7 @@ export function Shell({ children, mock, progress, onHome }:
             <span className="text-base font-semibold text-gray-900">Attune</span>
           </button>
           <span className="hidden h-5 w-px bg-gray-200 sm:block" aria-hidden />
-          <p className="hidden truncate text-gray-500 sm:block">Train your own custom AI model</p>
+          <p className="hidden truncate text-gray-500 sm:block">Train an AI model tuned to your communication style</p>
           <div className="ml-auto flex items-center gap-4">
             {mock && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Demo data</span>}
             {progress && <span className="text-gray-600">Question {progress.at} of {progress.of}</span>}
@@ -41,7 +41,7 @@ export function Shell({ children, mock, progress, onHome }:
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">{children}</main>
       <footer className="border-t border-gray-200">
         <p className="hint mx-auto max-w-6xl px-4 py-4 text-center sm:px-6">
-          The answers demonstrate a style. They are not medical, legal or financial advice.
+          Answers are written by an AI model to show a style of speaking. They can be wrong, and they are not medical, legal or financial advice.
         </p>
       </footer>
     </div>
