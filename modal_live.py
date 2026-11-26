@@ -22,9 +22,9 @@ AXES = ["warmth", "directiveness", "formality", "depth"]
 ROUNDS, K = 5, 4
 MEASURE, EXAMPLES = 6, 3  # unseen questions rated once, at the end; how many are shown as before/after
 SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
-LONG_ROUNDS = 10
+LONG_ROUNDS = 10  # optional longer session: each of the ten questions once
 # What the visitor sees when background work failed: the session cannot go on (its answers are spent).
-STUCK = "Something went wrong while training. Please train another to start again."  # optional longer session: each of the ten questions once
+STUCK = "Something went wrong while training. Please train another to start again."
 
 # Access key: generated once, kept out of git, sent to the container as a secret.
 _key_file = Path(__file__).parent / ".live_key"
@@ -277,19 +277,27 @@ class Live:
 
     def _after(self, s, n, best, worst):
         """Background work after round n's feedback: learn from it, then write round n+2."""
-        try:
+        def work():
             self._with(s, lambda: self._learn(s, n, best, worst))
             if n + 2 <= s["rounds"]:
                 self._with(s, lambda: self._write(s, n + 2))
-        except Exception as e:  # surfaced on the next request
+        self._background(s, work)
+
+    def _background(self, s, work):
+        """Run a piece of a session's work; a failure is kept and surfaced on the next request."""
+        try:
+            work()
+        except Exception as e:  # noqa: BLE001
             s["error"] = repr(e)[:300]
-            print(f"session {s['id']}: {s['error']}")   # the detail goes to the log, not the visitor
+            print(f"session {s['id']}: {s['error']}", flush=True)   # the detail goes to the log, not the visitor
 
     def _summary(self, s):
         # Measured once, at the end: the tuned model answers the unseen questions and the judge rates
         # each scale. The standard model's ratings on the same questions (taken at start-up) are the
         # comparison. If the judge is unavailable the page falls back to the model's style choices.
-        final = {"round": s["rounds"], **self._track(s)}
+        # Only the answering needs the GPU; the judge calls run outside the lock, so a slow Gemini
+        # does not hold up other visitors' sessions.
+        final = {"round": s["rounds"], **self._with(s, lambda: self._track(s))}
         s["favoured"] = final["favoured"]
         h = [s["history"][0], final]
         s["rating0"].join(timeout=40)
@@ -465,7 +473,7 @@ class Live:
             self._with(s, lambda: self._open(s))
             self._with(s, lambda: self._write(s, 1))
             if rounds >= 2:  # get one round ahead straight away
-                s["thread"] = threading.Thread(target=lambda: self._with(s, lambda: self._write(s, 2)))
+                s["thread"] = threading.Thread(target=self._background, args=(s, lambda: self._write(s, 2)))
                 s["thread"].start()
             return s["cands"][1]["payload"]
 
@@ -510,7 +518,7 @@ class Live:
                     self._after(s, n, fb.best, fb.worst)  # last round: nothing left to hide the wait behind
                     if s["error"]:
                         raise HTTPException(status_code=500, detail=STUCK)
-                out = self._with(s, lambda: self._summary(s))
+                out = self._summary(s)
                 s["summary"] = out
                 # The finished session stays (until it has been idle for half an hour, or the GPU shuts
                 # down) so the visitor can try their model on questions of their own.

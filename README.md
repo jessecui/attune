@@ -43,29 +43,31 @@ Ties count as half a win. On the four standard simulated users the two methods t
 flowchart TB
     UI(["Browser<br/>adviser + topic"])
 
+    D["Draft the setting<br/>5 questions + fact sheets · Gemini<br/>Modal CPU function"]
+
     subgraph APP["App server (FastAPI)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
         A["Name gate + private relay<br/>signed cookie"]
     end
 
-    subgraph LIVE["Live session (Modal, L40S GPU)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
-        D["Draft the setting<br/>5 questions + fact sheets · Gemini"]
+    subgraph LIVE["Live session (Modal, L40S GPU)#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;#nbsp;"]
         C["Choose 4 styles<br/>from the style menu"]
         W["Write 4 answers<br/>Qwen2.5-7B + LoRA"]
         F["Check facts<br/>redraw if a point is missing"]
         PICK(["Browser<br/>mark best + worst"])
         U["GRPO update<br/>best and worst as reward<br/>repeat for each of 5 questions"]
         M["Measure<br/>6 unseen questions · rated by Gemini"]
-        D --> C --> W --> F --> PICK --> U
+        PKG["Package the adapter<br/>download served by a Modal CPU function"]
+        C --> W --> F --> PICK --> U
         U -.-> C
         U --> M
+        U --> PKG
     end
 
-    PKG["Package the adapter<br/>Modal CPU function"]
     OUT(["Browser<br/>results · try it · download"])
 
-    UI --> A --> D
+    UI --> A --> D --> C
     M --> OUT
-    U --> PKG --> OUT
+    PKG --> OUT
 
     classDef step fill:#f0fdfa,stroke:#94a3b8,stroke-width:1px,color:#0f172a
     classDef model fill:#ccfbf1,stroke:#0f766e,stroke-width:2px,color:#0f172a

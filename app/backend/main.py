@@ -110,7 +110,8 @@ async def modal(path: str, params: dict | None = None, body: dict | None = None)
         raise HTTPException(status_code=500, detail="The GPU service is not configured on the server")
     try:
         # Generous timeout: the first request may wait for the GPU to start and the model to load.
-        async with httpx.AsyncClient(timeout=600) as client:
+        # Modal answers a request still running after 150 s with a redirect to its result; follow it.
+        async with httpx.AsyncClient(timeout=600, follow_redirects=True) as client:
             r = await client.post(f"{MODAL_URL}{path}", params={"key": MODAL_KEY, **(params or {})}, json=body)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
@@ -171,7 +172,7 @@ class Prepare(BaseModel):
 async def _warm():
     """Start the GPU container while the visitor reads their questions. Best effort."""
     try:
-        async with httpx.AsyncClient(timeout=300) as client:
+        async with httpx.AsyncClient(timeout=300, follow_redirects=True) as client:
             await client.get(f"{MODAL_URL}/api/warm", params={"key": MODAL_KEY})
     except httpx.HTTPError:
         pass
@@ -194,7 +195,7 @@ async def prepare(body: Prepare, attune_session: str | None = Cookie(default=Non
     if MODAL_URL:
         asyncio.create_task(_warm())
     try:
-        async with httpx.AsyncClient(timeout=90) as client:
+        async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
             r = await client.post(f"{FILES_URL}/prepare", params={"key": MODAL_KEY}, json=body.model_dump())
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Could not reach the setting service ({type(e).__name__})")
