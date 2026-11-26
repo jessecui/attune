@@ -156,7 +156,8 @@ function ModelCard({ session, mock }: { session: string; mock: boolean }) {
     <section className="panel" aria-labelledby="model">
       <h2 id="model" className="panel-title border-b border-gray-200 px-4 py-3">Your model</h2>
       <div className="p-4">
-        <p className="text-gray-600">Your own version of an open AI model with 7 billion parameters, trained on your picks. The download includes your results and everything needed to run it on your own computer. It knows no more than the standard model and is no substitute for a professional.</p>
+        <p className="text-gray-600">Your own version of an open AI model with 7 billion parameters, trained on your picks. The download includes your results and everything needed to run it on your own computer.</p>
+        <p className="mt-3 text-gray-600">This model has only changed its communication style. It knows no more than the standard model and is no substitute for a professional.</p>
         <div className="mt-4">
           {mock ? <p className="hint">Downloads are switched off in demo mode.</p>
             : status?.configured === false ? <p className="hint">Downloads are not set up on this server.</p>
