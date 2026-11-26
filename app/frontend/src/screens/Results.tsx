@@ -38,7 +38,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
               ? <>It learned that you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
               : <>Your picks did not move the model clearly on any scale.</>}
             {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
-            {same.length > 0 && <> On {list(same.map((r) => r.axis))}, it writes as the standard model already does.</>}
+            {same.length > 0 && <> On {list(same.map((r) => r.axis))}, it writes much as the standard model already does.</>}
           </p>
         </section>
 

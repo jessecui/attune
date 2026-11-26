@@ -39,7 +39,7 @@ export const api = {
 export const probability = (lean: number) => 1 / (1 + Math.exp(-lean))
 
 export type Reading = { side: string; other: string; strength: 'none' | 'leans' | 'clear'; share: number; position: number; detail: string;
-  /** false when the writing ended within half a point of the standard model's: nothing was learned on this scale */
+  /** false when the writing ended within half a point of the standard model's: too small a change to call learned */
   moved: boolean }
 
 /** What the profile says about one axis: under 75% either way is no clear preference,
@@ -51,7 +51,9 @@ export function read(a: Axis): Reading {
     const side = rating >= 3 ? a.first : a.second, other = rating >= 3 ? a.second : a.first
     const moved = Math.abs(rating - a.written[0]) >= 0.5
     return { side, other, strength: off < 0.5 ? 'none' : off < 1 ? 'leans' : 'clear', share: off / 2, position: (rating - 1) / 4, moved,
-             detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${side}` + (moved ? '.' : ', the same as the standard model.') }
+             // the standard model's rating on the same side, so "close" can be checked against the number
+             detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${side}`
+               + (moved ? '.' : `, close to the standard model's ${(rating >= 3 ? a.written[0] : 6 - a.written[0]).toFixed(1)}.`) }
   }
   const last = a.lean[a.lean.length - 1], prev = a.lean[a.lean.length - 2] ?? last
   const p = probability(last), share = Math.max(p, 1 - p)

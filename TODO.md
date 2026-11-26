@@ -5,6 +5,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 ## Next up
 
 - [ ] Flatten line breaks in answers. About 2% come out one sentence per line (mostly the directive style); the trimming step used to remove them and has kept them since the two-paragraph experiment on 2026-11-25.
+- [ ] Answers in a round are sometimes too alike (user, 2026-11-25, after several live passes), and the user wanted more variety in how advice is put, such as "Try…". Two candidate changes, both needing a benchmark run: (1) draw the four styles so that every scale shows both of its options in each round, which makes the four differ more and gives a pick on every scale; (2) a third, middle option on directiveness for suggestions ("Try…", "You could…"), between commands and plain statements.
 - [ ] Never show two identical answers in a round: redraw one, and if it repeats, give it a different style. Seen in 5 of about 180 benchmark rounds, from round 4 on, between styles differing on one axis (usually formality) where the answer is nearly the fact sheet verbatim.
 - [ ] Run two or three sessions on the unchanged live page to see whether the same person gets the same profile twice.
 - [ ] Have a few friends try the live page; note which axes they notice and whether any two feel the same.
