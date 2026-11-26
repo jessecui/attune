@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, type Draft, type Me, type Round, type Summary } from './api'
 import { Shell } from './components/Shell'
 import { Gate } from './screens/Gate'
@@ -21,10 +21,23 @@ export default function App() {
   useEffect(() => { refresh() }, [])
 
   // With a draft, the session runs on the visitor's setting; without one, on the built-in questions.
+  // Each start gets a number. If the visitor goes home while the GPU is starting, the number moves
+  // on and the late reply is ignored, so they are not pulled into a session they walked away from.
+  const attempt = useRef(0)
   const begin = async (rounds: number, draft?: Draft) => {
+    const mine = ++attempt.current
     setStage({ name: 'starting', rounds })
-    try { setStage({ name: 'round', round: await api.start(rounds, draft) }) }
-    catch (e) { expired(e) || setStage({ name: 'welcome', error: (e as Error).message }) }
+    try {
+      const round = await api.start(rounds, draft)
+      if (attempt.current === mine) setStage({ name: 'round', round })
+    } catch (e) { if (attempt.current === mine && !expired(e)) setStage({ name: 'welcome', error: (e as Error).message }) }
+  }
+  // The logo goes home. Part-way through a session that means giving it up, so ask first.
+  const goHome = () => {
+    if (stage.name === 'gate' || stage.name === 'loading' || stage.name === 'welcome') return
+    if (stage.name === 'round' && !window.confirm('Leave this session? The model trained so far will be lost.')) return
+    attempt.current++
+    setStage({ name: 'welcome' })
   }
   // A lapsed sign-in sends the visitor back to the password screen.
   const expired = (e: unknown) => (e as { status?: number }).status === 401 && (setStage({ name: 'gate' }), true)
@@ -32,7 +45,7 @@ export default function App() {
 
   const progress = stage.name === 'round' ? { at: stage.round.round, of: stage.round.rounds } : undefined
   return (
-    <Shell mock={!!me?.mock} progress={progress} onSignOut={stage.name !== 'gate' && stage.name !== 'loading' ? signOut : undefined}>
+    <Shell mock={!!me?.mock} progress={progress} onHome={goHome} onSignOut={stage.name !== 'gate' && stage.name !== 'loading' ? signOut : undefined}>
       {/* The password prompt sits over the start screen, which is inert until sign-in. */}
       {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [5, 10]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
       {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [5, 10]} error={stage.error} onStart={(r) => begin(r)}

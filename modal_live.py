@@ -385,7 +385,11 @@ class Live:
             if body and body.draft:
                 scenario, role = scenario_from(body.draft, rounds)
                 builtin = False
+            # Sessions a visitor walked away from are dropped after half an hour without activity.
+            for sid in [k for k, old in self.sessions.items() if time.time() - old["touched"] > 1800]:
+                del self.sessions[sid]
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
+                 "touched": time.time(),
                  "scenario": scenario, "role": role, "builtin": builtin, "notice": None,
                  "cands": {}, "error": None, "thread": None,
                  # 2e-5 for the five-question session: in the benchmark it kept nearly all of what 3e-5
@@ -415,6 +419,7 @@ class Live:
             s = self.sessions.get(fb.session)
             if s is None:
                 raise HTTPException(status_code=404, detail="Session expired; start again")
+            s["touched"] = time.time()
             if fb.best == fb.worst or not {fb.best, fb.worst} <= set(range(K)):
                 raise HTTPException(status_code=400, detail="Pick two different answers")
             t = time.time()

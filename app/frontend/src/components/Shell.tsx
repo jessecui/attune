@@ -2,14 +2,16 @@ import type { ReactNode } from 'react'
 import { Logo } from './Logo'
 
 /** The frame around every screen: a compact header, the page, and the standing note. */
-export function Shell({ children, mock, progress, onSignOut }:
-  { children: ReactNode; mock: boolean; progress?: { at: number; of: number }; onSignOut?: () => void }) {
+export function Shell({ children, mock, progress, onHome, onSignOut }:
+  { children: ReactNode; mock: boolean; progress?: { at: number; of: number }; onHome: () => void; onSignOut?: () => void }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <Logo />
-          <span className="text-base font-semibold text-gray-900">Attune</span>
+          <button onClick={onHome} aria-label="Attune, back to the start" className="flex cursor-pointer items-center gap-3 rounded-md">
+            <Logo />
+            <span className="text-base font-semibold text-gray-900">Attune</span>
+          </button>
           <span className="hidden h-5 w-px bg-gray-200 sm:block" aria-hidden />
           <p className="hidden truncate text-gray-500 sm:block">Train your own personal AI model</p>
           <div className="ml-auto flex items-center gap-4">
