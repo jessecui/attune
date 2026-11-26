@@ -24,12 +24,13 @@ Benchmarked with simulated users played by the judge model (each given a fixed s
 
 | Comparison | Result |
 |---|---|
-| GRPO against the untouched model | **91%** answer-level win rate (104 wins, 11 ties, 5 losses) |
-| GRPO against DPO, 28 matched runs | **57%** win rate (124 wins, 73 ties, 83 losses); scales on the wanted side 88% against 80% |
-| Answers adding advice not on the fact sheet | 14% for GRPO, 28% for DPO (**51% fewer**) |
-| Run-to-run variance in scales learned | 31% lower for GRPO |
+| GRPO against the untouched model | **96%** answer-level win rate (113 wins, 4 ties, 3 losses) |
+| GRPO against DPO, 28 matched runs | **59%** win rate (122 wins, 88 ties, 70 losses) |
+| Scales on the wanted side | 87% for GRPO, 72% for DPO |
+| Run-to-run variance in scales learned | **73% lower** for GRPO |
+| Answers adding advice not on the fact sheet | 26% for GRPO, 22% for DPO |
 
-Ties count as half a win. On the four standard simulated users the two methods tie; GRPO's lead comes from users who care about only two scales or pick at random part of the time. DPO, which trains on the text directly, follows a preference the menu has no scale for (shorter answers) further. Every run and setting is recorded in [`TODO.md`](TODO.md).
+Ties count as half a win. GRPO leads on the four standard simulated users (59% head to head) and most clearly on a user who cares about only two scales (94% of those scales right, against 75%). It does not reduce additions: its answers add something not on the fact sheet slightly more often than DPO's. An earlier run had shown the opposite, because answers written in a style were cut at three sentences while DPO's could use four; with the same limit for both, that gap disappeared. In an earlier run with a user who picks the shortest answer, DPO, which trains on the text directly, shortened its answers further than GRPO. Every run and setting is recorded in [`TODO.md`](TODO.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-results-dark.png">
