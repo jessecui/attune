@@ -194,6 +194,15 @@ GRIDS = {
                                    ("grpo-aw0.3", ["--answer-weight", "0.3"]),
                                    ("grpo-aw0.3-spread", ["--answer-weight", "0.3", "--spread", "--no-duplicates"])]
                 for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # The frozen method (2026-11-25, late): what the live app runs, against DPO at two learning rates.
+    # These are the numbers to quote. Score with `python -m bench.judge compare final`.
+    "final": [{"name": f"{tag}_{p}_s{seed}",
+               "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
+              for tag, extra in [("grpo", ["--choice-clip", "0.2", "--lr", "2e-5", "--answer-weight", "0.3",
+                                           "--min-distance", "2", "--no-duplicates"]),
+                                 ("dpo-lr2e-5", ["--method", "dpo", "--lr", "2e-5"]),
+                                 ("dpo-lr3e-5", ["--method", "dpo", "--lr", "3e-5"])]
+              for p in LIVE_PERSONAS for seed in (1, 2, 3)],
     "main": grid("rank4", ["grpo_style", "dpo"]),
     "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
     "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),
