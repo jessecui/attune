@@ -20,6 +20,7 @@ fi
 # --reload: the backend picks up code changes itself, as the page already does
 (cd app/backend && ../../.venv/bin/uvicorn main:app --reload --port $ATTUNE_BACKEND_PORT) &
 backend=$!
-trap "kill $backend 2>/dev/null" EXIT
+# On exit, stop the backend and wait for it, so its last log lines print before the prompt returns.
+trap "kill $backend 2>/dev/null; wait $backend 2>/dev/null" EXIT
 echo "Password: $ATTUNE_PASSWORD   Open http://localhost:5180"
 cd app/frontend && npm run dev
