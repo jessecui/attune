@@ -74,6 +74,18 @@ def use_menu(menu, axes):
     AXES = {m["axis"]: [c[j][1] == 0 for c in combos] for j, m in enumerate(chosen)}
 
 
+def style_distance(s, t):
+    """On how many axes two menu styles differ."""
+    return sum(AXES[a][s] != AXES[a][t] for a in AXES)
+
+
+def alike(a, b):
+    """True if two answers say the same thing in nearly the same words (punctuation and case aside)."""
+    from difflib import SequenceMatcher
+    x, y = (re.sub(r"[^a-z0-9 ]", "", t.lower()).split() for t in (a, b))
+    return x == y or SequenceMatcher(None, x, y).ratio() > 0.9
+
+
 def cap_sentences(text, k):
     """The first k sentences of text, as one paragraph (line breaks become spaces)."""
     return " ".join(re.split(r"(?<=[.!?])\s+", " ".join(text.split()))[:k])
@@ -159,6 +171,14 @@ class Session:
             dist = (1 - EXPLORE) * self.style_dist(self.styled["train"][i]) + EXPLORE / len(STYLES)
             g = torch.Generator().manual_seed(rng.randrange(2 ** 31))
             picks = torch.multinomial(dist, a.k, replacement=False, generator=g).tolist()
+            near = getattr(a, "min_distance", 0)
+            if near:
+                # Redraw until every pair of styles differs on at least this many axes. Two styles that
+                # differ on one axis only (often formality) can produce the same answer word for word.
+                for _ in range(200):
+                    if all(style_distance(s, t) >= near for j, s in enumerate(picks) for t in picks[:j]):
+                        break
+                    picks = torch.multinomial(dist, a.k, replacement=False, generator=g).tolist()
             if getattr(a, "spread", False):
                 # Redraw until every axis shows both of its options among the candidates, so the
                 # answers differ on every axis and a pick says something about each one.
@@ -209,9 +229,17 @@ class Session:
             # Two identical answers cannot be told apart, and marking one best and the other worst
             # would contradict itself: redraw the later one, twice at most.
             for _ in range(2):
-                same = [j for j in range(a.k) if any(texts[j].strip() == texts[i].strip() for i in range(j))]
+                same = [j for j in range(a.k) if any(alike(texts[j], texts[i]) for i in range(j))]
                 if not same:
                     break
+                if self.latent:
+                    # Writing it again in the same style tends to give the same words, so move the
+                    # repeat to a style that differs from every other one shown on two axes or more.
+                    for j in same:
+                        others = [s for i, s in enumerate(picks) if i != j]
+                        far = [s for s in range(len(STYLES)) if all(style_distance(s, t) >= 2 for t in others)]
+                        if far:
+                            picks[j] = rng.choice(far)
                 fresh, fresh_texts = draw(same)
                 for j, o, t in zip(same, fresh, fresh_texts):
                     if facts_retained(t, item["keys"]) >= a.min_facts:
@@ -333,7 +361,10 @@ def main(argv=None):
                     help="grpo_style: how strongly the answers' wording is trained relative to the style choice")
     ap.add_argument("--spread", action="store_true",
                     help="grpo_style: draw the candidates so that every axis shows both of its options each round")
-    ap.add_argument("--no-duplicates", action="store_true", help="redraw a candidate identical to an earlier one")
+    ap.add_argument("--no-duplicates", action="store_true",
+                    help="replace a candidate that says the same as an earlier one in nearly the same words")
+    ap.add_argument("--min-distance", type=int, default=0,
+                    help="grpo_style: every pair of candidate styles must differ on at least this many axes")
     ap.add_argument("--relabel", action="store_true",
                     help="grpo_style with --judge-user: credit each answer's reward to the style the judge says "
                          "it displays, not the style it was assigned")

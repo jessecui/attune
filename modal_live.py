@@ -118,7 +118,10 @@ class Live:
         # "heldout" questions are never used in rounds; they are what the model is rated on.
         self.builtin = {"system": builtin["system"], "train": builtin["train"], "heldout": builtin["test"][:MEASURE]}
         self.args = argparse.Namespace(two_step=True, k=K, max_new_tokens=128, max_sentences=4,
-                                       min_facts=1.0, strict_facts=True, redraws=3, neutral_start=True)
+                                       min_facts=1.0, strict_facts=True, redraws=3, neutral_start=True,
+                                       # the four answers come from styles that differ on two scales or
+                                       # more, and a near-copy of another answer is replaced
+                                       min_distance=2, no_duplicates=True)
         self.policy = Policy(MODEL)
         self.fresh = self.policy.snapshot()  # the untouched adapter every session starts from
         self.sessions = {}
