@@ -3,7 +3,7 @@ import { api, AXIS_NOTES, axisColor, type Draft } from '../api'
 import { Spinner } from '../components/Spinner'
 
 const SCALES = ['warmth', 'directiveness', 'formality', 'depth']
-const EXAMPLES = ['My doctor, explaining test results', 'My tutor, helping with exam revision', 'My manager, giving me feedback', 'A financial adviser, on saving']
+const EXAMPLES = ['My doctor explaining my test results', 'My tutor helping me study for a test', 'My manager giving me feedback', 'A financial adviser helping me save']
 
 /** The start screen: one question to the visitor, with the rest kept to a line each. */
 export function Welcome({ choices, error, onDraft, onStart, onExpired }:
@@ -23,38 +23,36 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
   }
 
   return (
-    <div className="mx-auto max-w-2xl pt-8 sm:pt-14">
-      <h1 className="text-center text-3xl font-semibold tracking-tight text-gray-900">Train your own personal AI model</h1>
-      <p className="mx-auto mt-3 max-w-lg text-center text-base text-gray-600">
+    <div className="mx-auto max-w-2xl pt-10 text-center sm:pt-20">
+      <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train your own personal AI model</h1>
+      <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-gray-500">
         Most AI models are tuned for the average person. Train one that knows how you like to be spoken to.
       </p>
-      <p className="mt-3 text-center font-medium text-gray-900">
-        {rounds} questions <span className="font-normal text-gray-400">·</span> a few minutes <span className="font-normal text-gray-400">·</span> yours to download
-      </p>
 
-      <form onSubmit={prepare} className="panel mt-8 p-5">
+      <form onSubmit={prepare} className="mt-10">
         <label htmlFor="setting" className="font-medium text-gray-900">Who should the model be when it speaks to you?</label>
-        <div className="mt-2 flex gap-2">
+        {/* One field with its button inside it */}
+        <div className="relative mt-3">
           <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}
-            placeholder="e.g. My doctor, explaining test results" autoComplete="off"
-            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2.5 text-base focus:border-teal-600" />
-          <button className="btn btn-primary shrink-0 px-4" disabled={busy || setting.trim().length < 3}>
-            {busy ? <><Spinner />Writing questions</> : 'Start'}
+            placeholder="My doctor explaining my test results" autoComplete="off"
+            className="w-full rounded-xl border border-gray-200 bg-white py-4 pl-5 pr-32 text-base shadow-sm transition placeholder:text-gray-400 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
+          <button className="btn btn-primary absolute inset-y-2 right-2 rounded-lg px-5" disabled={busy || setting.trim().length < 3}>
+            {busy ? <><Spinner />Writing</> : 'Start'}
           </button>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
           {EXAMPLES.map((ex) => (
             <button key={ex} type="button" disabled={busy} onClick={() => setSetting(ex)}
-              className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 hover:border-gray-300 hover:bg-gray-50">{ex}</button>
+              className="cursor-pointer rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600 transition hover:border-teal-600 hover:bg-teal-50 hover:text-teal-900 disabled:cursor-not-allowed">{ex}</button>
           ))}
-          <button type="button" disabled={busy} onClick={() => onStart(rounds)}
-            className="rounded-md px-2.5 py-1 text-xs text-gray-500 underline underline-offset-2 hover:text-gray-900">or general questions</button>
         </div>
-        {problem && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800">{problem}</p>}
+        {problem && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-red-800">{problem}</p>}
       </form>
 
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-gray-600">
-        <span className="hint">It learns your taste on</span>
+      <p className="mt-10 text-gray-500">
+        {rounds} questions <span className="mx-1.5 text-gray-300">/</span> A few minutes <span className="mx-1.5 text-gray-300">/</span> Yours to download
+      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-gray-500">
         {SCALES.map((key) => (
           <span key={key} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: axisColor(key) }} aria-hidden />{AXIS_NOTES[key].title}</span>
         ))}
