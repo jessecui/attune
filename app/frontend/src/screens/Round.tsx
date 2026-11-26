@@ -31,7 +31,10 @@ export function RoundScreen({ round, onNext, onExpired }:
   return (
     <div className="mx-auto max-w-5xl">
       <div className="panel p-5">
-        <p className="hint">Question {round.round} of {round.rounds}</p>
+        <p className="hint">
+          Question {round.round} of {round.rounds}
+          {round.role && !round.builtin && <> · answered by <span className="font-medium text-gray-700">{round.role}</span></>}
+        </p>
         <h1 className="mt-1 text-lg font-semibold text-gray-900">{round.question}</h1>
         <p className="mt-1 text-gray-600">Pick the answer you like best and the one you like worst.</p>
       </div>
