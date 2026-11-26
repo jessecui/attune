@@ -1,16 +1,32 @@
-import { useState } from 'react'
-import { AXIS_NOTES, axisColor } from '../api'
+import { useState, type FormEvent } from 'react'
+import { api, AXIS_NOTES, axisColor, type Draft } from '../api'
+import { Spinner } from '../components/Spinner'
 
 const SCALES: [string, string, string][] = [
   ['warmth', 'Neutral', 'Warm'], ['directiveness', 'Collaborative', 'Directive'],
   ['formality', 'Formal', 'Casual'], ['depth', 'Just the advice', 'Explains why'],
 ]
+const EXAMPLES = ['A doctor explaining test results', 'A tutor helping with exam revision', 'A manager giving feedback', 'A financial adviser on saving']
 // Measured: the GPU starts in under a minute, and each question takes as long as you take to read it.
 const minutes = (rounds: number) => (rounds <= 5 ? 'a few minutes' : `about ${rounds} minutes`)
 
-export function Welcome({ choices, error, onStart }: { choices: number[]; error?: string; onStart: (rounds: number) => void }) {
-  const [rounds, setRounds] = useState(choices[0])
-  const steps = [`Pick the best and worst of four answers, ${rounds} times.`, 'The model trains on each pick, live on a GPU.', 'Run your model on your own machine.']
+/** The start screen: say who the model should speak as, and the app drafts questions for that setting. */
+export function Welcome({ choices, error, onDraft, onStart, onExpired }:
+  { choices: number[]; error?: string; onDraft: (rounds: number, draft: Draft) => void; onStart: (rounds: number) => void; onExpired: (e: unknown) => boolean }) {
+  const [rounds, setRounds] = useState(choices[0]), [setting, setSetting] = useState('')
+  const [busy, setBusy] = useState(false), [problem, setProblem] = useState(error ?? '')
+
+  const prepare = async (e?: FormEvent) => {
+    e?.preventDefault()
+    if (setting.trim().length < 3) return
+    setBusy(true); setProblem('')
+    try {
+      const draft = await api.prepare(setting, rounds)
+      if (draft.suitable) onDraft(rounds, draft)
+      else setProblem(draft.reason || 'That setting does not suit this exercise. Try another.')
+    } catch (err) { if (!onExpired(err)) setProblem((err as Error).message) } finally { setBusy(false) }
+  }
+
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="panel order-2 lg:order-1">
@@ -31,33 +47,44 @@ export function Welcome({ choices, error, onStart }: { choices: number[]; error?
           Most AI models are tuned for the average person. This app trains one that knows how you like to be spoken to,
           and you can download it at the end.
         </p>
-        <ol className="mt-4 space-y-2">
-          {steps.map((text, i) => (
-            <li key={i} className="flex items-center gap-3">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">{i + 1}</span>
-              <span>{text}</span>
-            </li>
-          ))}
-        </ol>
 
-        <div className="mt-5 border-t border-gray-100 pt-4">
-          <fieldset>
+        <form onSubmit={prepare} className="mt-5 border-t border-gray-100 pt-4">
+          <label htmlFor="setting" className="font-medium text-gray-900">Who should the model speak as, and about what?</label>
+          <div className="mt-2 flex gap-2">
+            <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}
+              placeholder="e.g. A doctor explaining test results" autoComplete="off"
+              className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600" />
+            <button className="btn btn-primary shrink-0" disabled={busy || setting.trim().length < 3}>
+              {busy ? <><Spinner />Writing questions</> : 'Write my questions'}
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="hint">Examples</span>
+            {EXAMPLES.map((ex) => (
+              <button key={ex} type="button" disabled={busy} onClick={() => setSetting(ex)}
+                className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700 hover:border-gray-300 hover:bg-gray-50">{ex}</button>
+            ))}
+          </div>
+          {problem && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800">{problem}</p>}
+
+          <fieldset className="mt-5">
             <legend className="hint">Session length</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {choices.map((n, i) => (
                 <label key={n} className={`cursor-pointer rounded-md border px-3 py-1.5 ${rounds === n ? 'border-teal-600 bg-teal-50 text-teal-900' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
-                  <input type="radio" name="rounds" className="sr-only" checked={rounds === n} onChange={() => setRounds(n)} />
+                  <input type="radio" name="rounds" className="sr-only" checked={rounds === n} onChange={() => setRounds(n)} disabled={busy} />
                   {i === 0 ? 'Standard' : 'Extended'} <span className="text-gray-500">· {n} questions</span>
                 </label>
               ))}
             </div>
           </fieldset>
-          {error && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800">{error} Try again.</p>}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button className="btn btn-primary" onClick={() => onStart(rounds)}>Start training</button>
-            <span className="hint">Takes {minutes(rounds)}, including about a minute for the GPU to start.</span>
-          </div>
-        </div>
+          <p className="hint mt-4">
+            You will pick the best and worst of four answers, {rounds} times, and the model trains on each pick. Takes {minutes(rounds)}.{' '}
+            <button type="button" className="underline underline-offset-2 hover:text-gray-900" disabled={busy} onClick={() => onStart(rounds)}>
+              Or use general everyday questions
+            </button>
+          </p>
+        </form>
       </section>
     </div>
   )

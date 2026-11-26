@@ -110,25 +110,32 @@ class Live:
 
         self.R = R
         self.lock = threading.Lock()  # one GPU, one piece of work at a time
-        self.scenario = json.loads(Path("data/advice.json").read_text())
-        self.menu = [m for name in AXES for m in self.scenario["menu"] if m["axis"] == name]
-        R.use_menu(self.scenario["menu"], AXES)
-        # Questions for tracking and the before/after comparison; never used in rounds.
-        self.scenario["heldout"] = self.scenario["test"][:MEASURE]
+        builtin = json.loads(Path("data/advice.json").read_text())
+        self.menu = [m for name in AXES for m in builtin["menu"] if m["axis"] == name]
+        R.use_menu(builtin["menu"], AXES)
+        # The built-in questions: used when a visitor gives no setting, or the setting cannot be prepared.
+        # "heldout" questions are never used in rounds; they are what the model is rated on.
+        self.builtin = {"system": builtin["system"], "train": builtin["train"], "heldout": builtin["test"][:MEASURE]}
         self.args = argparse.Namespace(two_step=True, k=K, max_new_tokens=128, max_sentences=4,
                                        min_facts=1.0, strict_facts=True, redraws=3, neutral_start=True)
         self.policy = Policy(MODEL)
         self.fresh = self.policy.snapshot()  # the untouched adapter every session starts from
-        self.sess = R.Session(self.policy, self.scenario, self.args, latent=True)
-        self.base_texts = self.sess.answer_heldout(use_adapter=False, plain=True)[0]
-        # Before any feedback every style is equally likely, so the starting answer shown
-        # is the untouched model's, written with no style instructions.
-        self.track0 = {"round": 0, **self._track(plain=self.base_texts[0])}
         self.sessions = {}
-        # The untouched model's writing, rated once: the starting point of every session's charts.
-        self.written0 = None
-        threading.Thread(target=lambda: setattr(self, "written0", self._written(self.base_texts))).start()
         hf_cache.commit()
+
+    def _open(self, s):
+        """Set a new session up on its own questions: prompts, and the standard model's answers to
+        the rating questions (written here, rated in the background) as the "before"."""
+        import threading
+        s["sess"] = self.R.Session(self.policy, s["scenario"], self.args, latent=True)
+        s["base_texts"] = s["sess"].answer_heldout(use_adapter=False, plain=True)[0]
+        s["written0"] = None
+        s["rating0"] = threading.Thread(
+            target=lambda: s.update(written0=self._written(s["scenario"]["heldout"], s["base_texts"])))
+        s["rating0"].start()
+        # Before any feedback every style is equally likely, so there is no lean to measure yet.
+        s["history"] = [{"round": 0, "lean": {a: 0.0 for a in AXES}, "style": [], "clauses": [],
+                         "answer": s["base_texts"][0], "texts": None}]
 
     # ---- pieces of GPU work; each runs with one session's adapter loaded -------------
 
@@ -140,22 +147,21 @@ class Live:
             finally:
                 s["weights"] = self.policy.snapshot()
 
-    def _written(self, texts):
+    def _written(self, items, texts):
         """The judge's average rating of these answers to the unseen questions, per axis (1 to 5).
 
         None if the judge is unavailable; the page then falls back to the model's style choices.
         """
         try:
             from bench.judge import judge_many
-            items = self.scenario["heldout"]
             verdicts = judge_many([(it["q"], it["facts"], t) for it, t in zip(items, texts)])
             return {a: round(sum(v[a] for v in verdicts) / len(verdicts), 2) for a in AXES}
         except Exception as e:  # noqa: BLE001 - a judge outage must not end the session
             print(f"judge unavailable: {e}", flush=True)
             return None
 
-    def _track(self, plain=None):
-        """What the current adapter prefers on each axis, and its answers to the unseen questions."""
+    def _track(self, s):
+        """What the session's adapter prefers on each axis, and its answers to the rating questions."""
         import torch
 
         from bench.personas import WARM_PHRASES, features
@@ -163,16 +169,17 @@ class Live:
         R, n_styles = self.R, len(self.R.STYLES)
         # The style choice is read on three of the unseen questions (it is the slow part, and it is
         # no longer what the page plots); the style favoured across them is used for every answer.
-        prompts = self.sess.styled["heldout"][:3]
+        sess = s["sess"]
+        prompts = sess.styled["heldout"][:3]
         lean, total = {a: 0.0 for a in AXES}, 0
         for j, p in enumerate(prompts):
-            lp = self.sess.style_logp(p)
+            lp = sess.style_logp(p)
             total = total + lp
             for a in AXES:
                 m = torch.tensor(R.AXES[a])
                 # log-odds of the axis's first option over its second
                 lean[a] += (torch.logsumexp(lp[m], 0) - torch.logsumexp(lp[~m], 0)).item() / len(prompts)
-        items = self.scenario["heldout"]
+        items = s["scenario"]["heldout"]
         # The answers that get rated are written in styles shared out in proportion to the model's
         # preferences (largest remainders, so nothing is random): a model split between two styles
         # writes some answers in each, and its rating sits in the middle instead of flipping.
@@ -181,18 +188,14 @@ class Live:
         for j in (share - counts).argsort(descending=True)[: int(len(items) - counts.sum())]:
             counts[j] += 1
         firsts = [j for j in share.argsort(descending=True).tolist() for _ in range(int(counts[j]))]
-        if plain is None:
-            # One answer per unseen question, each in the style the model now favours for it.
-            outs = self.policy.generate([self.sess.answer_prompt(it, f) for it, f in zip(items, firsts)],
-                                        max_new_tokens=self.args.max_new_tokens)
-            texts = self.sess.finish(outs, firsts, items)[1]
-            text, first = texts[0], firsts[0]
-            style = [m["options"][0 if R.AXES[m["axis"]][first] else 1][0] for m in self.menu]
-        else:
-            text, texts, style, first = plain, None, [], None
+        outs = self.policy.generate([sess.answer_prompt(it, f) for it, f in zip(items, firsts)],
+                                    max_new_tokens=self.args.max_new_tokens)
+        texts = sess.finish(outs, firsts, items)[1]
+        text, first = texts[0], firsts[0]
+        style = [m["options"][0 if R.AXES[m["axis"]][first] else 1][0] for m in self.menu]
         f = features(text)
         return {"lean": {a: round(v, 2) for a, v in lean.items()}, "style": style, "answer": text, "texts": texts,
-                "clauses": [] if first is None else list(R.STYLE_CLAUSES[first]),
+                "clauses": list(R.STYLE_CLAUSES[first]),
                 "words": f["words"], "sentences": f["sentences"], "exclamations": text.count("!"),
                 "warm_phrases": sum(text.lower().count(p) for p in WARM_PHRASES)}
 
@@ -200,11 +203,12 @@ class Live:
         """Write round n's candidates with the session's current adapter."""
         import time
         t = time.time()
-        i = (n - 1) % len(self.scenario["train"])
-        picks, answers, texts, redrawn, segments = self.sess.propose(i, s["rng"])
+        i = (n - 1) % len(s["scenario"]["train"])
+        picks, answers, texts, redrawn, segments = s["sess"].propose(i, s["rng"])
         s["cands"][n] = {"answers": answers, "segments": segments,
                          "payload": {"session": s["id"], "round": n, "rounds": s["rounds"],
-                                     "question": self.scenario["train"][i]["q"], "candidates": texts,
+                                     "question": s["scenario"]["train"][i]["q"], "candidates": texts,
+                                     "role": s["role"], "builtin": s["builtin"], "notice": s["notice"],
                                      "write_seconds": round(time.time() - t, 1)}}
 
     def _learn(self, s, n, best, worst):
@@ -233,19 +237,21 @@ class Live:
         # Measured once, at the end: the tuned model answers the unseen questions and the judge rates
         # each scale. The standard model's ratings on the same questions (taken at start-up) are the
         # comparison. If the judge is unavailable the page falls back to the model's style choices.
-        final = {"round": s["rounds"], **self._track()}
+        final = {"round": s["rounds"], **self._track(s)}
         h = [s["history"][0], final]
-        written = [self.written0, self._written(final["texts"])]
+        s["rating0"].join(timeout=40)
+        written = [s["written0"], self._written(s["scenario"]["heldout"], final["texts"])]
         rated = all(written)
         axes = [{"axis": m["axis"], "first": m["options"][0][0], "second": m["options"][1][0],
                  "lean": [r["lean"][m["axis"]] for r in h],
                  "written": [w[m["axis"]] for w in written] if rated else None} for m in self.menu]
         texts = h[-1]["texts"]   # the tuned model's answers to the unseen questions, as rated
         examples = [{"question": it["q"], "before": b, "after": t}
-                    for it, b, t in list(zip(self.scenario["heldout"], self.base_texts, texts))[:EXAMPLES]]
+                    for it, b, t in list(zip(s["scenario"]["heldout"], s["base_texts"], texts))[:EXAMPLES]]
         keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases", "update_seconds")
-        return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes,
-                "style_instructions": h[-1]["clauses"], "tracked_question": self.scenario["heldout"][0]["q"],
+        return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes, "role": s["role"],
+                "builtin": s["builtin"],
+                "style_instructions": h[-1]["clauses"], "tracked_question": s["scenario"]["heldout"][0]["q"],
                 "track": [{k: r.get(k) for k in keep} for r in h], "examples": examples}
 
     def _export(self, s, summary):
@@ -262,7 +268,8 @@ class Live:
         meta = {"base_model": MODEL, "created": time.strftime("%Y-%m-%d"), "rounds": s["rounds"],
                 "profile": [{"axis": a["axis"], "first": a["first"], "second": a["second"], "lean": a["lean"][-1]}
                             for a in summary["axes"]],
-                "style_instructions": summary["style_instructions"], "system_prompt": self.scenario["system"],
+                "speaking_as": s["role"], "questions": [it["q"] for it in s["scenario"]["train"][: s["rounds"]]],
+                "style_instructions": summary["style_instructions"], "system_prompt": s["scenario"]["system"],
                 "prompt_format": "Question, then the fact sheet if any, then 'Write your answer in this style:' "
                                  "followed by the style instructions as a bulleted list, all in the user turn."}
         (d / "attune.json").write_text(json.dumps(meta, indent=1))
@@ -305,18 +312,71 @@ class Live:
             check(key)
             return Path("/root/live_page.html").read_text()
 
-        @api.post("/api/start")
-        def start(key: str = "", rounds: int = ROUNDS):
+        @api.get("/api/warm")
+        def warm(key: str = ""):
+            """Does nothing; calling it starts the GPU container while the visitor is still choosing."""
             check(key)
+            return {"ready": True}
+
+        class DraftItem(BaseModel):
+            question: str
+            points: list[str] | None = None   # None when the visitor wrote or edited the question
+
+        class DraftIn(BaseModel):
+            role: str
+            items: list[DraftItem]
+            measure: list[DraftItem]
+
+        class StartIn(BaseModel):
+            rounds: int | None = None
+            draft: DraftIn | None = None
+
+        def scenario_from(draft, rounds):
+            """The session's questions from a visitor's draft; fact sheets are written here for
+            any question they typed themselves. Returns (scenario, role)."""
+            from bench import setting
+            role = setting.clean(draft.role, 80).rstrip(".") or "an advisor"
+            if len(draft.items) != rounds or len(draft.measure) != MEASURE or any(i.points is None for i in draft.measure):
+                raise HTTPException(status_code=400, detail="That set of questions is incomplete; start again")
+            items = [{"question": setting.clean(i.question, 200),
+                      "points": None if i.points is None or len(i.points) != 2 else [setting.clean(p, 200) for p in i.points]}
+                     for i in [*draft.items, *draft.measure]]
+            if any(len(i["question"]) < 8 for i in items):
+                raise HTTPException(status_code=400, detail="One of the questions is too short")
+            typed = [i for i in items if i["points"] is None]
+            if typed:
+                try:
+                    written = setting.points_for(role, [i["question"] for i in typed])
+                except Exception:  # noqa: BLE001
+                    raise HTTPException(status_code=502, detail="Could not prepare your own questions just now. "
+                                                                "Try again, or use the suggested ones.")
+                if not written["suitable"]:
+                    raise HTTPException(status_code=400, detail=written["reason"] or "One of the questions is not suitable")
+                for i, w in zip(typed, written["items"]):
+                    i["points"] = w["points"]
+            made = [setting.scenario_item(i) for i in items]
+            system = self.builtin["system"].replace("You are an advisor", f"You are {role}", 1)
+            return {"system": system, "train": made[:rounds], "heldout": made[rounds:]}, role
+
+        @api.post("/api/start")
+        def start(body: StartIn | None = None, key: str = "", rounds: int = ROUNDS):
+            check(key)
+            rounds = (body and body.rounds) or rounds
             if rounds not in (ROUNDS, LONG_ROUNDS):
                 raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
+            scenario, role, builtin = self.builtin, "an advisor", True
+            if body and body.draft:
+                scenario, role = scenario_from(body.draft, rounds)
+                builtin = False
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
-                 "cands": {}, "history": [dict(self.track0)], "error": None, "thread": None,
+                 "scenario": scenario, "role": role, "builtin": builtin, "notice": None,
+                 "cands": {}, "error": None, "thread": None,
                  # The short session learns faster; the long one stays gentle, because ten rounds at the
                  # higher rate over-commit and drift in wording (benchmark of 2026-11-25).
                  "method": GRPOStyle(self.policy, lr=3e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,
                                      choice_clip=0.2)}
             self.sessions[s["id"]] = s
+            self._with(s, lambda: self._open(s))
             self._with(s, lambda: self._write(s, 1))
             if rounds >= 2:  # get one round ahead straight away
                 s["thread"] = threading.Thread(target=lambda: self._with(s, lambda: self._write(s, 2)))
@@ -359,17 +419,41 @@ class Live:
         return api
 
 
-@app.function(image=image, volumes={"/adapters": adapters}, secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY})])
+@app.function(image=image, volumes={"/adapters": adapters},
+              secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY}), modal.Secret.from_name("attune-judge")])
 @modal.asgi_app()
 def files():
-    """Serves packaged adapters from the volume, so a download does not need the GPU container."""
+    """The work that needs no GPU: preparing a visitor's setting, and serving packaged adapters."""
     import os
     import re
 
     from fastapi import FastAPI, HTTPException
     from fastapi.responses import FileResponse
+    from pydantic import BaseModel
 
     api = FastAPI()
+
+    class PrepareIn(BaseModel):
+        setting: str
+        rounds: int = ROUNDS
+
+    @api.post("/prepare")
+    def prepare(body: PrepareIn, key: str = ""):
+        """Check a visitor's setting and draft its questions: the session's, then the rating ones."""
+        if not key_ok(key, os.environ.get("ATTUNE_KEY", "")):
+            raise HTTPException(status_code=401, detail="Missing or wrong key")
+        if body.rounds not in (ROUNDS, LONG_ROUNDS):
+            raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
+        os.chdir("/root")
+        from bench import setting
+        if len(setting.clean(body.setting, 300)) < 3:
+            raise HTTPException(status_code=400, detail="Say who the model should speak as")
+        try:
+            d = setting.draft(body.setting, body.rounds + MEASURE)
+        except Exception:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail="Could not prepare that setting just now")
+        return {"suitable": d["suitable"], "reason": d["reason"], "role": d["role"],
+                "items": d["items"][: body.rounds], "measure": d["items"][body.rounds:]}
 
     @api.get("/adapter/{session}")
     def adapter(session: str, key: str = ""):

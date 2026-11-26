@@ -1,6 +1,6 @@
 # Attune
 
-Attune tunes a small language model to the way one person likes to be spoken to. You read four short answers, mark the one you like best and the one you like least, and after five rounds you have a model that answers in your style, plus a picture of what that style is.
+Attune tunes a small language model to the way one person likes to be spoken to. You say who the model should speak as (a doctor, a tutor, a manager), read four short answers to each of five questions, mark the best and the worst, and end up with a model that answers in your style, which you can download.
 
 **Status:** early. The training method, a benchmark with simulated users and a judge model, and a first version of the app exist. The app runs locally; it is not deployed yet.
 
@@ -17,7 +17,8 @@ Each answer is written in a combination of styles from a fixed menu:
 
 - **Model:** [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) with a LoRA adapter.
 - **Update:** GRPO, with your best and worst choices as the reward. The model first chooses a style, then writes the answer in it; both steps are trained.
-- **Content:** every question has a short fact sheet, and an answer missing a fact is redrawn before you see it.
+- **Content:** every question has a two-point fact sheet, written by hand for the built-in questions and by Gemini for a visitor's own setting. An answer missing a point is redrawn before you see it.
+- **Result:** at the end, a judge model (Gemini) rates the tuned model's answers to six unseen questions on each scale, beside the standard model's.
 
 ## Layout
 

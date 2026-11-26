@@ -116,7 +116,7 @@ def _mock():
 
 def _mock_round(s, n):
     r = _mock()["rounds"][n - 1]
-    return {"session": s["id"], "round": n, "rounds": s["rounds"], **r}
+    return {"session": s["id"], "round": n, "rounds": s["rounds"], **r, "role": "an advisor", "builtin": True}
 
 
 def _mock_summary(s):
@@ -127,11 +127,66 @@ def _mock_summary(s):
     for a in axes:  # stand-in ratings of the writing, 1 to 5, so the mock looks like a real session
         a["written"] = [round(3 + 2 * math.tanh(v / 3), 1) for v in a["lean"]]
     return {"done": True, "session": s["id"], "rounds": n, "axes": axes, "examples": fx["examples"],
+            "role": "an advisor", "builtin": True,
             "style_instructions": fx["style_instructions"], "tracked_question": fx["tracked_question"], "track": []}
+
+
+class DraftItem(BaseModel):
+    question: str
+    points: list[str] | None = None   # None when the visitor wrote or edited the question
+
+
+class Draft(BaseModel):
+    role: str
+    items: list[DraftItem]
+    measure: list[DraftItem]
 
 
 class Start(BaseModel):
     rounds: int = ROUND_CHOICES[0]
+    draft: Draft | None = None   # the visitor's setting and questions; without it, the built-in questions
+
+
+class Prepare(BaseModel):
+    setting: str
+    rounds: int = ROUND_CHOICES[0]
+
+
+async def _warm():
+    """Start the GPU container while the visitor reads their questions. Best effort."""
+    try:
+        async with httpx.AsyncClient(timeout=300) as client:
+            await client.get(f"{MODAL_URL}/api/warm", params={"key": MODAL_KEY})
+    except httpx.HTTPError:
+        pass
+
+
+@app.post("/api/session/prepare")
+async def prepare(body: Prepare, attune_session: str | None = Cookie(default=None)):
+    """Check the visitor's setting and draft questions for it. No GPU is needed for this step."""
+    require(attune_session)
+    if body.rounds not in ROUND_CHOICES:
+        raise HTTPException(status_code=400, detail=f"Rounds must be one of {ROUND_CHOICES}")
+    if MOCK:
+        await asyncio.sleep(1.2)
+        fx = _mock()
+        return {"suitable": True, "reason": "", "role": "an advisor (demo data ignores the setting)",
+                "items": [{"question": r["question"], "points": ["", ""]} for r in fx["rounds"][: body.rounds]],
+                "measure": [{"question": e["question"], "points": ["", ""]} for e in fx["examples"]] * 2}
+    if not (FILES_URL and MODAL_KEY):
+        raise HTTPException(status_code=500, detail="The setting service is not configured on the server")
+    if MODAL_URL:
+        asyncio.create_task(_warm())
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            r = await client.post(f"{FILES_URL}/prepare", params={"key": MODAL_KEY}, json=body.model_dump())
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach the setting service ({type(e).__name__})")
+    if r.status_code >= 400:
+        detail = r.json().get("detail") if r.headers.get("content-type", "").startswith("application/json") else None
+        raise HTTPException(status_code=502 if r.status_code >= 500 else r.status_code,
+                            detail=detail or "Could not prepare that setting")
+    return r.json()
 
 
 class Feedback(BaseModel):
@@ -150,7 +205,7 @@ async def start(body: Start, attune_session: str | None = Cookie(default=None)):
         s = {"id": uuid.uuid4().hex, "rounds": body.rounds, "round": 0}
         _mock_sessions[s["id"]] = s
         return _mock_round(s, 1)
-    return await modal("/api/start", params={"rounds": body.rounds})
+    return await modal("/api/start", body=body.model_dump())
 
 
 @app.post("/api/session/feedback")

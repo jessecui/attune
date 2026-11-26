@@ -16,7 +16,7 @@ export function Starting() {
       <div className="p-4">
         <p className="text-gray-600">This takes about a minute, once per session. In that time:</p>
         <ul className="mt-3 space-y-2">
-          {['A GPU is reserved for you', 'The model is loaded onto it', 'It writes your first four answers'].map((step) => (
+          {['A GPU is reserved for you', 'The model is loaded onto it', 'The standard model answers a few test questions, for comparison later', 'It writes your first four answers'].map((step) => (
             <li key={step} className="flex items-center gap-2.5 text-gray-700"><span className="h-1.5 w-1.5 rounded-full bg-gray-300" aria-hidden />{step}</li>
           ))}
         </ul>

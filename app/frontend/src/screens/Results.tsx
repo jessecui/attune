@@ -31,7 +31,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
 
       <div className="space-y-6">
         <section className="panel p-5">
-          <p className="hint">Result · {summary.rounds} questions</p>
+          <p className="hint">Result · {summary.rounds} questions{summary.role && !summary.builtin ? ` · speaking as ${summary.role}` : ''}</p>
           <h1 className="mt-1 text-lg font-semibold text-gray-900">Your personal AI model is ready</h1>
           <p className="mt-2 text-gray-600">
             {found.length > 0
