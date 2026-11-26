@@ -21,11 +21,11 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Run two or three sessions on the unchanged live page to see whether the same person gets the same profile twice.
 - [ ] Have a few friends try the live page; note which axes they notice and whether any two feel the same.
 - [x] Judge model, first version (`bench/judge.py`, Gemini 3.8 Flash, key in `.judge_key`): rates the four axes 1 to 5, checks each fact, lists additions.
-- [ ] Hand-label about 30 answers and check the judge agrees, depth especially (15 of 22 against the requested style).
+- [ ] Hand-label about 30 answers (sheet ready: `python -m bench.handlabel make` wrote `labels/handlabel.csv`; then `compare`) and check the judge agrees, depth especially (15 of 22 against the requested style).
 - [x] Use the judge as the simulated user (`--judge-user`, secret `attune-judge`): the word lists cannot see formality (7 of 20 runs right, below chance) and are weak on depth and directiveness. Needs the key stored as a Modal secret.
 - [x] GRPO against DPO on the setup of 2026-11-25 (grid `full`: 4 simulated users x 3 seeds, 5 rounds, judge as user, best-and-worst feedback for both). Axes on the wanted side, of 4: untouched 1.50, DPO 2.83 (lr 1e-5) and 3.17 (3e-5), GRPO 3.25 (1e-5) and 3.67 (3e-5). At a matched learning rate GRPO's answers suited the user better in 10 and 11 of 12 paired runs. GRPO at 1e-5 (the live setting) against DPO at its best rate is not clearly ahead. Rerun if the model, menu or update changes.
 - [x] (Superseded: now 2e-5.) Live app: learning rate 3e-5 for the 5-question session (matches the benchmarked setting), 1e-5 for the 10-question one.
-- [ ] Check the 10-question session at 3e-5 with the current settings; the choice to keep it gentle rests on earlier runs.
+- [x] (Superseded: the app offers only 5 questions.) Check the 10-question session at 3e-5 with the current settings; the choice to keep it gentle rests on earlier runs.
 
 ## Benchmark and method
 
@@ -61,17 +61,17 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [x] Backend (`app/backend`): password check, signed session cookie, and a private relay to Modal. Runs locally; a Dockerfile for Railway exists but is not deployed or tested there.
 - [x] Front end (`app/frontend`), first version: sign-in, welcome, questions, profile with four scales, before and after, round-by-round charts.
 - [ ] Serve the page from Railway so it loads instantly while the GPU starts; add loading states for the cold start.
-- [ ] "Try your model" on the results screen: the visitor types any text or question and sees the standard model's version beside their own model's, as with the prepared examples. This is the in-app form of converting text. Needs one endpoint that runs both models while the session's GPU is still up (it shuts down five minutes after last use, so the box must say when it has expired), a decision on prompt wording for rewording against answering, and a length limit on the input.
+- [x] (Done: the try box.) "Try your model" on the results screen: the visitor types any text or question and sees the standard model's version beside their own model's, as with the prepared examples. This is the in-app form of converting text. Needs one endpoint that runs both models while the session's GPU is still up (it shuts down five minutes after last use, so the box must say when it has expired), a decision on prompt wording for rewording against answering, and a length limit on the input.
 - [x] Scales measured from the writing, the same measure everywhere (built 2026-11-25): after every round the tuned model answers the three unseen questions and the judge rates each scale 1 to 5; charts and profile plot the average, with the style-choice measure as fallback when the judge is down.
 - [x] Training charts removed from the app (2026-11-25, user's call): the model is rated once at the end, on six unseen questions, and each scale shows the standard model's marker beside the tuned model's. Per-round measuring made waits longer and the charts were noisy with five points. The benchmark still records every round.
-- [ ] At learning rate 3e-5 the live model's style choice commits very hard in one round (warmth log-odds of -24 after the first question in a scripted session). The writing changes more slowly than the choice. Revisit whether 3e-5 is right for the 5-question session now that the page shows the writing.
+- [x] (Superseded: live sessions use 2e-5 with the choice clipped.) At learning rate 3e-5 the live model's style choice commits very hard in one round (warmth log-odds of -24 after the first question in a scripted session). The writing changes more slowly than the choice. Revisit whether 3e-5 is right for the 5-question session now that the page shows the writing.
 - [x] Experiment: credit the style an answer displays, not the one it was assigned (`--relabel`). Not adopted: 12 runs against the matching 12 without it gave 3.50 against 3.67 axes, a 51% answer-level win rate, and no better agreement between choice and writing (3.50 against 3.67 of 4). About one answer in four was relabelled per round. The flag stays in the benchmark, off.
 - [x] Wait indicators: good enough as built (2026-11-25). Every wait names what it is for (drafting questions, starting the session, training on a pick, building results, packaging the model), with a spinner and, at start-up, the steps and elapsed time. Not doing: reporting which exact step the server is on, which would need a status endpoint and polling for a wait of under a minute.
 - [ ] Enforce the session time limit on the server.
-- [ ] Results screen: present the outcome as a profile, show the user's style against its opposite, keep the per-round charts and tracked answers.
-- [ ] Add a visible note that the answers are a style demonstration, not advice.
+- [x] (Done in its current form: summary, four scales rated from the writing, examples; per-round charts dropped by choice.) Results screen: present the outcome as a profile, show the user's style against its opposite, keep the per-round charts and tracked answers.
+- [x] (Done: footer, try box and model card, 2026-11-26.) Add a visible note that the answers are a style demonstration, not advice.
 - [x] Dynamic settings and questions (built 2026-11-25): the visitor types who the model should speak as; Gemini checks it and drafts the questions with two-point fact sheets (bare advice, no reasons); the visitor can edit any question, and edited ones get a fact sheet at the start; the six rating questions come from the same setting; the setting goes into the downloaded package; "general everyday questions" remains as the built-in option. `bench/setting.py`, `/prepare` on the Modal CPU service.
-- [ ] Dynamic settings, still open: fall back to the built-in questions automatically when Gemini is down (today the visitor sees an error and can choose the general questions); make the "not advice" note more prominent for health settings; rewrite the built-in fact sheets without reasons; the first `prepare` after idle took 16 s (cold start), later ones about 5 s; the keyword content check is only approximate for generated questions (keywords are derived from each point).
+- [ ] Dynamic settings, still open: fall back to the built-in questions automatically when Gemini is down (today the visitor sees an error and can choose the general questions); rewrite the built-in fact sheets without reasons; the first `prepare` after idle took 16 s (cold start), later ones about 5 s; the keyword content check is only approximate for generated questions (keywords are derived from each point).
 - [ ] The standard model still rates as "explains why" (4.7 of 5) on generated fact sheets with no reasons in them: it adds reasons on its own. So that starting position is the model's habit, not the sheets'.
 - [ ] Live content check by the judge, as a filter (never a rewrite): optional, not required. Measured 2026-11-25 (8 runs each, gentler update, judge as user): with the keyword check off, shown answers missing a fact rose from about 7% to about 14%, learning was unchanged (3.62 against 3.50 axes right) and content did not collapse. Not tested: a user who prefers shorter answers, which is where dropping content would be rewarded. Gemini took 6 to 7 s per call that day.
 - [ ] About 30% of answers "add something" by the judge's standard, before and after training alike. Decide how strict that standard should be when hand-labelling.
@@ -79,7 +79,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Check that generated fact sheets are good enough: short, two distinct points, no risky specifics.
 - [x] Adapter download: packaged on Modal after the last round (adapter, profile, run script), kept for a day.
 - [ ] Try the downloaded package on a real machine: run `example.py` and check the output matches the session.
-- [ ] Never deploy while a session is in progress; a deploy drops it.
+- Rule: never deploy while a session is in progress; a deploy drops it.
 
 ## Scope decisions (2026-11-25)
 
@@ -98,9 +98,9 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 ## Write-up and resume
 
 - [ ] Benchmark page: GRPO against DPO, what failed and why (reward-model GRPO, DPO collapse), and how this departs from textbook GRPO.
-- [ ] Fill the resume bullets from real runs; never name a baseline without a number against it.
+- [x] (Done: 91% over base, 57% head-to-head, 51% fewer additions.) Fill the resume bullets from real runs; never name a baseline without a number against it.
 - [ ] Settle the title: "Attune — A Real-Time RLHF Platform for Fine-Tuning an LLM to a User's Communication Style" ("Preferred" optional; "Platform" is fair once the app is live).
-- [ ] Expand the README before making the repo public.
+- [x] Expand the README before making the repo public (screenshots, architecture, results; 2026-11-26).
 
 ## Tooling
 
