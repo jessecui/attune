@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Logo } from './Logo'
 
 /** The frame around every screen: a compact header, the page, and the standing note. */
 export function Shell({ children, mock, progress, onSignOut }:
@@ -7,7 +8,7 @@ export function Shell({ children, mock, progress, onSignOut }:
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-teal-700 text-sm font-semibold text-white" aria-hidden>A</span>
+          <Logo />
           <span className="text-base font-semibold text-gray-900">Attune</span>
           <span className="hidden h-5 w-px bg-gray-200 sm:block" aria-hidden />
           <p className="hidden truncate text-gray-500 sm:block">Train your own personal AI model</p>

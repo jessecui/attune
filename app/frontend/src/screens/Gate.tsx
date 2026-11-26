@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Logo } from '../components/Logo'
 import { api } from '../api'
 
 /** The password prompt, shown as a dialog over the start screen. */
@@ -12,7 +13,7 @@ export function Gate({ onDone }: { onDone: () => void }) {
     <div className="fixed inset-0 z-10 grid place-items-center bg-gray-900/40 p-4">
       <form onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="gate-title" className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-teal-700 text-sm font-semibold text-white" aria-hidden>A</span>
+          <Logo />
           <h1 id="gate-title" className="text-lg font-semibold text-gray-900">Attune</h1>
         </div>
         <p className="mt-3 text-gray-500">Train your own personal AI model.</p>
