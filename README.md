@@ -138,20 +138,13 @@ Open http://localhost:5180. The backend runs on port 8787.
 .venv/bin/python -m bench.judge compare final      # judge the runs' answers and summarise
 ```
 
-### Checking the judge
-
-```bash
-.venv/bin/python -m bench.handlabel make       # 30 answers to rate yourself, in labels/handlabel.csv
-.venv/bin/python -m bench.handlabel compare    # agreement with the judge, per scale
-```
-
 ---
 
 ## Project Structure
 
 | Path | What it is |
 |---|---|
-| `bench/` | Session simulation, GRPO and DPO, simulated users, the judge, setting drafts, hand-label check |
+| `bench/` | Session simulation, GRPO and DPO, simulated users, the judge, setting drafts |
 | `data/` | Built-in questions, fact sheets and the style menu |
 | `modal_live.py` | The live session service: generation, updates, results, try box, adapter packaging |
 | `modal_app.py`, `bench/remote.py` | Benchmark jobs on Modal |
@@ -163,6 +156,6 @@ Open http://localhost:5180. The backend runs on port 8787.
 ## Limits
 
 - Only advisers. A test with speakers who aren't advising (a student, a client) kept the styles but lost content, so the app asks who is advising you.
-- The judge rates style and content; it is being checked against hand labels (`bench.handlabel`). The live fact check before an answer is shown is keyword matching.
+- The judge rates style and content and has been spot-checked by eye, not against a full set of hand labels. It is loosest on depth, sometimes counting a short "to…" phrase as a reason. The live fact check before an answer is shown is keyword matching.
 - Results depend on how each style line is worded, and a tuned model can still settle on one opening phrase.
 - The answers demonstrate a style. They can be wrong and are not medical, legal or financial advice.
