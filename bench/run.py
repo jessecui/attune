@@ -357,6 +357,12 @@ def main(argv=None):
     ap.add_argument("--judge-user", action="store_true",
                     help="the simulated user reads answers with the judge model instead of word lists; "
                          "falls back to the word lists for a round if the judge is unavailable")
+    ap.add_argument("--care", default="",
+                    help="comma-separated axes the simulated user cares about (default: all); it ignores the rest")
+    ap.add_argument("--pick-noise", type=float, default=0.0,
+                    help="share of rounds in which the simulated user picks at random")
+    ap.add_argument("--prefer-short", action="store_true",
+                    help="the simulated user picks the shortest answer as best and the longest as worst")
     ap.add_argument("--answer-weight", type=float, default=1.0,
                     help="grpo_style: how strongly the answers' wording is trained relative to the style choice")
     ap.add_argument("--spread", action="store_true",
@@ -413,6 +419,7 @@ def main(argv=None):
         extra["answer_weight"] = args.answer_weight
     menu = scenario.get("menu") if args.axes else None
     flip_axes = set(filter(None, args.flip_axes.split(",")))
+    care = set(filter(None, args.care.split(",")))
     method = METHODS[args.method](policy, lr=args.lr, steps_per_round=args.steps, seed=args.seed, **extra)
     latent = getattr(method, "latent", False)
     sess = Session(policy, scenario, args, latent)
@@ -439,8 +446,14 @@ def main(argv=None):
         t_gen = time.time() - t_gen
         flipped = bool(args.flip_at) and r > args.flip_at
         wants = user_wants(args.persona, menu, flipped, flip_axes)
+        if wants and care:
+            wants = {a: w for a, w in wants.items() if a in care}   # indifferent to every other axis
         judged, verdicts = None, None
-        if args.judge_user and wants:
+        if args.prefer_short:
+            # A user who picks on length alone: the test of whether pleasing them costs content.
+            order = sorted(range(len(cand_texts)), key=lambda j: len(cand_texts[j].split()))
+            judged = ["length"]
+        elif args.judge_user and wants:
             try:
                 from .judge import judge_many, style_score
                 item = scenario["train"][i]
@@ -461,8 +474,12 @@ def main(argv=None):
                 if flipped:
                     order = order[::-1]
 
+        careless = args.pick_noise > 0 and rng.random() < args.pick_noise
+        if careless:
+            rng.shuffle(order)   # a round where the user clicked without reading
+
         relabelled = None
-        if args.relabel and latent and segments and judged:
+        if args.relabel and latent and segments and judged and verdicts:
             # The reward follows what each answer did: its style choice is replaced by the style it
             # displays. The answer itself stays paired with the instructions it was written under.
             shown = [displayed_style(s, v) for s, v in zip(picks, verdicts)]
@@ -508,7 +525,7 @@ def main(argv=None):
         print(line(r, ev, f" | redrawn {redrawn} | gen {t_gen:4.1f}s | update {t_upd:5.1f}s | "
                    + " ".join(f"{k} {v:.3f}" for k, v in info.items())), flush=True)
         log["rounds"].append({"round": r, "styles": [STYLES[s] for s in picks], "candidates": cand_texts,
-                              "redrawn": redrawn, "order": order, "flipped": flipped, "judged": judged, "relabelled": relabelled, "t_generate": t_gen, "t_update": t_upd,
+                              "redrawn": redrawn, "order": order, "flipped": flipped, "judged": judged, "careless": careless, "relabelled": relabelled, "t_generate": t_gen, "t_update": t_upd,
                               **info, **ev})
 
     out = Path(args.out or f"results/{args.method}_{args.persona}_s{args.seed}.json")

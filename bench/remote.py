@@ -54,6 +54,12 @@ GENTLE = {"base": [], "lr1e-5": ["--lr", "1e-5"],
           "cclip0.2_lr1e-5": ["--choice-clip", "0.2", "--lr", "1e-5"]}
 
 
+# The method the live app runs, and the two scales each simulated user cares about in the "two" test.
+SHIPPED = ["--choice-clip", "0.2", "--lr", "2e-5", "--answer-weight", "0.3", "--min-distance", "2", "--no-duplicates"]
+CARE = {"gentle_explainer": "warmth,depth", "blunt_friend": "directiveness,formality",
+        "kind_professional": "warmth,formality", "reserved_analyst": "directiveness,depth"}
+
+
 def gentle(variants, seeds):
     return [{"name": f"{tag}_{p}_s{s}",
              "argv": LIVE + ["--rounds", "10", "--flip-at", "5", "--persona", p, "--seed", str(s), *GENTLE[tag]]}
@@ -203,6 +209,15 @@ GRIDS = {
                                  ("dpo-lr2e-5", ["--method", "dpo", "--lr", "2e-5"]),
                                  ("dpo-lr3e-5", ["--method", "dpo", "--lr", "3e-5"])]
               for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # Less tidy simulated users: one who cares about two scales only, one who picks at random a quarter
+    # of the time, and one who picks on length alone. Score with `python -m bench.judge users`.
+    "users": [{"name": f"{kind}-{method}_{p}_s{seed}",
+               "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *how(p), *extra]}
+              for kind, how in [("two", lambda p: ["--care", CARE[p]]),
+                                ("noisy", lambda p: ["--pick-noise", "0.25"]),
+                                ("short", lambda p: ["--prefer-short"])]
+              for method, extra in [("grpo", SHIPPED), ("dpo", ["--method", "dpo", "--lr", "2e-5"])]
+              for p in LIVE_PERSONAS for seed in (1, 2)],
     "main": grid("rank4", ["grpo_style", "dpo"]),
     "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
     "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),
