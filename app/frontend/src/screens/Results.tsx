@@ -25,7 +25,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <div className="space-y-6">
-        <ModelCard session={summary.session} mock={mock} instructions={summary.style_instructions} />
+        <ModelCard session={summary.session} mock={mock} />
         <button className="btn btn-quiet w-full" onClick={onAgain}>Train another</button>
       </div>
 
@@ -83,7 +83,7 @@ const Marker = ({ hollow }: { hollow?: boolean }) => (
 )
 
 /** The adapter tuned in this session, packaged a few seconds after the last question. */
-function ModelCard({ session, mock, instructions }: { session: string; mock: boolean; instructions: string[] }) {
+function ModelCard({ session, mock }: { session: string; mock: boolean }) {
   const [status, setStatus] = useState<ModelStatus | null>(null), [gaveUp, setGaveUp] = useState(false)
   useEffect(() => {
     if (mock) return
@@ -117,12 +117,6 @@ function ModelCard({ session, mock, instructions }: { session: string; mock: boo
           <p className="hint mt-2">Available for a day. Needs a GPU or a recent Mac to run.</p>
         </div>
       </div>
-      {instructions.length > 0 && (
-        <div className="border-t border-gray-100 p-4">
-          <p className="hint">The instructions it settled on</p>
-          <ul className="mt-2 space-y-2 text-gray-700">{instructions.map((c) => <li key={c}>{c}</li>)}</ul>
-        </div>
-      )}
     </section>
   )
 }
