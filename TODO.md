@@ -80,7 +80,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 ## Scope decisions (2026-11-25)
 
 - The app offers one session length, five questions. Ten is still accepted by the GPU service for experiments.
-- Next after the wording fix: the "try your model" box on the results screen (type a question, see the standard model's answer beside your model's). No LLM commentary on the difference; the two answers side by side are the point.
+- Built 2026-11-25: the "try your model" box on the results screen (type a question, see the standard model's answer beside your model's). No LLM commentary on the difference. The finished session stays loaded until it has been idle for half an hour or the GPU shuts down (five minutes after last use).
 - Not planned: uploading a saved model, continuing training across sessions, and the standalone convert mode. The downloadable model stays.
 
 ## Advanced options (later)

@@ -207,6 +207,7 @@ class Live:
         style = [m["options"][0 if R.AXES[m["axis"]][first] else 1][0] for m in self.menu]
         f = features(text)
         return {"lean": {a: round(v, 2) for a, v in lean.items()}, "style": style, "answer": text, "texts": texts,
+                "favoured": first,
                 "clauses": list(R.STYLE_CLAUSES[first]),
                 "words": f["words"], "sentences": f["sentences"], "exclamations": text.count("!"),
                 "warm_phrases": sum(text.lower().count(p) for p in WARM_PHRASES)}
@@ -250,6 +251,7 @@ class Live:
         # each scale. The standard model's ratings on the same questions (taken at start-up) are the
         # comparison. If the judge is unavailable the page falls back to the model's style choices.
         final = {"round": s["rounds"], **self._track(s)}
+        s["favoured"] = final["favoured"]
         h = [s["history"][0], final]
         s["rating0"].join(timeout=40)
         written = [s["written0"], self._written(s["scenario"]["heldout"], final["texts"])]
@@ -265,6 +267,23 @@ class Live:
                 "builtin": s["builtin"],
                 "style_instructions": h[-1]["clauses"], "tracked_question": s["scenario"]["heldout"][0]["q"],
                 "track": [{k: r.get(k) for k in keep} for r in h], "examples": examples}
+
+    def _try(self, s, question):
+        """One question of the visitor's own, answered by the standard model and by their model.
+
+        There is no fact sheet here, so both answer from what the model knows. The tuned model is
+        given the style it favoured at the end of the session, as in its results answers.
+        """
+        role = s["role"]
+        system = (f"You are {role}. The person has come to you with a question. Answer them directly, speaking as "
+                  f"yourself in that role. Never write more than four sentences. Write it as a single paragraph.")
+        bullets = "\n".join(f"- {c}" for c in self.R.STYLE_CLAUSES[s["favoured"]])
+        plain = self.policy.prompt_ids(system, f"Question: {question}")
+        styled = self.policy.prompt_ids(system, f"Question: {question}\n\nWrite your answer in this style:\n{bullets}")
+        base = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, use_adapter=False, **SHOWN)
+        tuned = self.policy.generate([styled], max_new_tokens=self.args.max_new_tokens, **SHOWN)
+        cut = lambda out: self.R.cap_sentences(self.policy.decode(out), self.args.max_sentences)
+        return {"question": question, "before": cut(base[0]), "after": cut(tuned[0])}
 
     def _export(self, s, summary):
         """Package the session's adapter as a zip on the adapters volume, for download."""
@@ -420,6 +439,8 @@ class Live:
             if s is None:
                 raise HTTPException(status_code=404, detail="Session expired; start again")
             s["touched"] = time.time()
+            if s.get("finished"):
+                raise HTTPException(status_code=400, detail="This session has finished")
             if fb.best == fb.worst or not {fb.best, fb.worst} <= set(range(K)):
                 raise HTTPException(status_code=400, detail="Pick two different answers")
             t = time.time()
@@ -437,10 +458,28 @@ class Live:
             if s["error"]:
                 raise HTTPException(status_code=500, detail=s["error"])
             out = self._with(s, lambda: self._summary(s))
-            del self.sessions[s["id"]]
+            # The finished session stays (until it has been idle for half an hour, or the GPU shuts
+            # down) so the visitor can try their model on questions of their own.
+            s["finished"] = True
             # Package the adapter in the background; the download appears a few seconds later.
             threading.Thread(target=lambda: self._with(s, lambda: self._export(s, out))).start()
             return {**out, "waited_seconds": round(time.time() - t, 1)}
+
+        class TryIn(BaseModel):
+            session: str
+            question: str
+
+        @api.post("/api/try")
+        def try_model(body: TryIn, key: str = ""):
+            check(key)
+            s = self.sessions.get(body.session)
+            if s is None or not s.get("finished"):
+                raise HTTPException(status_code=404, detail="This model is no longer loaded. Train another to try more questions.")
+            question = " ".join(body.question.split())[:300]
+            if len(question) < 5:
+                raise HTTPException(status_code=400, detail="Type a question first")
+            s["touched"] = time.time()
+            return self._with(s, lambda: self._try(s, question))
 
         return api
 

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { api, AS_ADJECTIVE, AS_CLAUSE, read, type ModelStatus, type Summary } from '../api'
+import { useEffect, useState, type FormEvent } from 'react'
+import { api, AS_ADJECTIVE, AS_CLAUSE, read, type Example, type ModelStatus, type Summary } from '../api'
 import { Scale } from '../components/Scale'
 import { Spinner } from '../components/Spinner'
 
@@ -54,6 +54,8 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           </p>
         </section>
 
+        <TryBox session={summary.session} />
+
         {example && (
           <section className="panel" aria-labelledby="difference">
             <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
@@ -76,6 +78,41 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
         )}
       </div>
     </div>
+  )
+}
+
+/** Ask the model anything: the standard model's answer beside the one just trained. Works while
+ *  the session's GPU is still up, which is about five minutes after its last use. */
+function TryBox({ session }: { session: string }) {
+  const [question, setQuestion] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('')
+  const [answer, setAnswer] = useState<Example | null>(null)
+  const ask = async (e: FormEvent) => {
+    e.preventDefault()
+    if (question.trim().length < 5) return
+    setBusy(true); setError('')
+    try { setAnswer(await api.tryModel(session, question.trim())) }
+    catch (err) { setError((err as Error).message) } finally { setBusy(false) }
+  }
+  return (
+    <section className="panel" aria-labelledby="try">
+      <h2 id="try" className="panel-title border-b border-gray-200 px-4 py-3">Try your model</h2>
+      <div className="p-4">
+        <form onSubmit={ask} className="flex gap-2">
+          <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} disabled={busy} aria-label="Your question"
+            placeholder="Ask it a question of your own" autoComplete="off"
+            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
+          <button className="btn btn-primary shrink-0" disabled={busy || question.trim().length < 5}>{busy ? <><Spinner />Answering</> : 'Ask'}</button>
+        </form>
+        {error && <p role="alert" className="mt-3 text-red-700">{error}</p>}
+        {answer && (
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div><p className="hint">Standard model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-600">{answer.before}</p></div>
+            <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
+          </div>
+        )}
+        <p className="hint mt-3">Both answer from what the model knows, with no checked facts behind them. Available for a few minutes after your session.</p>
+      </div>
+    </section>
   )
 }
 

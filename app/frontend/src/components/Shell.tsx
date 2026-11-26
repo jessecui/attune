@@ -28,8 +28,10 @@ export function Shell({ children, mock, progress, onHome }:
         )}
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">{children}</main>
-      <footer className="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-6">
-        <p className="hint px-1">The answers you read demonstrate a style. They are not medical, legal or financial advice.</p>
+      <footer className="border-t border-gray-200">
+        <p className="hint mx-auto max-w-6xl px-4 py-4 text-center sm:px-6">
+          The answers demonstrate a style. They are not medical, legal or financial advice.
+        </p>
       </footer>
     </div>
   )

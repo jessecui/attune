@@ -223,6 +223,22 @@ async def feedback(body: Feedback, attune_session: str | None = Cookie(default=N
     return await modal("/api/feedback", body=body.model_dump())
 
 
+class Try(BaseModel):
+    question: str
+
+
+@app.post("/api/session/{session}/try")
+async def try_model(session: str, body: Try, attune_session: str | None = Cookie(default=None)):
+    """A question of the visitor's own, answered by the standard model and by the model they just trained."""
+    require(attune_session)
+    _valid(session)
+    if MOCK:
+        await asyncio.sleep(1.0)
+        ex = _mock()["examples"][0]
+        return {"question": body.question, "before": ex["before"], "after": ex["after"]}
+    return await modal("/api/try", body={"session": session, "question": body.question})
+
+
 # ---- the tuned model, as a download ----------------------------------------------------------
 
 def _valid(session: str):
