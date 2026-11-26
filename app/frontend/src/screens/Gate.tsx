@@ -17,10 +17,10 @@ export function Gate({ onDone }: { onDone: () => void }) {
           <h1 id="gate-title" className="text-lg font-semibold text-gray-900">Attune</h1>
         </div>
         <p className="mt-3 text-gray-500">Train your own custom AI model.</p>
-        <label htmlFor="password" className="mt-4 block font-medium text-gray-900">Each session runs on its own GPU, so access is by password.</label>
+        <label htmlFor="password" className="mt-5 block font-medium leading-snug text-gray-900">Each session runs on its own GPU, so access is by password.</label>
         <input id="password" type="password" autoFocus autoComplete="current-password" placeholder="Password" value={password}
           onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error} aria-describedby={error ? 'gate-error' : undefined}
-          className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600" />
+          className="mt-4 w-full rounded-md border border-gray-300 bg-surface px-3 py-2.5 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
         {error && <p id="gate-error" role="alert" className="mt-2 text-red-700">{error}</p>}
         <button className="btn btn-primary mt-4 w-full" disabled={busy || !password}>{busy ? 'Checking' : 'Continue'}</button>
       </form>
