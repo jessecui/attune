@@ -16,7 +16,7 @@ export function RoundScreen({ round, onNext, onExpired }:
   const submit = async () => {
     if (best === null || worst === null) return
     setBusy(true); setError('')
-    try { onNext(await api.feedback(round.session, best, worst)) }
+    try { onNext(await api.feedback(round.session, round.round, best, worst)) }
     catch (e) { if (!onExpired(e)) { setError((e as Error).message); setBusy(false) } }
   }
   const ready = best !== null && worst !== null

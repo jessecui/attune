@@ -149,6 +149,10 @@ def content(grid, prefix="", scenario="data/advice.json"):
     sc = json.loads(Path(scenario).read_text())
     cache_file = Path(f"results/judge/{grid}.json")
     cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
+    # Answers compare() already rated (same rubric, same keys) are reused, not paid for again.
+    shared = Path(f"results/judge/{grid}_compare.json")
+    if shared.exists():
+        cache = {**json.loads(shared.read_text()), **cache}
     rows = []   # (run, kind, round, question, facts, text)
     for f in sorted(glob.glob(f"results/modal/{grid}/{prefix}*.json")):
         d = json.loads(Path(f).read_text())
@@ -174,7 +178,9 @@ def content(grid, prefix="", scenario="data/advice.json"):
     agg = defaultdict(lambda: [0, 0.0, 0, 0])   # n, facts covered, answers missing a fact, answers with additions
     for run, kind, rnd, q, facts, text in rows:
         v = cache[q + "|" + text]
-        bucket = (kind, "1-5" if rnd <= 5 else "6-10") if kind == "shown" else (kind, rnd)
+        # Tuned answers are split by method: GRPO's round 0 is the untuned model with its chosen style
+        # line, DPO's the plain base model, so pooling them would average two different starts.
+        bucket = (kind, "1-5" if rnd <= 5 else "6-10") if kind == "shown" else (f"{kind} {run.split('_')[0]}", rnd)
         a = agg[bucket]
         a[0] += 1
         a[1] += sum(v["facts_covered"]) / len(facts)
@@ -182,7 +188,7 @@ def content(grid, prefix="", scenario="data/advice.json"):
         a[3] += bool(v["added"])
     print(f"{grid} {prefix}: {len(rows)} answers judged ({len(todo)} new)")
     for (kind, rnd), (n, cov, miss, add) in sorted(agg.items(), key=str):
-        print(f"  {kind:5} round {str(rnd):5} n {n:4} | facts covered {cov / n:.2f} | missing a fact {miss / n:.0%} | "
+        print(f"  {kind:16} round {str(rnd):5} n {n:4} | facts covered {cov / n:.2f} | missing a fact {miss / n:.0%} | "
               f"adds something {add / n:.0%}")
 
 

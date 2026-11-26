@@ -137,7 +137,9 @@ def _mock_summary(s):
     fx, n = _mock(), s["rounds"]
     # Soften the recording's leans so the mock profile shows every kind of result.
     scale = {"warmth": 0.45, "directiveness": 0.2, "formality": 0.15, "depth": 0.6}
-    axes = [{**a, "lean": [round(v * scale[a["axis"]], 2) for v in fx["lean"][a["axis"]][: n + 1]]} for a in fx["axes"]]
+    # Two entries, as the GPU service sends: the standard model, then the tuned one after the last round.
+    axes = [{**a, "lean": [round(v * scale[a["axis"]], 2) for v in (fx["lean"][a["axis"]][0], fx["lean"][a["axis"]][n])]}
+            for a in fx["axes"]]
     for a in axes:  # stand-in ratings of the writing, 1 to 5, so the mock looks like a real session
         a["written"] = [round(3 + 2 * math.tanh(v / 3), 1) for v in a["lean"]]
     return {"done": True, "session": s["id"], "rounds": n, "axes": axes, "examples": fx["examples"],
@@ -207,6 +209,7 @@ class Feedback(BaseModel):
     session: str
     best: int
     worst: int
+    round: int | None = None   # the question being answered, so a resent submit is recognised
 
 
 @app.post("/api/session/start")
@@ -230,11 +233,15 @@ async def feedback(body: Feedback, attune_session: str | None = Cookie(default=N
         if s is None:
             raise HTTPException(status_code=404, detail="Session expired; start again")
         # The same checks as the GPU service, so mock mode doesn't hide mistakes.
+        await asyncio.sleep(0.4)
+        # Repeats first, as the GPU service does: after the last question, the results again;
+        # a resent submit for a question already answered, the reply it got.
         if s["round"] >= s["rounds"]:
-            raise HTTPException(status_code=400, detail="This session has finished")
+            return _mock_summary(s)
+        if body.round is not None and body.round == s["round"] and s["round"] >= 1:
+            return _mock_round(s, s["round"] + 1)
         if body.best == body.worst or not {body.best, body.worst} <= set(range(4)):
             raise HTTPException(status_code=400, detail="Pick two different answers")
-        await asyncio.sleep(0.4)
         s["round"] += 1
         return _mock_summary(s) if s["round"] >= s["rounds"] else _mock_round(s, s["round"] + 1)
     return await modal("/api/feedback", body=body.model_dump())

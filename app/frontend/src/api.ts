@@ -5,8 +5,8 @@ export type Round = { session: string; round: number; rounds: number; question: 
 // points is null for a question the visitor wrote or edited; the server writes its fact sheet at the start.
 export type DraftItem = { question: string; points: string[] | null }
 export type Draft = { suitable: boolean; reason: string; role: string; items: DraftItem[]; measure: DraftItem[] }
-// lean: the model's log-odds of choosing the first style, after each round.
-// written: the judge's 1-to-5 rating of the model's writing after each round (5 = first style), when available.
+// lean: the model's log-odds of choosing the first style: [standard model, your model].
+// written: the judge's 1-to-5 rating of the writing (5 = first style): [standard model, your model], when available.
 export type Axis = { axis: string; first: string; second: string; lean: number[]; written?: number[] | null }
 export type Example = { question: string; before: string; after: string }
 export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; style_instructions: string[]; role?: string; builtin?: boolean }
@@ -33,8 +33,8 @@ export const api = {
   prepare: (setting: string, rounds: number) => request<Draft>('/api/session/prepare', { setting, rounds }),
   start: (rounds: number, draft?: Draft) =>
     request<Round>('/api/session/start', draft ? { rounds, draft: { role: draft.role, items: draft.items, measure: draft.measure } } : { rounds }),
-  feedback: (session: string, best: number, worst: number) =>
-    request<Round | Summary>('/api/session/feedback', { session, best, worst }),
+  feedback: (session: string, round: number, best: number, worst: number) =>
+    request<Round | Summary>('/api/session/feedback', { session, round, best, worst }),
   tryPrepare: (session: string, question: string) => request<{ prepared: boolean }>(`/api/session/${session}/try/prepare`, { question }),
   tryAnswer: (session: string, question: string) => request<Example>(`/api/session/${session}/try/answer`, { question }),
   modelStatus: (session: string) => request<ModelStatus>(`/api/session/${session}/model/status`),

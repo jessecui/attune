@@ -20,9 +20,11 @@ import modal
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
 ROUNDS, K = 5, 4
-MEASURE, EXAMPLES = 6, 3  # unseen questions rated after every round; how many are shown as before/after
+MEASURE, EXAMPLES = 6, 3  # unseen questions rated once, at the end; how many are shown as before/after
 SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
-LONG_ROUNDS = 10  # optional longer session: each of the ten questions once
+LONG_ROUNDS = 10
+# What the visitor sees when background work failed: the session cannot go on (its answers are spent).
+STUCK = "Something went wrong while training. Please train another to start again."  # optional longer session: each of the ten questions once
 
 # Access key: generated once, kept out of git, sent to the container as a secret.
 _key_file = Path(__file__).parent / ".live_key"
@@ -135,7 +137,7 @@ def key_ok(given, expected):
 
 @app.cls(image=image, gpu="L40S", volumes={"/cache": hf_cache, "/adapters": adapters}, max_containers=1,
          scaledown_window=300,
-         # the judge model's key, for rating the tuned model's writing after each round
+         # the judge model's key, for rating the tuned model's writing at the end
          timeout=900, secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY}), modal.Secret.from_name("attune-judge")])
 @modal.concurrent(max_inputs=8)
 class Live:
@@ -281,6 +283,7 @@ class Live:
                 self._with(s, lambda: self._write(s, n + 2))
         except Exception as e:  # surfaced on the next request
             s["error"] = repr(e)[:300]
+            print(f"session {s['id']}: {s['error']}")   # the detail goes to the log, not the visitor
 
     def _summary(self, s):
         # Measured once, at the end: the tuned model answers the unseen questions and the judge rates
@@ -298,7 +301,7 @@ class Live:
         texts = h[-1]["texts"]   # the tuned model's answers to the unseen questions, as rated
         examples = [{"question": it["q"], "before": b, "after": t}
                     for it, b, t in list(zip(s["scenario"]["heldout"], s["base_texts"], texts))[:EXAMPLES]]
-        keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases", "update_seconds")
+        keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases")
         return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes, "role": s["role"],
                 "builtin": s["builtin"],
                 "style_instructions": h[-1]["clauses"], "tracked_question": s["scenario"]["heldout"][0]["q"],
@@ -445,7 +448,7 @@ class Live:
                 builtin = False
             # Sessions a visitor walked away from are dropped after half an hour without activity.
             for sid in [k for k, old in list(self.sessions.items()) if time.time() - old["touched"] > 1800]:
-                del self.sessions[sid]
+                self.sessions.pop(sid, None)   # another start may have dropped it already
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "touched": time.time(),
                  "scenario": scenario, "role": role, "builtin": builtin, "notice": None,
@@ -470,6 +473,7 @@ class Live:
             session: str
             best: int
             worst: int
+            round: int | None = None   # the question being answered; lets a resent submit be recognised
 
         @api.post("/api/feedback")
         def feedback(fb: Feedback, key: str = ""):
@@ -479,7 +483,10 @@ class Live:
                 raise HTTPException(status_code=404, detail="Session expired; start again")
             s["touched"] = time.time()
             if s.get("finished"):
-                raise HTTPException(status_code=400, detail="This session has finished")
+                # A repeat of the last submit (say the reply was lost on the way): send the results again.
+                return {**s["summary"], "waited_seconds": 0.0}
+            if fb.round is not None and fb.round == s["round"] < s["rounds"] and s.get("reply"):
+                return s["reply"]   # this question's picks were already applied: resend what came back
             if fb.best == fb.worst or not {fb.best, fb.worst} <= set(range(K)):
                 raise HTTPException(status_code=400, detail="Pick two different answers")
             # One answer at a time per session: a repeated submit would otherwise count as the next round.
@@ -491,17 +498,20 @@ class Live:
                 if s["thread"]:
                     s["thread"].join()  # wait for the work started after the previous round
                 if s["error"]:
-                    raise HTTPException(status_code=500, detail=s["error"])
-                n = s["round"] = s["round"] + 1
-                if n < s["rounds"]:
-                    payload = {**s["cands"][n + 1]["payload"], "waited_seconds": round(time.time() - t, 1)}
-                    s["thread"] = threading.Thread(target=self._after, args=(s, n, fb.best, fb.worst))
-                    s["thread"].start()
-                    return payload
-                self._after(s, n, fb.best, fb.worst)  # last round: nothing left to hide the wait behind
-                if s["error"]:
-                    raise HTTPException(status_code=500, detail=s["error"])
+                    raise HTTPException(status_code=500, detail=STUCK)
+                if s["round"] < s["rounds"]:   # else the last update is done and only the results failed: retry those
+                    n = s["round"] = s["round"] + 1
+                    if n < s["rounds"]:
+                        payload = {**s["cands"][n + 1]["payload"], "waited_seconds": round(time.time() - t, 1)}
+                        s["thread"] = threading.Thread(target=self._after, args=(s, n, fb.best, fb.worst))
+                        s["thread"].start()
+                        s["reply"] = payload
+                        return payload
+                    self._after(s, n, fb.best, fb.worst)  # last round: nothing left to hide the wait behind
+                    if s["error"]:
+                        raise HTTPException(status_code=500, detail=STUCK)
                 out = self._with(s, lambda: self._summary(s))
+                s["summary"] = out
                 # The finished session stays (until it has been idle for half an hour, or the GPU shuts
                 # down) so the visitor can try their model on questions of their own.
                 s["finished"] = True
