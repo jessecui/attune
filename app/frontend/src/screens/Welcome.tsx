@@ -33,7 +33,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
             placeholder="My doctor explaining my test results" autoComplete="off"
             className="w-full rounded-xl border border-gray-200 bg-surface py-4 pl-5 pr-32 text-base shadow-sm transition placeholder:text-gray-400 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
           <button className="btn btn-primary absolute inset-y-2 right-2 rounded-lg px-5" disabled={busy || setting.trim().length < 3}>
-            {busy ? <><Spinner />Writing</> : 'Start'}
+            {busy ? <><Spinner />Starting</> : 'Start'}
           </button>
         </div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
