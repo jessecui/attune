@@ -17,7 +17,8 @@ export ATTUNE_BACKEND_PORT="${ATTUNE_BACKEND_PORT:-8787}"
 if lsof -nP -iTCP:$ATTUNE_BACKEND_PORT -sTCP:LISTEN >/dev/null || lsof -nP -iTCP:5180 -sTCP:LISTEN >/dev/null; then
   echo "Port $ATTUNE_BACKEND_PORT or 5180 is already in use. Stop whatever is using it, or the earlier copy of this script."; exit 1
 fi
-(cd app/backend && ../../.venv/bin/uvicorn main:app --port $ATTUNE_BACKEND_PORT) &
+# --reload: the backend picks up code changes itself, as the page already does
+(cd app/backend && ../../.venv/bin/uvicorn main:app --reload --port $ATTUNE_BACKEND_PORT) &
 backend=$!
 trap "kill $backend 2>/dev/null" EXIT
 echo "Password: $ATTUNE_PASSWORD   Open http://localhost:5180"
