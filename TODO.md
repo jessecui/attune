@@ -4,7 +4,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 
 ## Next up
 
-- [ ] Flatten line breaks in answers. About 2% come out one sentence per line (mostly the directive style); the trimming step used to remove them and has kept them since the two-paragraph experiment on 2026-11-25.
+- [x] Flatten line breaks in answers (done: the trimming step joins every answer into one paragraph). About 2% come out one sentence per line (mostly the directive style); the trimming step used to remove them and has kept them since the two-paragraph experiment on 2026-11-25.
 - [x] Warm wording tested (2026-11-25): the current "open with a short remark" reads as warm in 92% of answers (4.3 against 1.1 for neutral) with a stock sympathy opening in 71%. "Write warmly, as someone who cares" lost the warmth (12%, 1.7). "Acknowledge how the person may be feeling, somewhere in the answer" was in between (54%, 3.0) and twice came out as an instruction to the reader. Kept the current wording; the repeated "I know…" in live sessions is the trained model settling on one phrase, addressed by the gentler-wording test.
 - [x] The script in the downloaded package failed on current transformers (chat template returns a mapping, not a tensor). Fixed and verified on a GPU with `modal run modal_app.py::package`. Packages made before the fix have the broken script.
 - [x] In-role sessions verified: the model speaks as the chosen role ("Inform me immediately when project timelines shift").
