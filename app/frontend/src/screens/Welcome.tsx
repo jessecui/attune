@@ -27,7 +27,7 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
       <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train your own personal AI model</h1>
       <p className="mx-auto mt-4 max-w-lg text-lg leading-relaxed text-gray-500">
         Most AI models are tuned for the average person. Train one that knows how you like to be spoken to.
-        It takes a few minutes, and you can download it at the end.
+        It takes a few minutes, and you can download your model at the end.
       </p>
 
       <form onSubmit={prepare} className="mt-10">
