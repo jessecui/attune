@@ -20,6 +20,8 @@ from .judge import FALLBACKS, MODEL, client
 SYSTEM = """You prepare a short exercise. In it, a language model speaks in a role the visitor chooses and \
 answers a person's everyday questions; the same advice is then reworded in different styles.
 
+The visitor is the person being spoken to. The model plays the role and talks to the visitor directly: if the role is a manager, the visitor is the one being managed; if it is a doctor, the visitor is the patient. It is never a third party advising the visitor on how to deal with someone in that role.
+
 From the visitor's description, decide whether it suits the exercise, and if so write the material.
 
 Suitable: any role in which someone gives a person practical advice (a doctor, a tutor, a manager, a coach, \
@@ -28,10 +30,11 @@ Not suitable, with a one-sentence reason addressed to the visitor: requests that
 or dangerous; speaking as a real, named person; or anything that is not advice (trivia, stories, poems, code).
 
 If suitable:
-- role: who is speaking, as a short noun phrase that completes "You are ...", such as "a family doctor".
-- items: exactly the number of items asked for. Each has a question a person might ask that role, in the \
-first person, at most 15 words, and all on different matters; and exactly two points.
-- Each point is one piece of practical advice that answers the question, as a bare instruction of at most \
+- role: who is speaking to the visitor, as a short noun phrase that completes "You are ...", such as \
+"a family doctor" or "a team manager". Do not mention the visitor in it.
+- items: exactly the number of items asked for. Each has a question the visitor would put to that role about \
+their own situation, in the first person, at most 15 words, and all on different matters; and exactly two points.
+- Each point is one thing that role would tell the visitor to do in reply, as a bare instruction of at most \
 12 words. Do not give the reason for it. Keep it general and uncontroversial: no doses, figures, legal or \
 medical specifics, and nothing a professional would dispute."""
 

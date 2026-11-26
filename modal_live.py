@@ -355,7 +355,12 @@ class Live:
                 for i, w in zip(typed, written["items"]):
                     i["points"] = w["points"]
             made = [setting.scenario_item(i) for i in items]
-            system = self.builtin["system"].replace("You are an advisor", f"You are {role}", 1)
+            # The model plays the role and speaks to the visitor directly, not as a third party.
+            opening = "You are an advisor answering a person's question."
+            assert opening in self.builtin["system"]
+            system = self.builtin["system"].replace(
+                opening, f"You are {role}. The person has come to you with a question. Answer them directly, "
+                         f"speaking as yourself in that role.", 1)
             return {"system": system, "train": made[:rounds], "heldout": made[rounds:]}, role
 
         @api.post("/api/start")

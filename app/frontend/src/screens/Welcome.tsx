@@ -6,7 +6,7 @@ const SCALES: [string, string, string][] = [
   ['warmth', 'Neutral', 'Warm'], ['directiveness', 'Collaborative', 'Directive'],
   ['formality', 'Formal', 'Casual'], ['depth', 'Just the advice', 'Explains why'],
 ]
-const EXAMPLES = ['A doctor explaining test results', 'A tutor helping with exam revision', 'A manager giving feedback', 'A financial adviser on saving']
+const EXAMPLES = ['My doctor, explaining test results', 'My tutor, helping with exam revision', 'My manager, giving me feedback', 'A financial adviser, on saving']
 // Measured: the GPU starts in under a minute, and each question takes as long as you take to read it.
 const minutes = (rounds: number) => (rounds <= 5 ? 'a few minutes' : `about ${rounds} minutes`)
 
@@ -49,10 +49,10 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
         </p>
 
         <form onSubmit={prepare} className="mt-5 border-t border-gray-100 pt-4">
-          <label htmlFor="setting" className="font-medium text-gray-900">Who should the model speak as, and about what?</label>
+          <label htmlFor="setting" className="font-medium text-gray-900">Who should the model be when it speaks to you, and about what?</label>
           <div className="mt-2 flex gap-2">
             <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}
-              placeholder="e.g. A doctor explaining test results" autoComplete="off"
+              placeholder="e.g. My doctor, explaining test results" autoComplete="off"
               className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600" />
             <button className="btn btn-primary shrink-0" disabled={busy || setting.trim().length < 3}>
               {busy ? <><Spinner />Writing questions</> : 'Write my questions'}
