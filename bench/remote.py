@@ -189,6 +189,8 @@ GRIDS = {
                  "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed),
                                  "--choice-clip", "0.2", "--lr", "3e-5", *extra]}
                 for tag, extra in [("grpo-lr2e-5", ["--lr", "2e-5"]),   # a learning rate between the two tested
+                                   # the live setting from 2026-11-25 late evening
+                                   ("grpo-lr2e-5-aw0.3", ["--lr", "2e-5", "--answer-weight", "0.3"]),
                                    ("grpo-aw0.3", ["--answer-weight", "0.3"]),
                                    ("grpo-aw0.3-spread", ["--answer-weight", "0.3", "--spread", "--no-duplicates"])]
                 for p in LIVE_PERSONAS for seed in (1, 2, 3)],

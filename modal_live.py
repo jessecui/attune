@@ -21,6 +21,7 @@ MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
 ROUNDS, K = 5, 4
 MEASURE, EXAMPLES = 6, 3  # unseen questions rated after every round; how many are shown as before/after
+SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
 LONG_ROUNDS = 10  # optional longer session: each of the ten questions once
 
 # Access key: generated once, kept out of git, sent to the container as a secret.
@@ -82,7 +83,8 @@ messages = [{"role": "system", "content": meta["system_prompt"]},
             {"role": "user", "content": f"Question: {question}\\n\\nWrite your answer in this style:\\n{style}"}]
 # return_dict=True works across transformers versions (newer ones return a mapping, not a bare tensor)
 enc = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt", return_dict=True).to(device)
-out = model.generate(**enc, max_new_tokens=160, do_sample=False)
+# a little randomness, so answers do not all open with the same phrase
+out = model.generate(**enc, max_new_tokens=160, do_sample=True, temperature=0.7, top_p=0.95)
 print(tok.decode(out[0, enc["input_ids"].shape[1]:], skip_special_tokens=True).strip())
 """
 
@@ -132,7 +134,11 @@ class Live:
         the rating questions (written here, rated in the background) as the "before"."""
         import threading
         s["sess"] = self.R.Session(self.policy, s["scenario"], self.args, latent=True)
-        s["base_texts"] = s["sess"].answer_heldout(use_adapter=False, plain=True)[0]
+        # Sampled, not the single most likely wording: the same setting as the tuned model's answers below.
+        items = s["scenario"]["heldout"]
+        outs = self.policy.generate(s["sess"].plain["heldout"], max_new_tokens=self.args.max_new_tokens,
+                                    use_adapter=False, **SHOWN)
+        s["base_texts"] = s["sess"].finish(outs, items=items)[1]
         s["written0"] = None
         s["rating0"] = threading.Thread(
             target=lambda: s.update(written0=self._written(s["scenario"]["heldout"], s["base_texts"])))
@@ -192,8 +198,10 @@ class Live:
         for j in (share - counts).argsort(descending=True)[: int(len(items) - counts.sum())]:
             counts[j] += 1
         firsts = [j for j in share.argsort(descending=True).tolist() for _ in range(int(counts[j]))]
+        # Sampled with a little randomness. Taking the single most likely wording every time makes
+        # every answer open with the same phrase ("I get you're…"), whichever question it is.
         outs = self.policy.generate([sess.answer_prompt(it, f) for it, f in zip(items, firsts)],
-                                    max_new_tokens=self.args.max_new_tokens)
+                                    max_new_tokens=self.args.max_new_tokens, **SHOWN)
         texts = sess.finish(outs, firsts, items)[1]
         text, first = texts[0], firsts[0]
         style = [m["options"][0 if R.AXES[m["axis"]][first] else 1][0] for m in self.menu]
@@ -384,8 +392,10 @@ class Live:
                  # learned (3.58 against 3.67 axes of 4) with the wording staying close to the standard
                  # model's (drift 0.36 against 0.62), where 3e-5 settled on stock phrases in live sessions.
                  # Ten rounds stay at 1e-5.
+                 # The wording is trained at a third of the strength of the style choice: in the
+                 # benchmark that cut how often the final answers shared one opening (29% against 39%).
                  "method": GRPOStyle(self.policy, lr=2e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,
-                                     choice_clip=0.2)}
+                                     choice_clip=0.2, answer_weight=0.3)}
             self.sessions[s["id"]] = s
             self._with(s, lambda: self._open(s))
             self._with(s, lambda: self._write(s, 1))
