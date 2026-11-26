@@ -7,7 +7,8 @@ GPU endpoint is never exposed to visitors.
 
 Environment:
     CREATOR_NAME        the name the access prompt asks for (required); matched ignoring case and spaces
-    ATTUNE_SECRET       signs the session cookie (optional; derived from the other settings if unset)
+    ATTUNE_SECRET       signs the session cookie (optional; if unset, derived from the name and the GPU key,
+                        or random in mock mode)
     ATTUNE_MODAL_URL    the live session service, e.g. https://...-live-web.modal.run
     ATTUNE_FILES_URL    the download service, e.g. https://...-files.modal.run
     ATTUNE_MODAL_KEY    the key both Modal services expect
@@ -19,6 +20,7 @@ import hmac
 import json
 import math
 import os
+import secrets
 import time
 import uuid
 from pathlib import Path
@@ -27,7 +29,7 @@ import httpx
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 def normalise(name: str) -> str:
     """A name with case and all whitespace removed, so "Ada Lovelace", "ada lovelace" and " ADALOVELACE " match."""
@@ -40,8 +42,11 @@ FILES_URL = os.environ.get("ATTUNE_FILES_URL", "").rstrip("/")
 MODAL_KEY = os.environ.get("ATTUNE_MODAL_KEY", "")
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
 # The cookie-signing secret. If none is set it is derived from the name and the GPU key, so it
-# survives restarts and changing either signs everyone out.
-SECRET = os.environ.get("ATTUNE_SECRET") or hashlib.sha256(f"attune-session|{CREATOR}|{MODAL_KEY}".encode()).hexdigest()
+# survives restarts and changing either signs everyone out. Without the GPU key (mock mode) the
+# name alone would be guessable, so a random secret is used and a restart signs everyone out.
+SECRET = (os.environ.get("ATTUNE_SECRET")
+          or (MODAL_KEY and hashlib.sha256(f"attune-session|{CREATOR}|{MODAL_KEY}".encode()).hexdigest())
+          or secrets.token_hex(32))
 COOKIE, COOKIE_SECONDS = "attune_session", 12 * 3600
 # One session length keeps the app simple and matches what the benchmark tested. The GPU service
 # still accepts 10 for experiments.
@@ -70,15 +75,46 @@ def require(token: str | None):
 
 
 class Login(BaseModel):
-    answer: str
+    answer: str = Field(max_length=200)
+
+
+# The name works as a password and names are easy to guess, so wrong answers are limited per address.
+MAX_FAILED, FAILED_WINDOW, MAX_TRACKED = 10, 15 * 60, 10_000
+_failed: dict[str, list[float]] = {}
+
+
+def _address(request: Request) -> str:
+    """The visitor's address. The server trusts any proxy (--forwarded-allow-ips='*', for the scheme), so
+    uvicorn's client address is the first X-Forwarded-For entry, which the visitor can write. The last
+    entry is the one the platform's own proxy added, so that is the one counted. Run without a proxy
+    (locally), the visitor can write that one too, which only matters on a public server."""
+    hops = [h.strip() for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    return hops[-1] if hops else (request.client.host if request.client else "unknown")
+
+
+def _recent_failures(address: str, now: float) -> list[float]:
+    if len(_failed) > MAX_TRACKED:   # many one-off addresses: drop stale ones, then the oldest
+        for a in list(_failed):
+            if not [t for t in _failed[a] if now - t < FAILED_WINDOW]:
+                del _failed[a]
+        while len(_failed) > MAX_TRACKED:
+            del _failed[next(iter(_failed))]
+    # Re-inserted, so the dict stays ordered by each address's latest attempt and the oldest go first.
+    recent = [t for t in _failed.pop(address, []) if now - t < FAILED_WINDOW]
+    if recent:
+        _failed[address] = recent
+    return recent
 
 
 @app.post("/api/login")
-def login(body: Login, request: Request, response: Response):
+async def login(body: Login, request: Request, response: Response):  # async: one thread, so the counts cannot race
     if not CREATOR:
         raise HTTPException(status_code=500, detail="CREATOR_NAME is not set on the server")
+    address, now = _address(request), time.time()
+    if len(_recent_failures(address, now)) >= MAX_FAILED:
+        raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
     if not hmac.compare_digest(normalise(body.answer).encode(), CREATOR.encode()):
-        time.sleep(0.5)  # slow down guessing
+        _failed[address] = _failed.pop(address, []) + [now]
         raise HTTPException(status_code=401, detail="That name doesn't match. Please try again.")
     expires = int(time.time()) + COOKIE_SECONDS
     response.set_cookie(COOKIE, f"{expires}.{sign(expires)}", max_age=COOKIE_SECONDS, httponly=True,
