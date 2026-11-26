@@ -310,7 +310,7 @@ def user_wants(persona, menu, flipped=False, flip_axes=None):
 
 def axes_right(marg, wants):
     """How many axes lean the way the simulated user wants."""
-    return sum((marg[f"p_{a}"] > 0.5) == (wants[a] > 0) for a in AXES)
+    return sum((marg[f"p_{a}"] > 0.5) == (w > 0) for a, w in wants.items())   # only the axes the user cares about
 
 
 def displayed_style(assigned, verdict):
