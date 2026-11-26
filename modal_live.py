@@ -80,9 +80,10 @@ question = sys.argv[1] if len(sys.argv) > 1 else "How do I ask for a raise?"
 style = "\\n".join(f"- {c}" for c in meta["style_instructions"])
 messages = [{"role": "system", "content": meta["system_prompt"]},
             {"role": "user", "content": f"Question: {question}\\n\\nWrite your answer in this style:\\n{style}"}]
-ids = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to(device)
-out = model.generate(ids, max_new_tokens=160, do_sample=False)
-print(tok.decode(out[0, ids.shape[1]:], skip_special_tokens=True).strip())
+# return_dict=True works across transformers versions (newer ones return a mapping, not a bare tensor)
+enc = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt", return_dict=True).to(device)
+out = model.generate(**enc, max_new_tokens=160, do_sample=False)
+print(tok.decode(out[0, enc["input_ids"].shape[1]:], skip_special_tokens=True).strip())
 """
 
 

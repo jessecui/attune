@@ -26,6 +26,7 @@ def main(argv=None):
     ap.add_argument("--position", choices=["line", "user", "user_bullets"], default="line",
                     help="line: the model's own style line; user: instruction at the end of the user turn; "
                          "user_bullets: the same, one bullet per axis")
+    ap.add_argument("--save-all", action="store_true", help="keep every generated answer in the report, not six per option")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args(argv)
 
@@ -76,7 +77,7 @@ def main(argv=None):
                 "facts": sum(facts_retained(t, it["keys"]) for t, (it, _) in zip(texts, picks)) / n,
             }
             report["samples"] += [{"axis": m["axis"], "option": name, "style": s, "q": it["q"], "text": t}
-                                  for (it, s), t in list(zip(picks, texts))[:6]]
+                                  for (it, s), t in list(zip(picks, texts))[: None if args.save_all else 6]]
     return report
 
 

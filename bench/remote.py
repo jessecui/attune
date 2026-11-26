@@ -170,11 +170,27 @@ GRIDS = {
               "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
              for tag, extra in [("grpo-lr1e-5", ["--choice-clip", "0.2", "--lr", "1e-5"]),
                                 ("grpo-lr3e-5", ["--choice-clip", "0.2", "--lr", "3e-5"]),
+                                # every axis shows both options in each round, and no two answers are identical
+                                ("grpo-spread-lr3e-5", ["--choice-clip", "0.2", "--lr", "3e-5", "--spread", "--no-duplicates"]),
                                 # the reward goes to the style each answer displays (added 2026-11-25, evening)
                                 ("grpo-relabel-lr3e-5", ["--choice-clip", "0.2", "--lr", "3e-5", "--relabel"]),
                                 ("dpo-lr1e-5", ["--method", "dpo", "--lr", "1e-5"]),
                                 ("dpo-lr3e-5", ["--method", "dpo", "--lr", "3e-5"])]
              for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # Three wordings of the warm option: the current one (an opening remark), a looser one, and one in between.
+    "menu_check16": [{"name": f"warm_{tag}_7B", "module": "check_menu",
+                      "argv": ["--position", "user_bullets", "--axes", FOUR, "--max-new-tokens", "128", "--save-all",
+                               "--scenario", f, *SEVEN_B]}
+                     for tag, f in [("current", "data/advice.json"), ("loose", "data/advice_warm_loose.json"),
+                                    ("anywhere", "data/advice_warm_anywhere.json")]],
+    # Train the wording more gently than the style choice, to stop the model settling on one stock
+    # phrasing or writing the same answer in every style (seen in live sessions at 3e-5).
+    "wording": [{"name": f"{tag}_{p}_s{seed}",
+                 "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed),
+                                 "--choice-clip", "0.2", "--lr", "3e-5", *extra]}
+                for tag, extra in [("grpo-aw0.3", ["--answer-weight", "0.3"]),
+                                   ("grpo-aw0.3-spread", ["--answer-weight", "0.3", "--spread", "--no-duplicates"])]
+                for p in LIVE_PERSONAS for seed in (1, 2, 3)],
     "main": grid("rank4", ["grpo_style", "dpo"]),
     "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
     "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),

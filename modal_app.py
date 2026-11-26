@@ -77,3 +77,41 @@ def run_one_l40s(job: dict) -> str:
 @app.function(gpu="A100-40GB", **COMMON)
 def run_one_a100(job: dict) -> str:
     return _run(job)
+
+
+# ---- a check that a downloaded model package runs as its README says --------------------------------
+adapters = modal.Volume.from_name("attune-adapters", create_if_missing=True)
+
+
+@app.function(gpu="L40S", image=image, volumes={"/cache": hf_cache, "/adapters": adapters}, timeout=20 * 60)
+def check_package(session: str = "", question: str = "How do I ask for a raise?", example: str = "") -> dict:
+    """Unzip a packaged adapter (the newest, unless a session id is given) and run its example.py.
+
+        modal run modal_app.py::check_package
+    """
+    import json
+    import subprocess
+    import zipfile
+    from pathlib import Path
+
+    zips = sorted(Path("/adapters").glob("*.zip"), key=lambda z: z.stat().st_mtime)
+    target = Path("/adapters") / f"{session}.zip" if session else (zips[-1] if zips else None)
+    if target is None or not target.exists():
+        return {"ok": False, "error": "no packaged adapter found"}
+    zipfile.ZipFile(target).extractall("/tmp/pkg")
+    pkg = Path("/tmp/pkg/attune-model")
+    if example:   # test a newer example.py against an already packaged adapter
+        (pkg / "example.py").write_text(example)
+    run = subprocess.run(["python", "example.py", question], cwd=pkg, capture_output=True, text=True)
+    meta = json.loads((pkg / "attune.json").read_text())
+    return {"ok": run.returncode == 0, "package": target.name, "files": sorted(f.name for f in pkg.iterdir()),
+            "speaking_as": meta.get("speaking_as"), "style_instructions": meta["style_instructions"],
+            "answer": run.stdout.strip()[-1500:], "error": run.stderr.strip()[-1500:] if run.returncode else ""}
+
+
+@app.local_entrypoint()
+def package(session: str = "", question: str = "How do I ask for a raise?"):
+    import json
+    from modal_live import PACKAGE_EXAMPLE   # the script as it will be packaged from now on
+    print(json.dumps(check_package.remote(session, question, PACKAGE_EXAMPLE), indent=1))
+

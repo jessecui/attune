@@ -159,7 +159,7 @@ class GRPOStyle:
     name = "grpo_style"
     latent = True
 
-    def __init__(self, policy, lr=1e-4, steps_per_round=8, clip=0.2, choice_clip=0.0, seed=0):
+    def __init__(self, policy, lr=1e-4, steps_per_round=8, clip=0.2, choice_clip=0.0, answer_weight=1.0, seed=0):
         self.policy = policy
         self.steps = steps_per_round
         self.clip = clip
@@ -168,6 +168,10 @@ class GRPOStyle:
         # Token-by-token clipping lets a 70-token line's probability move by many orders
         # of magnitude in one round, which is how the policy over-commits.
         self.choice_clip = choice_clip
+        # How much the wording of the answers is trained, relative to the style choice. Below 1, the
+        # choice still learns at full speed while the wording changes more slowly, so the model does
+        # not settle on one stock phrasing (or one answer for every style) within a few rounds.
+        self.answer_weight = answer_weight
         self.opt = torch.optim.AdamW(policy.trainable_parameters(), lr=lr, weight_decay=0.0)
 
     def update(self, groups, pool):
@@ -200,6 +204,8 @@ class GRPOStyle:
                     ratio = torch.exp(logp - o)
                     surrogate = torch.minimum(ratio * a, ratio.clamp(1 - clip, 1 + clip) * a)
                     loss = -surrogate.sum() / n_tokens
+                    if g.segments and part > 0:
+                        loss = loss * self.answer_weight
                     loss.backward()
                     total += loss.item()
             torch.nn.utils.clip_grad_norm_(self.policy.trainable_parameters(), 1.0)

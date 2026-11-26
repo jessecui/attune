@@ -10,6 +10,7 @@ The key is read from GEMINI_API_KEY, or from the file .judge_key.
 """
 import json
 import os
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -56,13 +57,22 @@ def client():
     return genai.Client(api_key=key, http_options=HttpOptions(timeout=30_000))  # ms; a hung call must not stall a round
 
 
-def judge(c, question, facts, answer, model=MODEL):
+# A broader reading of warmth, for testing wordings of the warm option that do not ask for an opening remark.
+RUBRIC_BROAD_WARMTH = re.sub(
+    r"- warmth:.*?(?=- directiveness:)",
+    "- warmth: 5 = shows care for how the person may be feeling, anywhere in the answer (acknowledging it, "
+    "reassuring or encouraging); 1 = no sign of that: only the advice.\n",
+    RUBRIC, flags=re.S)
+assert RUBRIC_BROAD_WARMTH != RUBRIC
+
+
+def judge(c, question, facts, answer, model=MODEL, rubric=None):
     """One answer's Verdict, as a dict."""
     prompt = (f"Question: {question}\n\nFact sheet:\n" + "\n".join(f"{i + 1}. {f}" for i, f in enumerate(facts))
               + f"\n\nAnswer:\n{answer}")
     # Low thinking: half the time and a third of the thinking tokens of the default, with the
     # same verdicts on the answers it was compared on. 3.8 Flash cannot switch thinking off.
-    config = GenerateContentConfig(system_instruction=RUBRIC, temperature=0.0,
+    config = GenerateContentConfig(system_instruction=rubric or RUBRIC, temperature=0.0,
                                    response_mime_type="application/json", response_schema=Verdict,
                                    thinking_config=ThinkingConfig(thinking_level="low"))
     # Try each model in turn; a model that is overloaded, rate-limited, unreachable or
@@ -82,11 +92,11 @@ def judge(c, question, facts, answer, model=MODEL):
     raise RuntimeError(f"judge unavailable on every model: {type(last).__name__}: {str(last)[:200]}")
 
 
-def judge_many(items, model=MODEL, workers=8):
+def judge_many(items, model=MODEL, workers=8, rubric=None):
     """items: (question, facts, answer) tuples. Verdicts in the same order."""
     c = client()
     with ThreadPoolExecutor(workers) as pool:
-        return list(pool.map(lambda it: judge(c, *it, model=model), items))
+        return list(pool.map(lambda it: judge(c, *it, model=model, rubric=rubric), items))
 
 
 def style_score(verdict, wants):

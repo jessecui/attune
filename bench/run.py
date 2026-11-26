@@ -75,10 +75,8 @@ def use_menu(menu, axes):
 
 
 def cap_sentences(text, k):
-    """The first k sentences of text, with its line breaks kept."""
-    text = text.strip()
-    ends = [m.start() for m in re.finditer(r"(?<=[.!?])\s+", text)]
-    return text if len(ends) < k else text[:ends[k - 1]]
+    """The first k sentences of text, as one paragraph (line breaks become spaces)."""
+    return " ".join(re.split(r"(?<=[.!?])\s+", " ".join(text.split()))[:k])
 
 
 STYLE_FORMAT = ("\nBegin your reply with one line that starts with 'Style:' and states the style "
@@ -161,6 +159,13 @@ class Session:
             dist = (1 - EXPLORE) * self.style_dist(self.styled["train"][i]) + EXPLORE / len(STYLES)
             g = torch.Generator().manual_seed(rng.randrange(2 ** 31))
             picks = torch.multinomial(dist, a.k, replacement=False, generator=g).tolist()
+            if getattr(a, "spread", False):
+                # Redraw until every axis shows both of its options among the candidates, so the
+                # answers differ on every axis and a pick says something about each one.
+                for _ in range(50):
+                    if all(len({AXES[ax][s] for s in picks}) == 2 for ax in AXES):
+                        break
+                    picks = torch.multinomial(dist, a.k, replacement=False, generator=g).tolist()
         else:
             picks = rng.sample(range(len(STYLES)), a.k)
 
@@ -200,6 +205,17 @@ class Session:
                 if a.strict_facts and attempt == a.redraws - 1 or \
                         facts_retained(t, item["keys"]) > facts_retained(texts[j], item["keys"]):
                     answers[j], texts[j] = o, t
+        if getattr(a, "no_duplicates", False):
+            # Two identical answers cannot be told apart, and marking one best and the other worst
+            # would contradict itself: redraw the later one, twice at most.
+            for _ in range(2):
+                same = [j for j in range(a.k) if any(texts[j].strip() == texts[i].strip() for i in range(j))]
+                if not same:
+                    break
+                fresh, fresh_texts = draw(same)
+                for j, o, t in zip(same, fresh, fresh_texts):
+                    if facts_retained(t, item["keys"]) >= a.min_facts:
+                        answers[j], texts[j] = o, t
         if self.two_step:
             # Each candidate is two pieces of the policy's output: the style it chose
             # and the answer it wrote under that style.
@@ -313,6 +329,11 @@ def main(argv=None):
     ap.add_argument("--judge-user", action="store_true",
                     help="the simulated user reads answers with the judge model instead of word lists; "
                          "falls back to the word lists for a round if the judge is unavailable")
+    ap.add_argument("--answer-weight", type=float, default=1.0,
+                    help="grpo_style: how strongly the answers' wording is trained relative to the style choice")
+    ap.add_argument("--spread", action="store_true",
+                    help="grpo_style: draw the candidates so that every axis shows both of its options each round")
+    ap.add_argument("--no-duplicates", action="store_true", help="redraw a candidate identical to an earlier one")
     ap.add_argument("--relabel", action="store_true",
                     help="grpo_style with --judge-user: credit each answer's reward to the style the judge says "
                          "it displays, not the style it was assigned")
@@ -357,6 +378,8 @@ def main(argv=None):
     extra = {"beta": args.beta} if args.beta is not None else {}
     if args.choice_clip:
         extra["choice_clip"] = args.choice_clip
+    if args.answer_weight != 1.0:
+        extra["answer_weight"] = args.answer_weight
     menu = scenario.get("menu") if args.axes else None
     flip_axes = set(filter(None, args.flip_axes.split(",")))
     method = METHODS[args.method](policy, lr=args.lr, steps_per_round=args.steps, seed=args.seed, **extra)
