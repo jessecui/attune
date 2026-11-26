@@ -59,8 +59,8 @@ def sign(expires: int) -> str:
 def signed_in(token: str | None) -> bool:
     try:
         expires, sig = (token or "").split(".")
-        return int(expires) > time.time() and hmac.compare_digest(sig, sign(int(expires)))
-    except ValueError:
+        return int(expires) > time.time() and hmac.compare_digest(sig.encode(), sign(int(expires)).encode())
+    except (ValueError, OverflowError):   # a malformed or tampered cookie is simply not signed in
         return False
 
 
