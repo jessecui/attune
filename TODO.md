@@ -60,6 +60,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Results screen: present the outcome as a profile, show the user's style against its opposite, keep the per-round charts and tracked answers.
 - [ ] Add a visible note that the answers are a style demonstration, not advice.
 - [ ] **Next to build.** Dynamic settings and questions (decided 2026-11-25; replaces the separate "own questions" and "settings" items): on the start screen the visitor types who the model should speak as and about what (for example "a doctor explaining test results"), with a few example chips. While the GPU starts, Gemini writes the questions (5 or 10) and a two-point fact sheet for each; the visitor can edit or replace any question before round one. The four scales and the style menu stay fixed.
+  - Fact-sheet points are bare advice with no reasons in them ("Avoid caffeine late in the day", not "Caffeine can stay in the body for hours, so…"). Today's sheets carry reasons, which is why the standard model rates as "explains why" before any training. Rewrite the built-in sheets the same way. Cost: when a model explains, the reasons are its own and unchecked.
   - Gemini declines settings that are harmful or that the style menu cannot serve, and keeps fact-sheet points general and uncontroversial.
   - If Gemini is down, fall back to the built-in questions and say so.
   - The setting and questions go into the downloaded package.
