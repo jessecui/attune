@@ -268,22 +268,19 @@ class Live:
                 "style_instructions": h[-1]["clauses"], "tracked_question": s["scenario"]["heldout"][0]["q"],
                 "track": [{k: r.get(k) for k in keep} for r in h], "examples": examples}
 
-    def _try(self, s, question):
+    def _try(self, s, item):
         """One question of the visitor's own, answered by the standard model and by their model.
 
-        There is no fact sheet here, so both answer from what the model knows. The tuned model is
-        given the style it favoured at the end of the session, as in its results answers.
+        Both answer from the same two-point fact sheet (written for the question just before this),
+        in the same prompts as the session used, so the two say the same thing and differ in style.
+        The tuned model writes in the style it favoured at the end of the session.
         """
-        role = s["role"]
-        system = (f"You are {role}. The person has come to you with a question. Answer them directly, speaking as "
-                  f"yourself in that role. Never write more than four sentences. Write it as a single paragraph.")
-        bullets = "\n".join(f"- {c}" for c in self.R.STYLE_CLAUSES[s["favoured"]])
-        plain = self.policy.prompt_ids(system, f"Question: {question}")
-        styled = self.policy.prompt_ids(system, f"Question: {question}\n\nWrite your answer in this style:\n{bullets}")
+        sess, style = s["sess"], s["favoured"]
+        plain = self.policy.prompt_ids(s["scenario"]["system"], self.R.user_message(item))
         base = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, use_adapter=False, **SHOWN)
-        tuned = self.policy.generate([styled], max_new_tokens=self.args.max_new_tokens, **SHOWN)
-        cut = lambda out: self.R.cap_sentences(self.policy.decode(out), self.args.max_sentences)
-        return {"question": question, "before": cut(base[0]), "after": cut(tuned[0])}
+        tuned = self.policy.generate([sess.answer_prompt(item, style)], max_new_tokens=self.args.max_new_tokens, **SHOWN)
+        return {"question": item["q"], "before": sess.finish(base, items=[item])[1][0],
+                "after": sess.finish(tuned, [style], [item])[1][0]}
 
     def _export(self, s, summary):
         """Package the session's adapter as a zip on the adapters volume, for download."""
@@ -479,7 +476,18 @@ class Live:
             if len(question) < 5:
                 raise HTTPException(status_code=400, detail="Type a question first")
             s["touched"] = time.time()
-            return self._with(s, lambda: self._try(s, question))
+            # A fact sheet for the question first (no GPU needed), as for every other question in the
+            # app: without one the two models give different advice, and the tuned model, which was
+            # trained on fact sheets, drifts out of its role.
+            from bench import setting
+            try:
+                written = setting.points_for(s["role"], [question])
+            except Exception:  # noqa: BLE001
+                raise HTTPException(status_code=502, detail="Could not prepare that question just now. Try again.")
+            if not written["suitable"]:
+                raise HTTPException(status_code=400, detail=written["reason"] or "That question is not suitable")
+            item = setting.scenario_item(written["items"][0])
+            return self._with(s, lambda: self._try(s, item))
 
         return api
 

@@ -110,7 +110,7 @@ function TryBox({ session }: { session: string }) {
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
         )}
-        <p className="hint mt-3">Both answer from what the model knows, with no checked facts behind them. Available for a few minutes after your session.</p>
+        <p className="hint mt-3">Both models are given the same two points to make, so the difference you see is style. Available for a few minutes after your session.</p>
       </div>
     </section>
   )
