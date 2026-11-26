@@ -13,7 +13,7 @@ function describe(found: { side: string; strength: string }[]) {
   return [adjectives.length ? `are ${list(adjectives)}` : '', ...clauses].filter(Boolean).join(', and ')
 }
 
-export function Results({ summary, mock, onAgain }: { summary: Summary; mock: boolean; onAgain: () => void }) {
+export function Results({ summary, mock, onAgain, onExpired }: { summary: Summary; mock: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
   const readings = summary.axes.map((a) => ({ axis: a.axis, ...read(a) }))
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
   const found = readings.filter((r) => r.strength !== 'none' && r.moved), open = readings.filter((r) => r.strength === 'none')
@@ -27,7 +27,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <div className="space-y-6">
-        <ModelCard session={summary.session} mock={mock} />
+        <ModelCard session={summary.session} mock={mock} onExpired={onExpired} />
         <button className="btn btn-quiet w-full" onClick={onAgain}>Train another</button>
       </div>
 
@@ -75,7 +75,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           </section>
         )}
 
-        <TryBox session={summary.session} />
+        <TryBox session={summary.session} onExpired={onExpired} />
       </div>
     </div>
   )
@@ -83,7 +83,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
 
 /** Ask the model anything: the standard model's answer beside the one just trained. Works while
  *  the session's GPU is still up, which is about five minutes after its last use. */
-function TryBox({ session }: { session: string }) {
+function TryBox({ session, onExpired }: { session: string; onExpired: (e: unknown) => boolean }) {
   // busy holds the step in progress, so the button can say which one it is waiting on
   const [question, setQuestion] = useState(''), [busy, setBusy] = useState<'' | 'preparing' | 'writing'>(''), [error, setError] = useState('')
   const [answer, setAnswer] = useState<Example | null>(null)
@@ -95,7 +95,7 @@ function TryBox({ session }: { session: string }) {
       await api.tryPrepare(session, question.trim())
       setBusy('writing')
       setAnswer(await api.tryAnswer(session, question.trim()))
-    } catch (err) { setError((err as Error).message) } finally { setBusy('') }
+    } catch (err) { if (!onExpired(err)) setError((err as Error).message) } finally { setBusy('') }
   }
   return (
     // The one interactive panel on the page, so it is set apart: a teal edge and a tinted header.
@@ -132,7 +132,7 @@ const Marker = ({ hollow }: { hollow?: boolean }) => (
 )
 
 /** The adapter tuned in this session, packaged a few seconds after the last question. */
-function ModelCard({ session, mock }: { session: string; mock: boolean }) {
+function ModelCard({ session, mock, onExpired }: { session: string; mock: boolean; onExpired: (e: unknown) => boolean }) {
   const [status, setStatus] = useState<ModelStatus | null>(null), [gaveUp, setGaveUp] = useState(false)
   useEffect(() => {
     if (mock) return
@@ -143,7 +143,7 @@ function ModelCard({ session, mock }: { session: string; mock: boolean }) {
         if (stop) return
         setStatus(s)
         if (s.ready || s.configured === false) return
-      } catch { /* keep trying */ }
+      } catch (err) { if (stop || onExpired(err)) return /* else keep trying */ }
       if (stop) return
       if (++tries >= 30) return setGaveUp(true)   // about two minutes
       timer = setTimeout(check, 4000)

@@ -241,6 +241,8 @@ async def feedback(body: Feedback, attune_session: str | None = Cookie(default=N
             return _mock_summary(s)
         if body.round is not None and body.round == s["round"] and s["round"] >= 1:
             return _mock_round(s, s["round"] + 1)
+        if body.round is not None and body.round != s["round"] + 1:
+            raise HTTPException(status_code=409, detail="That question has already been answered")
         if body.best == body.worst or not {body.best, body.worst} <= set(range(4)):
             raise HTTPException(status_code=400, detail="Pick two different answers")
         s["round"] += 1

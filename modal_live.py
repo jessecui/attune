@@ -346,6 +346,7 @@ class Live:
         d = root / s["id"]
         d.mkdir(parents=True, exist_ok=True)
         self.policy.model.save_pretrained(str(d))   # PEFT writes the adapter only, not the base model
+        (d / "README.md").unlink(missing_ok=True)   # PEFT's empty model card; instructions.txt is the guide
         meta = {"base_model": MODEL, "created": time.strftime("%Y-%m-%d"), "rounds": s["rounds"],
                 "profile": [{"axis": a["axis"], "first": a["first"], "second": a["second"], "lean": a["lean"][-1]}
                             for a in summary["axes"]],
@@ -496,6 +497,10 @@ class Live:
                 return {**s["summary"], "waited_seconds": 0.0}
             if fb.round is not None and fb.round == s["round"] < s["rounds"] and s.get("reply"):
                 return s["reply"]   # this question's picks were already applied: resend what came back
+            if fb.round is not None and fb.round != s["round"] + 1 and s["round"] < s["rounds"]:
+                # An older question arriving late (or one never shown): applying it would train on
+                # answers the visitor did not pick from.
+                raise HTTPException(status_code=409, detail="That question has already been answered")
             if fb.best == fb.worst or not {fb.best, fb.worst} <= set(range(K)):
                 raise HTTPException(status_code=400, detail="Pick two different answers")
             # One answer at a time per session: a repeated submit would otherwise count as the next round.

@@ -58,7 +58,7 @@ export default function App() {
             now.name !== 'round' || now.round.session !== next.session ? now
               : 'done' in next ? { name: 'results', summary: next } : { name: 'round', round: next })} />
       )}
-      {stage.name === 'results' && <Results summary={stage.summary} mock={!!me?.mock} onAgain={() => setStage({ name: 'welcome' })} />}
+      {stage.name === 'results' && <Results summary={stage.summary} mock={!!me?.mock} onAgain={() => setStage({ name: 'welcome' })} onExpired={expired} />}
     </Shell>
   )
 }
