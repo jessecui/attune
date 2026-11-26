@@ -54,8 +54,6 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
           </p>
         </section>
 
-        <TryBox session={summary.session} />
-
         {example && (
           <section className="panel" aria-labelledby="difference">
             <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
@@ -76,6 +74,8 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
             </div>
           </section>
         )}
+
+        <TryBox session={summary.session} />
       </div>
     </div>
   )
