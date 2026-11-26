@@ -106,7 +106,7 @@ function TryBox({ session }: { session: string }) {
             placeholder="Ask it a question of your own" autoComplete="off"
             className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
           <button className="btn btn-primary shrink-0" disabled={!!busy || question.trim().length < 5}>
-            {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing both answers'}</> : 'Ask'}
+            {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing answers'}</> : 'Ask'}
           </button>
         </form>
         {error && <p role="alert" className="mt-3 text-red-700">{error}</p>}
