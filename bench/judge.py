@@ -247,7 +247,67 @@ def compare(grid, scenario="data/advice.json"):
     print(f"  rounds where the judge was unavailable and word lists picked instead: {fell_back}")
 
 
+def users(grid="users", scenario="data/advice.json"):
+    """Score the less tidy simulated users: by kind of user and method, on what that user cared about.
+
+    Scales right and fit count only the scales the user cares about. For the user who picks on
+    length there is no style to match, so the columns that matter are length and content.
+    """
+    import glob
+    from collections import defaultdict
+
+    from .personas import PERSONAS
+    sc = json.loads(Path(scenario).read_text())
+    feature = {m["axis"]: m["feature"] for m in sc["menu"]}
+    cache_file = Path(f"results/judge/{grid}_compare.json")
+    cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
+    runs = [json.loads(Path(f).read_text()) for f in sorted(glob.glob(f"results/modal/{grid}/*.json"))
+            if not f.endswith("calls.json")]
+    runs = [d for d in runs if "rounds" in d]
+    need = {}
+    for d in runs:
+        for texts in (d["base"]["texts"], d["rounds"][-1]["texts"]):
+            for it, t in zip(sc[d["args"]["eval_split"]], texts):
+                need.setdefault(it["q"] + "|" + t, (it["q"], it["facts"], t))
+    todo = [k for k in need if k not in cache]
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+    for start in range(0, len(todo), 40):
+        chunk = todo[start:start + 40]
+        for k, v in zip(chunk, judge_many([need[k] for k in chunk])):
+            cache[k] = v
+        cache_file.write_text(json.dumps(cache))
+    agg = defaultdict(lambda: defaultdict(list))
+    for d in runs:
+        a, items = d["args"], sc[d["args"]["eval_split"]]
+        signs = PERSONAS[a["persona"]].signs
+        care = [x for x in a.get("care", "").split(",") if x] or list(AXES)
+        wants = {} if a.get("prefer_short") else {x: signs[feature[x]] for x in care}
+        tuned = [cache[it["q"] + "|" + t] for it, t in zip(items, d["rounds"][-1]["texts"])]
+        base = [cache[it["q"] + "|" + t] for it, t in zip(items, d["base"]["texts"])]
+        n, g = len(tuned), agg[d["name"].rsplit("_", 3)[0]]
+        if wants:
+            g["right"].append(sum((sum(v[x] for v in tuned) / n - 3) * w > 0 for x, w in wants.items()) / len(wants))
+            g["base_right"].append(sum((sum(v[x] for v in base) / n - 3) * w > 0 for x, w in wants.items()) / len(wants))
+            pairs = [(style_score(t, wants), style_score(b, wants)) for t, b in zip(tuned, base)]
+            g["win"].append(sum(1.0 if t > b else 0.5 if t == b else 0.0 for t, b in pairs) / n)
+        g["facts"].append(sum(sum(v["facts_covered"]) / len(v["facts_covered"]) for v in tuned) / n)
+        g["adds"].append(sum(bool(v["added"]) for v in tuned) / n)
+        g["words"].append(sum(len(t.split()) for t in d["rounds"][-1]["texts"]) / n)
+        g["base_words"].append(sum(len(t.split()) for t in d["base"]["texts"]) / n)
+        g["careless"].append(sum(bool(r.get("careless")) for r in d["rounds"]))
+    mean = lambda v: sum(v) / len(v) if v else float("nan")
+    print(f"{grid}: {len(runs)} runs, {len(need)} answers judged ({len(todo)} new)")
+    print(f"  {'kind-method':14} runs | cared scales right (standard) | win rate over standard | facts | adds | words (standard) | careless rounds")
+    for name in sorted(agg):
+        g = agg[name]
+        print(f"  {name:14} {len(g['facts']):4} | {mean(g['right']):12.0%} ({mean(g['base_right']):.0%})          | "
+              f"{mean(g['win']):21.0%} | {mean(g['facts']):5.2f} | {mean(g['adds']):4.0%} | "
+              f"{mean(g['words']):5.0f} ({mean(g['base_words']):.0f})       | {mean(g['careless']):.1f} of 5")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["users"]:
+        users(*sys.argv[2:])
     if sys.argv[1:2] == ["compare"]:
         compare(*sys.argv[2:])
     if sys.argv[1:2] == ["content"]:
