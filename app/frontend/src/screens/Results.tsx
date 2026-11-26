@@ -34,7 +34,7 @@ export function Results({ summary, mock, onAgain }: { summary: Summary; mock: bo
       <div className="space-y-6">
         <section className="panel p-5">
           <p className="hint">Result · {summary.rounds} questions</p>
-          <h1 className="mt-1 text-lg font-semibold text-gray-900">Your personal AI model is ready</h1>
+          <h1 className="mt-1 text-lg font-semibold text-gray-900">Your custom AI model is ready</h1>
           <p className="mt-2 text-gray-600">
             {found.length > 0
               ? <>It learned that{setting} you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>

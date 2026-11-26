@@ -23,13 +23,13 @@ export function Welcome({ choices, error, onDraft, onStart, onExpired }:
 
   return (
     <div className="mx-auto max-w-2xl pt-10 text-center sm:pt-20">
-      <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train your own personal AI model</h1>
+      <h1 className="text-4xl font-semibold tracking-tight text-gray-900">Train your own custom AI model</h1>
       <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-gray-500">
-        Most AI models are tuned for the average person. Train one that knows how you like to be spoken to.
+        Most AI models are tuned for the average person. Pick a situation and train one that speaks to you the way you like.
       </p>
 
       <form onSubmit={prepare} className="mt-10">
-        <label htmlFor="setting" className="font-medium text-gray-900">Who should the model be when it speaks to you?</label>
+        <label htmlFor="setting" className="font-medium text-gray-900">What situation is it for? Say who is speaking to you.</label>
         {/* One field with its button inside it */}
         <div className="relative mt-3">
           <input id="setting" value={setting} onChange={(e) => setSetting(e.target.value)} maxLength={200} disabled={busy}

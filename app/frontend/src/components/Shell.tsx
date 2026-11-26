@@ -13,7 +13,7 @@ export function Shell({ children, mock, progress, onHome }:
             <span className="text-base font-semibold text-gray-900">Attune</span>
           </button>
           <span className="hidden h-5 w-px bg-gray-200 sm:block" aria-hidden />
-          <p className="hidden truncate text-gray-500 sm:block">Train your own personal AI model</p>
+          <p className="hidden truncate text-gray-500 sm:block">Train your own custom AI model</p>
           <div className="ml-auto flex items-center gap-4">
             {mock && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Demo data</span>}
             {progress && <span className="text-gray-600">Question {progress.at} of {progress.of}</span>}

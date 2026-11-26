@@ -16,7 +16,7 @@ export function Gate({ onDone }: { onDone: () => void }) {
           <Logo />
           <h1 id="gate-title" className="text-lg font-semibold text-gray-900">Attune</h1>
         </div>
-        <p className="mt-3 text-gray-500">Train your own personal AI model.</p>
+        <p className="mt-3 text-gray-500">Train your own custom AI model.</p>
         <label htmlFor="password" className="mt-4 block font-medium text-gray-900">Each session runs on its own GPU, so access is by password.</label>
         <input id="password" type="password" autoFocus autoComplete="current-password" placeholder="Password" value={password}
           onChange={(e) => setPassword(e.target.value)} aria-invalid={!!error} aria-describedby={error ? 'gate-error' : undefined}
