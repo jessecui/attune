@@ -261,18 +261,36 @@ class Session:
         cands = [self.prefixes[s] + o for s, o in zip(picks, answers)] if self.latent else answers
         return picks, cands, texts, redrawn, None
 
-    def answer_heldout(self, use_adapter=True, plain=False, split="heldout"):
-        """Greedy answers to the held-out prompts, plus the style marginals if latent."""
-        if not self.latent or plain:
-            outs = self.policy.generate(self.plain[split], max_new_tokens=self.args.max_new_tokens,
-                                        use_adapter=use_adapter)
-            return self.finish(outs, items=self.scenario[split])[1], {}
+    def chosen(self, split="heldout"):
+        """The style the tuned model picks for each question, and the prompt that asks for an answer in it."""
         dists = torch.stack([self.style_dist(p) for p in self.styled[split]])
         best = [d.argmax().item() for d in dists]
         if self.two_step:
             contexts = [self.answer_prompt(it, s) for it, s in zip(self.scenario[split], best)]
         else:
             contexts = [p + self.prefixes[s] for p, s in zip(self.styled[split], best)]
+        return dists, best, contexts
+
+    def answer_sampled(self, temps, split="heldout"):
+        """The held-out questions answered at each temperature (0 is greedy), in the style the tuned model
+        picks, by the tuned model and by the untouched one given the same style. The untouched model's
+        answers show how much of any repeated phrasing comes from the style instruction, not the training."""
+        _, best, contexts = self.chosen(split)
+        out = {"styles": [STYLES[s] for s in best]}
+        for t in temps:
+            out[str(t)] = {who: self.finish(self.policy.generate(contexts, max_new_tokens=self.args.max_new_tokens,
+                                                                 temperature=t, top_p=0.95, use_adapter=on),
+                                            best, self.scenario[split])[1]
+                           for who, on in (("tuned", True), ("standard", False))}
+        return out
+
+    def answer_heldout(self, use_adapter=True, plain=False, split="heldout"):
+        """Greedy answers to the held-out prompts, plus the style marginals if latent."""
+        if not self.latent or plain:
+            outs = self.policy.generate(self.plain[split], max_new_tokens=self.args.max_new_tokens,
+                                        use_adapter=use_adapter)
+            return self.finish(outs, items=self.scenario[split])[1], {}
+        dists, best, contexts = self.chosen(split)
         outs = self.policy.generate(contexts, max_new_tokens=self.args.max_new_tokens)
         mean = dists.mean(0)
         marginals = {f"p_{k}": mean[torch.tensor(mask)].sum().item() for k, mask in AXES.items()}
@@ -394,6 +412,9 @@ def main(argv=None):
                     help="if a candidate still drops facts after redraws, replace its style with another")
     ap.add_argument("--redraws", type=int, default=3, help="attempts to replace a candidate that drops facts")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--sample-temps", default="",
+                    help="comma-separated temperatures: after the last round, also answer the held-out questions "
+                         "at each one, with the tuned model and with the untouched model in the same style")
     ap.add_argument("--eval-split", default="heldout",
                     help="'heldout' was used while developing the methods; 'test' is untouched")
     ap.add_argument("--heldout", type=int, default=None, help="limit held-out prompts (smoke tests)")
@@ -537,6 +558,9 @@ def main(argv=None):
         log["rounds"].append({"round": r, "styles": [STYLES[s] for s in picks], "candidates": cand_texts,
                               "redrawn": redrawn, "order": order, "flipped": flipped, "judged": judged, "careless": careless, "relabelled": relabelled, "t_generate": t_gen, "t_update": t_upd,
                               **info, **ev})
+
+    if args.sample_temps and latent:
+        log["sampled"] = sess.answer_sampled([float(t) for t in args.sample_temps.split(",")])
 
     out = Path(args.out or f"results/{args.method}_{args.persona}_s{args.seed}.json")
     out.parent.mkdir(parents=True, exist_ok=True)

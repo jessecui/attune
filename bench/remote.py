@@ -227,6 +227,13 @@ GRIDS = {
     # Rerun of the matched pairs after the sentence-cap fix (2026-11-26): styled answers had been cut at
     # three sentences while plain ones (the standard model's, DPO's at evaluation) could use four.
     # Score with `python -m bench.judge compare final4` and `python -m bench.judge users users4`.
+    # Repeated phrasing in the tuned model's answers: how strongly the wording is trained (0.3 is shipped; 0 trains
+    # the style choice only), with the final answers also sampled at several temperatures by the tuned model and
+    # by the untouched one in the same style.
+    "sameness": [{"name": f"aw{aw}_{p}_s{seed}",
+                  "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), "--max-sentences", "4",
+                                  *SHIPPED[:4], "--answer-weight", aw, *SHIPPED[6:], "--sample-temps", "0,0.7,1.0"]}
+                 for aw in ("0.3", "0.15", "0") for p in LIVE_PERSONAS for seed in (1, 2, 3)],
     "final4": [{"name": f"{tag}_{p}_s{seed}",
                 "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
                for tag, extra in [("grpo", SHIPPED), ("dpo-lr2e-5", ["--method", "dpo", "--lr", "2e-5"])]
