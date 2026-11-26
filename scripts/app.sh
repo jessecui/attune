@@ -23,6 +23,8 @@ fi
 (cd app/backend && ../../.venv/bin/uvicorn main:app --reload --no-proxy-headers --timeout-graceful-shutdown 2 --port $ATTUNE_BACKEND_PORT) &
 backend=$!
 # On exit, stop the backend and wait for it, so its last log lines print before the prompt returns.
+# Ctrl-C would otherwise end this script at once, without the exit step, so it is caught and turned into an exit.
 trap "kill $backend 2>/dev/null; wait $backend 2>/dev/null" EXIT
+trap "exit 130" INT TERM
 echo "Open http://localhost:5180 (the access prompt asks for the creator's name)"
 cd app/frontend && npm run dev

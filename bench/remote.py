@@ -1,8 +1,8 @@
 """Launch benchmark grids on the deployed Modal app and collect their results.
 
-    python -m bench.remote launch main       # spawn every run not yet finished; returns at once
-    python -m bench.remote status main       # list progress and download finished results
-    python -m bench.remote cancel main       # stop the runs launched by the last `launch`
+    python -m bench.remote launch final4     # spawn every run not yet finished; returns at once
+    python -m bench.remote status final4     # list progress and download finished results
+    python -m bench.remote cancel final4     # stop the runs launched by the last `launch`
 
 Finished results are downloaded to results/modal/<grid>/, ready for bench.report.
 """
@@ -12,35 +12,13 @@ from pathlib import Path
 
 import modal
 
-PERSONAS = ["warm_brief", "thorough_formal"]
-SEEDS = [1, 2, 3]
-
-
-def grid(prefix, methods, extra=()):
-    return [{"name": f"{prefix}_{m}_{p}_s{s}",
-             "argv": ["--method", m, "--persona", p, "--seed", str(s), "--lr", "3e-5",
-                      "--eval-split", "test", *extra]}
-            for m in methods for p in PERSONAS for s in SEEDS]
-
-
 # Short sessions on the advice scenario: two-step GRPO, four-sentence cap, six rounds.
 # (Grids run before 2026-11-25 afternoon used three sentences and 96 tokens.)
 LEARN = ["--method", "grpo_style", "--two-step", "--scenario", "data/advice.json", "--rounds", "6",
          "--max-new-tokens", "128", "--max-sentences", "4", "--min-facts", "0.5", "--eval-split", "test",
          "--lr", "3e-5"]
-A3 = "warmth,directiveness,language"
-A4 = A3 + ",energy"
-A5 = "brevity," + A4
-NEW_PERSONAS = ["gentle_guide", "brisk_expert", "upbeat_coach"]
-
-
 STRICT = ["--min-facts", "1.0", "--strict-facts"]
 SEVEN_B = ["--model", "Qwen/Qwen2.5-7B-Instruct"]
-
-
-def learn(tag, axes, extra=()):
-    return [{"name": f"{tag}_{p}_s{s}", "argv": LEARN + ["--axes", axes, "--persona", p, "--seed", str(s), *extra]}
-            for p in NEW_PERSONAS for s in (1, 2)]
 
 
 # The live setup: 7B, four axes, best-and-worst feedback, neutral start, both facts required.
@@ -78,81 +56,12 @@ GRIDS = {
     # the word lists cannot), and a milder reversal: two of the four axes flip after round five.
     "gentle2": [{**j, "argv": j["argv"] + ["--judge-user", "--flip-axes", "warmth,depth"]}
                 for j in gentle(["base", "cclip0.2_lr1e-5"], [1, 2])],
-    "smoke": [{"name": "smoke", "argv": ["--method", "grpo_style", "--rounds", "2", "--heldout", "3"]}],
-    "smoke_guard": [{"name": "smoke_guard", "argv": ["--method", "dpo", "--rounds", "2", "--eval-split", "test",
-                                                     "--heldout", "3", "--guard", "-1"]}],  # always rolls back
-    "menu_check": [{"name": "menu_check", "module": "check_menu", "argv": ["--scenario", "data/advice.json"]}],
-    "menu_check2": [
-        {"name": "solo_1.5B", "module": "check_menu", "argv": ["--solo"]},
-        {"name": "three_axes_1.5B", "module": "check_menu", "argv": ["--axes", "warmth,directiveness,brevity"]},
-        {"name": "five_axes_3B", "module": "check_menu", "argv": ["--model", "Qwen/Qwen2.5-3B-Instruct"]},
-        {"name": "five_axes_7B", "module": "check_menu", "argv": ["--model", "Qwen/Qwen2.5-7B-Instruct"]},
-    ],
-    "menu_check3": [  # concrete option wording, looser system prompt
-        {"name": "v2_five_axes_1.5B", "module": "check_menu", "argv": []},
-        {"name": "v2_solo_1.5B", "module": "check_menu", "argv": ["--solo"]},
-        {"name": "v2_five_axes_7B", "module": "check_menu", "argv": ["--model", "Qwen/Qwen2.5-7B-Instruct"]},
-    ],
-    "menu_check4": [  # where the instruction sits, and how many axes at once
-        {"name": "user_five_1.5B", "module": "check_menu", "argv": ["--position", "user"]},
-        {"name": "bullets_five_1.5B", "module": "check_menu", "argv": ["--position", "user_bullets"]},
-        {"name": "bullets_five_7B", "module": "check_menu",
-         "argv": ["--position", "user_bullets", "--model", "Qwen/Qwen2.5-7B-Instruct"]},
-        {"name": "line_three_1.5B", "module": "check_menu", "argv": ["--axes", "warmth,directiveness,brevity"]},
-        {"name": "line_two_1.5B", "module": "check_menu", "argv": ["--axes", "warmth,directiveness"]},
-    ],
-    "learn_smoke": [{"name": "learn_smoke", "argv": LEARN + ["--axes", A5, "--rounds", "2", "--heldout", "3",
-                                                             "--persona", "upbeat_coach"]}],
-    "learn": (learn("a3_1.5B", A3) + learn("a4_1.5B", A4) + learn("a5_1.5B", A5)
-              + learn("a5_7B", A5, ["--model", "Qwen/Qwen2.5-7B-Instruct"])),
-    # As "learn", but both facts required of every candidate and a cap that never cuts a fact.
-    "learn2": (learn("v2_a4_1.5B", A4, STRICT) + learn("v2_a5_1.5B", A5, STRICT)
-               + learn("v2_a5_7B", A5, STRICT + ["--model", "Qwen/Qwen2.5-7B-Instruct"])),
-    "menu_check5": [  # third wording: no quotable examples
-        {"name": "v3_bullets_five_7B", "module": "check_menu",
-         "argv": ["--position", "user_bullets", "--model", "Qwen/Qwen2.5-7B-Instruct"]},
-        {"name": "v3_bullets_five_1.5B", "module": "check_menu", "argv": ["--position", "user_bullets"]},
-    ],
-    # How the user gives feedback, on the 7B model with five axes.
-    "feedback": (learn("rank4_7B", A5, STRICT + SEVEN_B)
-                 + learn("bestworst4_7B", A5, STRICT + SEVEN_B + ["--feedback", "bestworst"])
-                 + learn("pick2of6_7B", A5, STRICT + SEVEN_B + ["--k", "6", "--picks", "2"])),
-    "menu_check6": [{"name": "v4_bullets_five_7B", "module": "check_menu",   # directiveness reworded again
-                     "argv": ["--position", "user_bullets", "--model", "Qwen/Qwen2.5-7B-Instruct"]}],
-    # One identical session per GPU type, to compare seconds per round and cost.
-    "gpu_timing": [{"name": f"gpu_{g}", "fn": fn,
-                    "argv": LEARN + ["--axes", A5, "--persona", "gentle_guide", "--seed", "1",
-                                     "--feedback", "bestworst", *STRICT, *SEVEN_B]}
-                   for g, fn in [("L4", "run_one"), ("A10", "run_one_a10"),
-                                 ("L40S", "run_one_l40s"), ("A100", "run_one_a100")]],
-    "menu_check7": [{"name": "v5_bullets_five_7B", "module": "check_menu",   # energy without "!" on everything
-                     "argv": ["--position", "user_bullets", "--model", "Qwen/Qwen2.5-7B-Instruct"]}],
-    # Does starting from "every style equally likely" learn as well as starting from the model's defaults?
-    "neutral": (learn("default_start_7B", A5, STRICT + SEVEN_B + ["--feedback", "bestworst"])
-                + learn("neutral_start_7B", A5, STRICT + SEVEN_B + ["--feedback", "bestworst", "--neutral-start"])),
-    "menu_check8": [{"name": "v6_bullets_five_7B", "module": "check_menu",   # lighter energy wording
-                     "argv": ["--position", "user_bullets", "--model", "Qwen/Qwen2.5-7B-Instruct"]}],
-    "menu_check9": [   # depth in place of energy, with strict and with loose brevity
-        {"name": "depth_strict_brevity_7B", "module": "check_menu",
-         "argv": ["--position", "user_bullets", "--axes", "brevity,warmth,directiveness,language,depth", *SEVEN_B]},
-        {"name": "depth_loose_brevity_7B", "module": "check_menu",
-         "argv": ["--position", "user_bullets", "--scenario", "data/advice_loose.json", *SEVEN_B]},
-        {"name": "depth_no_brevity_7B", "module": "check_menu",
-         "argv": ["--position", "user_bullets", "--axes", "warmth,directiveness,language,depth", *SEVEN_B]},
-    ],
     "menu_check10": [{"name": "formality_7B", "module": "check_menu",   # formality in place of language
                       "argv": ["--position", "user_bullets", "--axes", "warmth,directiveness,formality,depth", *SEVEN_B]}],
     "menu_check11": [{"name": "formality_v2_7B", "module": "check_menu",   # casual without slang
                       "argv": ["--position", "user_bullets", "--axes", "warmth,directiveness,formality,depth", *SEVEN_B]}],
     "menu_check12": [{"name": "collaborative_v2_7B", "module": "check_menu",   # collaborative without the hedging
                       "argv": ["--position", "user_bullets", "--axes", "warmth,directiveness,formality,depth", *SEVEN_B]}],
-    "menu_check13": [   # two more wordings for collaborative: options without hedges, or statements not commands
-        {"name": "collab_options_7B", "module": "check_menu",
-         "argv": ["--position", "user_bullets", "--axes", "warmth,directiveness,formality,depth", *SEVEN_B]},
-        {"name": "collab_statements_7B", "module": "check_menu",
-         "argv": ["--position", "user_bullets", "--scenario", "data/advice_b.json",
-                  "--axes", "warmth,directiveness,formality,depth", *SEVEN_B]},
-    ],
     # The gentler update with the content check switched off: does content hold without it?
     # Compared with the same runs in gentle2, and scored afterwards by the judge.
     "nocheck": [{**j, "name": "nocheck_" + j["name"],
@@ -161,7 +70,7 @@ GRIDS = {
     "menu_check14": [{"name": "four_sentences_two_paragraphs_7B", "module": "check_menu",   # new length and layout rule
                       "argv": ["--position", "user_bullets", "--axes", FOUR, "--max-new-tokens", "128", *SEVEN_B]}],
     "menu_check15": [{"name": "one_point_three_sentences_7B", "module": "check_menu",   # one point per question
-                      "argv": ["--position", "user_bullets", "--axes", FOUR, "--scenario", "data/advice_one.json", *SEVEN_B]}],
+                      "argv": ["--position", "user_bullets", "--axes", FOUR, "--scenario", "data/experiments/advice_one.json", *SEVEN_B]}],
     # Quick GRPO-against-DPO check on the live setup: judge as the user, best-and-worst feedback
     # for both, five rounds, one seed. Scored afterwards with `python -m bench.judge compare quick`.
     "quick": [{"name": f"{tag}_{p}_s1",
@@ -187,13 +96,13 @@ GRIDS = {
     "menu_check16": [{"name": f"warm_{tag}_7B", "module": "check_menu",
                       "argv": ["--position", "user_bullets", "--axes", FOUR, "--max-new-tokens", "128", "--save-all",
                                "--scenario", f, *SEVEN_B]}
-                     for tag, f in [("current", "data/advice.json"), ("loose", "data/advice_warm_loose.json"),
-                                    ("anywhere", "data/advice_warm_anywhere.json")]],
+                     for tag, f in [("current", "data/advice.json"), ("loose", "data/experiments/advice_warm_loose.json"),
+                                    ("anywhere", "data/experiments/advice_warm_anywhere.json")]],
     # Mood-matching wordings of the warm option against the current one, with six good-news questions added
     # to the ten training questions: does the opening follow the mood, and is it less of a stock phrase?
     "menu_check18": [{"name": f"mood_{tag}_7B", "module": "check_menu",
                       "argv": ["--position", "user_bullets", "--axes", FOUR, "--max-new-tokens", "128", "--save-all",
-                               "--per-option", "36", "--scenario", f"data/advice_mood_{tag}.json", *SEVEN_B]}
+                               "--per-option", "36", "--scenario", f"data/experiments/advice_mood_{tag}.json", *SEVEN_B]}
                      for tag in ("current", "feeling", "mood")],
     # Train the wording more gently than the style choice, to stop the model settling on one stock
     # phrasing or writing the same answer in every style (seen in live sessions at 3e-5).
@@ -244,15 +153,6 @@ GRIDS = {
                                  ("noisy", lambda p: ["--pick-noise", "0.25"])]
                for method, extra in [("grpo", SHIPPED), ("dpo", ["--method", "dpo", "--lr", "2e-5"])]
                for p in LIVE_PERSONAS for seed in (1, 2)],
-    "main": grid("rank4", ["grpo_style", "dpo"]),
-    "wide": grid("wide", ["grpo_style"], ["--menu", "wide"]),
-    "pick8": grid("pick3of8", ["grpo_style"], ["--k", "8", "--picks", "3"]),
-    "pick6": grid("pick2of6", ["grpo_style"], ["--k", "6", "--picks", "2"]),
-    "dpo_pick8": grid("pick3of8", ["dpo"], ["--k", "8", "--picks", "3"]),
-    "dpo_pick6": grid("pick2of6", ["dpo"], ["--k", "6", "--picks", "2"]),
-    "dpo_guard": grid("guard", ["dpo"], ["--guard", "0.15"]),
-    "dpo_beta": grid("beta05", ["dpo"], ["--beta", "0.5"]),
-    "dpo_guard_pick8": grid("guard_pick3of8", ["dpo"], ["--k", "8", "--picks", "3", "--guard", "0.15"]),
 }
 
 volume = modal.Volume.from_name("attune-results")
@@ -290,14 +190,16 @@ def launch(name, limit=None):
     local.mkdir(parents=True, exist_ok=True)
     old = json.loads((local / "calls.json").read_text()) if (local / "calls.json").exists() else {}
     (local / "calls.json").write_text(json.dumps({**old, **calls}, indent=1))
-    print(f"{name}: launched {len(todo)} of {len(GRIDS[name])} runs ({len(GRIDS[name]) - len(todo)} already done)")
+    finished = sum(f"{j['name']}.json" in done for j in GRIDS[name])
+    print(f"{name}: launched {len(todo)} of {len(GRIDS[name])} runs "
+          f"({finished} finished, {len(GRIDS[name]) - finished - len(todo)} already launched or held back)")
 
 
 def status(name):
     files = remote_files(name)
     local = Path("results/modal") / name
     local.mkdir(parents=True, exist_ok=True)
-    done = running = failed = 0
+    done = running = failed = queued = 0
     calls_file = local / "calls.json"
     calls = json.loads(calls_file.read_text()) if calls_file.exists() else {}
     for j in GRIDS[name]:
@@ -320,10 +222,13 @@ def status(name):
         elif f"{n}.started" in files:
             running += 1
             print(f"  running  {n}")
+        elif n in calls:
+            queued += 1
+            print(f"  queued   {n}")
         else:
-            print(f"  waiting  {n}")
-    print(f"{name}: {done} done, {running} running, {failed} failed, "
-          f"{len(GRIDS[name]) - done - running - failed} waiting")
+            print(f"  not launched  {n}")
+    print(f"{name}: {done} done, {running} running, {failed} failed, {queued} queued, "
+          f"{len(GRIDS[name]) - done - running - failed - queued} not launched")
 
 
 def cancel(name):
@@ -336,7 +241,7 @@ def cancel(name):
 if __name__ == "__main__":
     args = sys.argv[1:]
     limit = None
-    if "--limit" in args:  # e.g. launch feedback --limit 4
+    if "--limit" in args:  # e.g. launch final4 --limit 4
         i = args.index("--limit")
         limit = int(args[i + 1])
         del args[i:i + 2]

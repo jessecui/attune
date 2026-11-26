@@ -141,7 +141,7 @@ Open http://localhost:5180. The backend runs on port 8787.
 | Path | What it is |
 |---|---|
 | `bench/` | Session simulation, GRPO and DPO, simulated users, the judge, setting drafts |
-| `data/` | Built-in questions, fact sheets and the style menu |
+| `data/` | Built-in questions, fact sheets and the style menu (`advice.json`); `experiments/` holds the copies used in wording tests |
 | `modal_live.py` | The live session service: generation, updates, results, try box, adapter packaging |
 | `modal_app.py`, `bench/remote.py` | Benchmark jobs on Modal |
 | `app/backend/` | FastAPI server: name gate, private relay to Modal, mock mode |

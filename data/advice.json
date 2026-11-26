@@ -3,21 +3,6 @@
  "system": "You are an advisor answering a person's question. Base your advice only on the points provided and cover both of them. You may add a brief remark that sets the tone, but no new advice. Never write more than four sentences. Write it as a single paragraph.",
  "menu": [
   {
-   "axis": "brevity",
-   "feature": "short",
-   "options": [
-    [
-     "one",
-     "Answer in one sentence.",
-     1
-    ],
-    [
-     "three",
-     "Answer in three sentences."
-    ]
-   ]
-  },
-  {
    "axis": "warmth",
    "feature": "warm_words",
    "options": [
@@ -42,34 +27,6 @@
     [
      "collaborative",
      "Describe what works well for most people in plain statements rather than commands, and leave it to the person to decide what to adopt."
-    ]
-   ]
-  },
-  {
-   "axis": "language",
-   "feature": "technical",
-   "options": [
-    [
-     "technical",
-     "Use formal, technical vocabulary."
-    ],
-    [
-     "plain",
-     "Use simple everyday words."
-    ]
-   ]
-  },
-  {
-   "axis": "energy",
-   "feature": "energy",
-   "options": [
-    [
-     "upbeat",
-     "Sound lively and positive."
-    ],
-    [
-     "calm",
-     "Sound calm and even, with no exclamation marks."
     ]
    ]
   },

@@ -104,7 +104,7 @@ def style_score(verdict, wants):
     return sum(sign * (verdict[axis] - 3) for axis, sign in wants.items())
 
 
-def check(report="results/modal/menu_check13/collab_statements_7B.json", scenario="data/advice.json"):
+def check(report="results/modal/menu_check16/warm_current_7B.json", scenario="data/advice.json"):
     """Agreement between the judge and the style each sample answer was asked to use.
 
     The samples come from the menu check, where the untouched model was given a known

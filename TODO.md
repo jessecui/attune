@@ -55,7 +55,7 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 - [ ] Watch for overlap between casual and warm, and between collaborative and "explains why".
 - [ ] Collaborative answers read as if they give reasons even under "just the advice": "plain statements about what works" comes out as "X can help you Y", which is a reason in all but name. Seen in a live session on 2026-11-25 (profile said just the advice, the answer explained). Depth was also the scale the judge agreed with least (15 of 22). Either accept it and say so, or find a wording for collaborative that states what people do without saying what it achieves.
 - [ ] Deal with warm and "explains why" answers running past three sentences before the cap.
-- [ ] Remove the retired axes (brevity, language, energy) and old grids from `data/advice.json` and `bench/remote.py`.
+- [x] Remove the retired axes (brevity, language, energy) and old grids from `data/advice.json` and `bench/remote.py`. Done 2026-11-26: the menu holds the four live scales; 27 grids on retired scales or the earlier tutor setup are gone (their local results in `results/modal/` and their definitions in git history remain), 20 on the live scales stay, checked identical before and after; the experiment copies of the scenario moved to `data/experiments/`.
 - [ ] Write prepared question sets with checked fact sheets for doctor and tutor: the fallback when Gemini is down, the example chips, and settings the benchmark can be rerun on. (The built-in ten mix settings, which may be one reason the user's own sessions differed.)
 
 ## Real app
@@ -111,6 +111,6 @@ Open work for Attune, grouped by area and roughly in priority order within each 
 
 ## Tooling
 
-- [ ] Fix `bench.remote status`: it prints "waiting" for jobs that were never launched as well as for queued ones.
-- [ ] Fix the `launch` message that reports not-yet-launched jobs as "already done".
+- [x] Fix `bench.remote status`: it prints "waiting" for jobs that were never launched as well as for queued ones. (Now "queued" and "not launched".)
+- [x] Fix the `launch` message that reports not-yet-launched jobs as "already done". (Now counts finished runs separately.)
 - [ ] After a deploy, wait for old containers to stop before launching or testing; requests sent straight away land on stale code.
