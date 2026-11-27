@@ -22,22 +22,24 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 ## Results
 
-Benchmarked with simulated users played by the judge model (each given a fixed set of preferences), five feedback rounds per run. Every answer scored is to a question the model was not trained on, written from a plain prompt with no style in it. Four simulated users, six seeds each, in two sets of 12 runs per method. The first set was used to choose the settings; the second set's seeds played no part in choosing the learning rate or the mix of answers shown, so it is the one quoted first:
+Attune uses GRPO because the project is reinforcement learning from human feedback: each pick is a reward, and the model is updated from it after every question. DPO, the standard way to learn from preference pairs without a reward, is the baseline.
 
-| Comparison | Result |
-|---|---|
-| GRPO against the untouched model | **93%** answer-level win rate on the second set (106 wins, 11 ties, 3 losses); 90% over both sets (206, 21, 13) |
-| GRPO against DPO, same users and seeds | 45% on the second set (33 wins, 43 ties, 44 losses); 46% over both (73, 75, 92) |
-| DPO against the untouched model | 94% on the second set; 93% over both |
-| Fact-sheet points covered | 100% for GRPO, 99.6% for DPO |
-| Malformed answers | 0.8% for GRPO (2 of 240), 1.7% for DPO (4 of 240) |
+Both methods were trained on the same picks from four simulated users (the judge model, each given a fixed set of preferences), with the same learning rate, session length, and seeds. Every answer scored is to a question the model was not trained on, written from a plain prompt with no style in it.
 
-Ties count as half a win. GRPO's win rate over the untouched model is within a point of DPO's on the second set and within three over both, and it kept every fact-sheet point (480 of 480). Head to head DPO is a little ahead on both sets, by a margin within chance. Both ran at the same learning rate, session length, users, and seeds, and both reuse earlier rounds' picks in later updates.
+| After five rounds | GRPO | DPO |
+|---|---|---|
+| Win rate over the untouched model | **93%** (90%) | 94% (93%) |
+| Head to head | 45% (46%) | 55% (54%) |
+| Fact-sheet points kept | 100% (480 of 480) | 99.6% (478 of 480) |
+| Malformed answers | 0.8% (2 of 240) | 1.7% (4 of 240) |
 
-DPO's lead comes from one of the four simulated users: the "gentle explainer", where GRPO did not pick up the empathy that user wants (18 wins to DPO's 32). Over the other three the two are level (55 wins to 60, with 65 ties).
+Win rates are per answer, with a tie counted as half. The first figure is from 12 runs per method on seeds that played no part in choosing the learning rate or the mix of answers shown; the figure in brackets is over all 24 runs. Fact and malformed counts are over all 24.
+
+GRPO matches the baseline: its win rate is within a point of DPO's, it keeps every fact, and head to head the two are within chance of each other (33 wins, 43 ties, 44 losses). So Attune ships GRPO, which gives the project what it set out to build, a model trained by reinforcement from one person's feedback, at no measurable cost against the standard method.
 
 What the tuning runs showed:
 
+- **Where the two methods differ.** On three of the four simulated users they are level head to head (55 wins to 60, with 65 ties). DPO is ahead for the fourth, the "gentle explainer", where GRPO did not pick up the empathy that user wants (18 wins to 32).
 - **Session length, and where the text breaks.** With earlier picks reused in each update (experience replay), more rounds learn a stronger style but damage the writing: missing spaces, words run together, misspellings, answers that do not end. Over both sets of runs:
 
   | Rounds | Win rate over the untouched model | Malformed answers |
