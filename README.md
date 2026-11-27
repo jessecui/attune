@@ -56,7 +56,7 @@ What the tuning runs showed:
 - **Learning rate.** 2e-5 kept both the content and the text. At 5e-5, five rounds with replay left over a third of GRPO's answers malformed. At 1e-4 a third of answers dropped a fact, for both methods.
 - **The model's own answers.** Replacing two of the four styled answers with the model's own unprompted answers learned worse at every session length (83% against 88% over the untouched model at five rounds): two styled answers do not give enough variety to choose between. Replacing one made no difference through five rounds, and from six rounds on it learned a little worse and damaged the text more.
 
-The judge rates style and facts, not whether the text is well formed, so the damage was found by reading answers and is now counted in the scoring, by pattern and by a spelling check against a word list.
+The judge rates style and facts, not whether the text is well formed. Malformed text is counted separately in the scoring, by pattern (missing spaces, words run together, unfinished answers) and by a spelling check against a word list.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-results-dark.png">
