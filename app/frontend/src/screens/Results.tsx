@@ -4,8 +4,8 @@ import { Scale } from '../components/Scale'
 import { Spinner } from '../components/Spinner'
 
 // How the two columns of a comparison were written: the same prompt for both, with no style named in it.
-const NO_POINTS = 'Both models got only your question: no points to make and no style. The advice itself can differ here, not only the wording.'
-const SAME_POINTS = 'Both models get the same question and the same two points to make, and neither is told a style. The difference comes from your model\'s training.'
+const NO_POINTS = 'Both models were given your question and the same brief instructions, with no advice to deliver and no style guidance. Their answers may differ in substance, not just in wording.'
+const SAME_POINTS = 'Both models get the same question and the same advice to deliver, and neither is told a style. The difference comes from your model\'s training.'
 
 /** "empathetic, collaborative, and formal"; two words take no comma ("empathetic and formal") */
 const list = (words: string[]) => words.length < 3 ? words.join(' and ') : `${words.slice(0, -1).join(', ')}, and ${words[words.length - 1]}`
@@ -17,14 +17,15 @@ function describe(found: { side: string; strength: string }[]) {
   return [adjectives.length ? `are ${list(adjectives)}` : '', ...clauses].filter(Boolean).join(', and ')
 }
 
-export function Results({ summary, mock, over, onAgain, onExpired }:
-  { summary: Summary; mock: boolean; /** the session's twenty minutes have run out */ over: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
+export function Results({ summary, mock, over, idle, onAgain, onExpired }:
+  { summary: Summary; mock: boolean; /** the session's twenty minutes have run out */ over: boolean;
+    /** the GPU has stopped after five minutes without activity, so the model is no longer loaded */ idle: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
   // axis: the scale's name as the page shows it ("empathy"), not the service's own ("warmth")
   const readings = summary.axes.map((a) => ({ axis: (AXIS_NOTES[a.axis]?.title ?? a.axis).toLowerCase(), ...read(a) }))
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
-  const found = readings.filter((r) => r.strength !== 'none' && r.moved && !r.toward), open = readings.filter((r) => r.strength === 'none')
+  const found = readings.filter((r) => r.strength !== 'none' && r.moved && !r.toward), open = readings.filter((r) => r.strength === 'none' && !r.toward)
   // Moved toward the other side without crossing the middle: a change in that direction, not a preference for the side it sits on.
-  const shifted = readings.filter((r) => r.strength !== 'none' && r.toward), more = list(shifted.map((r) => AS_MORE[r.other] ?? `more ${r.other}`))
+  const shifted = readings.filter((r) => r.toward), more = list(shifted.map((r) => AS_MORE[r.other] ?? `more ${r.other}`))
   const same = readings.filter((r) => r.strength !== 'none' && !r.moved)
   // "when asking for a promotion with a team manager": the setting the visitor chose, if they chose one. A topic
   // is drafted as an "-ing" phrase; one that is not falls back to "when speaking with ... about ...".
@@ -50,7 +51,7 @@ export function Results({ summary, mock, over, onAgain, onExpired }:
             {!rated ? <>Its writing could not be rated this time. The examples below show how it answers.</>
               : found.length > 0
               ? <>It learned that{setting} you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
-              : shifted.length > 0 ? <>Your model became <strong className="font-semibold text-gray-900">{more}</strong> than the standard model, without crossing the middle of any scale.</>
+              : shifted.length > 0 ? <>Your model became <strong className="font-semibold text-gray-900">{more}</strong> than the standard model, without settling on that side of any scale.</>
               : <>Your picks did not move the model clearly on any scale.</>}
             {rated && found.length > 0 && shifted.length > 0 && <> It also became {more} than the standard model.</>}
             {rated && open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
@@ -91,7 +92,7 @@ export function Results({ summary, mock, over, onAgain, onExpired }:
           </section>
         )}
 
-        <TryBox session={summary.session} over={over} onExpired={onExpired} />
+        <TryBox session={summary.session} over={over || idle} why={over ? 'Your 20 minutes are up' : 'Five minutes passed without activity'} onExpired={onExpired} />
       </div>
     </div>
   )
@@ -99,7 +100,7 @@ export function Results({ summary, mock, over, onAgain, onExpired }:
 
 /** Ask the model anything: the standard model's answer beside the one just trained. Works while
  *  the session's GPU is still up, which is about five minutes after its last use. */
-function TryBox({ session, over, onExpired }: { session: string; over: boolean; onExpired: (e: unknown) => boolean }) {
+function TryBox({ session, over, why, onExpired }: { session: string; over: boolean; /** why the model is no longer loaded */ why: string; onExpired: (e: unknown) => boolean }) {
   // busy holds the step in progress, so the button can say which one it is waiting on
   const [question, setQuestion] = useState(''), [busy, setBusy] = useState<'' | 'preparing' | 'writing'>(''), [error, setError] = useState('')
   const [answer, setAnswer] = useState<Example | null>(null)
@@ -135,9 +136,9 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
         </form>
         <label className="mt-3 flex items-start gap-2 text-gray-700">
           <input type="checkbox" checked={points} disabled={!!busy || over} onChange={(e) => setPoints(e.target.checked)} className="mt-1 accent-teal-700" />
-          <span>Give both models the same two points to make <span className="hint">(untick to let each answer from what it knows)</span></span>
+          <span>Give both models the same advice to deliver <span className="hint">(otherwise, each writes its own)</span></span>
         </label>
-        {over && <p className="mt-3 text-gray-700">Your 20 minutes are up, so this model is no longer loaded. Your results and the download are still here.</p>}
+        {over && <p className="mt-3 text-gray-700">{why}, so this model is no longer loaded. Your results and the download are still here.</p>}
         {error && !over && <p role="alert" className="mt-3 text-red-700">{error}</p>}
         {answer && (
           <div className="mt-4 grid gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2">
@@ -145,7 +146,7 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
         )}
-        <p className="hint mt-3">{answer && !answeredWith ? NO_POINTS : SAME_POINTS} Check anything that matters with a real professional. Available until your 20 minutes are up.</p>
+        <p className="hint mt-3">{answer && !answeredWith ? NO_POINTS : SAME_POINTS} This is not professional advice. Available until your 20 minutes are up.</p>
       </div>
     </section>
   )

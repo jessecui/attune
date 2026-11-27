@@ -16,6 +16,12 @@ export type Summary = { done: true; session: string; rounds: number; axes: Axis[
 export type Me = { signed_in: boolean; mock: boolean; round_choices: number[] }
 export type ModelStatus = { ready: boolean; bytes?: number | null; mock?: boolean; configured?: boolean }
 
+// When the GPU service last answered for a session. It stops after five minutes without a request and
+// takes the session with it, so the page can tell from this alone that a session is gone.
+let contact = Date.now()
+export const sinceContact = () => Date.now() - contact
+export const GPU_IDLE_MS = 5 * 60 * 1000
+
 async function request<T>(path: string, body?: unknown, method = body === undefined ? 'GET' : 'POST'): Promise<T> {
   const r = await fetch(path, {
     method, credentials: 'same-origin',
@@ -26,6 +32,9 @@ async function request<T>(path: string, body?: unknown, method = body === undefi
     const detail = await r.json().then((d) => d.detail, () => null)
     throw Object.assign(new Error(typeof detail === 'string' ? detail : `Request failed (${r.status})`), { status: r.status })
   }
+  // Requests that reach the GPU container: a start, a pick, a try-box answer, a keep-alive. (Drafting a
+  // setting and the download go to a separate service.)
+  if (/^\/api\/session\/(start|feedback|alive)$|\/try\/answer$/.test(path)) contact = Date.now()
   return r.json()
 }
 

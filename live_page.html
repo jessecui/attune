@@ -44,7 +44,7 @@
 <h1>Attune: test session</h1>
 <p class="muted">Five rounds, or ten for a longer session. Each round, mark the answer you like best and the one you like least.</p>
 <div id="status"></div>
-<div id="main"><button id="start">Start session (5 rounds)</button> <button id="start-long">Start long session (10 rounds)</button></div>
+<div id="main"><button id="start">Start session (7 rounds)</button></div>
 <script>
 const key = new URLSearchParams(location.search).get("key") || "";
 const main = document.getElementById("main"), statusEl = document.getElementById("status");
@@ -174,8 +174,8 @@ function showSummary(d) {
     const c = el("div", null, "card");
     c.append(el("p", x.question, "muted"), el("p", "Before: " + x.before), el("p", "After: " + x.after)); main.append(c);
   });
-  const again = el("button", "Start another session (5 rounds)"); again.onclick = () => start(5);
-  const longer = el("button", "Start a long session (10 rounds)"); longer.onclick = () => start(10); main.append(again, " ", longer);
+  const again = el("button", "Start another session (7 rounds)"); again.onclick = () => start(7);
+  main.append(again);
 }
 async function start(rounds) {
   rounds = rounds === 10 ? 10 : 5;
@@ -183,8 +183,7 @@ async function start(rounds) {
   wait("Starting the GPU and writing the first answers; the first start can take a minute or two");
   try { showRound(await call("/api/start", null, "&rounds=" + rounds)); } catch (e) { ready("Error: " + e.message); main.append(Object.assign(el("button", "Try again"), { onclick: () => start(rounds) })); }
 }
-document.getElementById("start").onclick = () => start(5);
-document.getElementById("start-long").onclick = () => start(10);
+document.getElementById("start").onclick = () => start(7);
 </script>
 </body>
 </html>

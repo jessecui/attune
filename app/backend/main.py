@@ -68,7 +68,11 @@ MODAL_TRIES = 8   # connection drops ridden out while the GPU starts: about a mi
 async def modal(path: str, params: dict | None = None, body: dict | None = None):
     if not (MODAL_URL and MODAL_KEY):
         raise HTTPException(status_code=500, detail="The GPU service is not configured on the server")
-    for attempt in range(1, MODAL_TRIES + 1):
+    # Only a start is retried at length: it is the call that meets a starting GPU, and a repeat is harmless.
+    # A pick or a try-box answer gets one more go, since a repeat sent while the first is still being worked
+    # on is turned away.
+    tries = MODAL_TRIES if path == "/api/start" else 2
+    for attempt in range(1, tries + 1):
         try:
             # Generous timeout: the first request may wait for the GPU to start and the model to load.
             # Modal answers a request still running after 150 s with a redirect to its result; follow it.
@@ -82,7 +86,7 @@ async def modal(path: str, params: dict | None = None, body: dict | None = None)
             # that did reach the GPU before its connection dropped leaves a spare session there, which
             # takes GPU time until the next start clears it; in the logs so far, dropped starts never ran.
             print(f"GPU service: {type(e).__name__} on {path}, attempt {attempt}", flush=True)
-            if attempt == MODAL_TRIES:
+            if attempt == tries:
                 raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
             await asyncio.sleep(2 if attempt == 1 else 15)
         except httpx.HTTPError as e:

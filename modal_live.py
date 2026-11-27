@@ -25,7 +25,7 @@ import modal
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
 # Seven questions, trained with DPO. Over both sets of benchmark runs (grids "long" and "confirm") its win rate
-# over the untouched model was 93% after five rounds and 95% after six, seven and eight, with the style fit still
+# over the untouched model was 93% after five rounds, 95% after six and seven and 94% after eight, with the style fit still
 # rising a little each round; from ten rounds it starts to drop facts. Its text stays intact at every length (1 to
 # 2% malformed), where GRPO with replay, the method compared against it, reached 24% malformed after ten rounds.
 ROUNDS, K = 7, 4
@@ -115,7 +115,7 @@ GOOD TO KNOW
   - In your session every answer was given two points to make. Asked a bare
     question, it answers from what it knows. To give it points, add them after
     the question:
-      .venv/bin/python example.py "How do I ask for a raise?" "Gather evidence of your results" "Research typical pay"
+      .venv/bin/python example.py "How do I ask for a raise?" "List what you achieved this year" "Ask for a specific number"
   - It knows no more than the standard model. Its answers show a style; they can
     be wrong and are not medical, legal, or financial advice.
   - To free the disk space afterwards, delete this folder:
@@ -128,7 +128,7 @@ POINTS_RULE = "Base your advice only on the points provided and cover both of th
 PACKAGE_EXAMPLE = """\"\"\"Ask your Attune model a question: python example.py "How do I ask for a raise?"
 
 To give it the points to make, as in your session, add them after the question:
-    python example.py "How do I ask for a raise?" "Gather evidence of your results" "Research typical pay"
+    python example.py "How do I ask for a raise?" "List what you achieved this year" "Ask for a specific number"
 \"\"\"
 import json
 import sys
@@ -542,8 +542,8 @@ class Live:
                         raise HTTPException(status_code=500, detail=STUCK)
                 out = self._summary(s)
                 s["summary"] = out
-                # The finished session stays (until it has been idle for half an hour, or the GPU shuts
-                # down) so the visitor can try their model on questions of their own.
+                # The finished session stays (until its twenty minutes run out, or the GPU shuts down)
+                # so the visitor can try their model on questions of their own.
                 s["finished"] = True
                 # Package the adapter in the background; the download appears a few seconds later.
                 threading.Thread(target=lambda: self._with(s, lambda: self._export(s, out))).start()

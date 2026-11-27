@@ -5,7 +5,7 @@ session of n rounds. Each method's answers to the ten test questions are rated f
 the simulated user, whether they keep the fact sheet, and whether they add to it. The judge does not
 look at whether the text is well formed, so that is checked here by pattern (see malformed).
 
-    python -m bench.score confirm 8          # the numbers quoted in the README
+    python -m bench.score confirm 7          # the numbers quoted in the README
     python -m bench.score long 5 7 8 10      # session length, and the model's own answers among the four
 
 Verdicts are kept in results/modal/<grid>_verdicts.json, so a rerun only judges what is new.
@@ -62,7 +62,9 @@ MODERN = set("""prioritize prioritizing prioritized prioritizes email emails roa
 mindset doesn't aren't isn't healthcare apps paid impactful online creditworthiness meds reusable confrontational okay stats info
 meetups automate feet overhydration checklist mimicking behaviours timeframe brainstorming paperwork podcast backpack escalations
 moisturized sustainability expertise hashtag timelines upfront miscommunications bullseye demystify judgmental breadcrumbs
-budgetable papertrail""".split())
+budgetable papertrail website websites internet spreadsheet spreadsheets lifestyle coworker coworkers wellbeing
+smartphone smartphones app laptop laptops workflow feedback""".split())
+CONTRACTED = ("n't", "'re", "'ve", "'ll", "'d", "'m", "'s")   # didn't, you're, I've, we'll, they'd, I'm, it's
 WORD_LIST = Path("/usr/share/dict/words")   # on macOS and most Linux systems; without it only the patterns are checked
 WORDS = {w.strip().lower() for w in WORD_LIST.read_text().split("\n")} if WORD_LIST.exists() else None
 if WORDS is None:
@@ -85,6 +87,13 @@ def spelled(w):
                for end in ("ing", "ed", "er"))
 
 
+def uncontracted(w):
+    """The word a contraction is built on: didn't -> did, you're -> you, can't -> can, won't -> will."""
+    if w in ("can't", "won't", "shan't"):
+        return {"can't": "can", "won't": "will", "shan't": "shall"}[w]
+    return next((w[: -len(end)] for end in CONTRACTED if w.endswith(end)), w.split("'")[0])
+
+
 def malformed(text):
     """Broken text of the kinds over-training produces: no space after punctuation, two words run
     together, an answer that does not end, characters from another script, or a misspelled word
@@ -92,7 +101,7 @@ def malformed(text):
     if (re.search(r"[a-z][.,;:!?][A-Za-z]", text) or re.search(r"\b[a-z]{2,}[A-Z][a-z]+", text)
             or not re.search(r"[.!?)\"']\s*$", text.strip()) or re.search(r"[^\x00-\x7f‘’“”–—…é°]", text)):
         return True
-    return WORDS is not None and not all(spelled(w) or spelled(w.split("'")[0]) for w in tokens(text))
+    return WORDS is not None and not all(spelled(w) or spelled(uncontracted(w)) for w in tokens(text))
 
 
 def fits(texts, key):

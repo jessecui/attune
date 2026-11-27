@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type Draft, type Me, type Round, type Summary } from './api'
+import { api, GPU_IDLE_MS, sinceContact, type Draft, type Me, type Round, type Summary } from './api'
 import { Shell } from './components/Shell'
 import { Gate } from './screens/Gate'
 import { Welcome } from './screens/Welcome'
@@ -55,15 +55,19 @@ export default function App() {
   // The GPU stops after five minutes without a request, and the session is in its memory. While a
   // session has time left, the visitor's own activity (moving the pointer, scrolling, typing) sends a
   // request, at most one a minute, so the GPU stays up while someone is reading and stops about five
-  // minutes after they walk away.
+  // minutes after they walk away. Once it has been quiet that long the session is gone: no request is
+  // sent (it would only start an empty GPU), and the page says so.
   const live = left !== undefined && left > 0
+  const [gone, setGone] = useState(false)
+  useEffect(() => { if (!open) setGone(false) }, [open])
   useEffect(() => {
-    if (!live) return
-    let last = Date.now()   // the request that opened this screen has just reached the GPU
+    if (!live || gone) return
+    let asked = 0   // when the last keep-alive was sent: several events can arrive before its reply does
     const active = () => {
-      if (document.visibilityState !== 'visible' || Date.now() - last < 60000) return
-      last = Date.now()
-      api.alive().catch(() => {})
+      if (document.visibilityState !== 'visible') return
+      const quiet = sinceContact()
+      if (quiet > GPU_IDLE_MS) setGone(true)
+      else if (quiet > 60000 && Date.now() - asked > 60000) { asked = Date.now(); api.alive().catch(() => {}) }
     }
     const events = ['pointermove', 'pointerdown', 'keydown', 'scroll', 'touchstart'] as const
     events.forEach((e) => window.addEventListener(e, active, { passive: true, capture: true }))
@@ -72,7 +76,11 @@ export default function App() {
       events.forEach((e) => window.removeEventListener(e, active, { capture: true }))
       document.removeEventListener('visibilitychange', active)
     }
-  }, [live])
+  }, [live, gone])
+  const IDLE = 'That session ended after five minutes without activity. Start another whenever you like.'
+  useEffect(() => {
+    if (gone && stage.name === 'round') { attempt.current++; setStage({ name: 'welcome', error: IDLE }) }
+  }, [gone, stage.name])
   useEffect(() => {
     if (left === 0 && stage.name === 'round') {
       attempt.current++
@@ -88,10 +96,12 @@ export default function App() {
     const status = (e as { status?: number }).status
     if (status !== 404 && status !== 410) return false
     attempt.current++
-    setStage({ name: 'welcome', error: status === 410 ? 'Your 20 minutes were up, so that session has ended. Start another whenever you like.'
-      : 'That session ended after about five minutes without activity. Start another whenever you like.' })
+    setStage({ name: 'welcome', error: status === 410 ? 'Your 20 minutes were up, so that session has ended. Start another whenever you like.' : IDLE })
     return true
   }
+  // A reply to a pick can arrive after the visitor has left that session (and perhaps started another),
+  // so it only counts for the session that was on screen when the pick was sent.
+  const shownAt = attempt.current
 
   const progress = stage.name === 'round' ? { at: stage.round.round, of: stage.round.rounds } : undefined
   return (
@@ -103,13 +113,13 @@ export default function App() {
       {stage.name === 'review' && <Review draft={stage.draft} onBack={() => setStage({ name: 'welcome' })} onStart={(d) => begin(stage.rounds, d)} />}
       {stage.name === 'starting' && <Starting />}
       {stage.name === 'round' && (
-        <RoundScreen key={stage.round.round} round={stage.round} onExpired={(e) => expired(e) || lost(e)}
+        <RoundScreen key={stage.round.round} round={stage.round} onExpired={(e) => expired(e) || (attempt.current === shownAt ? lost(e) : true)}
           onNext={(next) => { clock(next); setStage((now) =>
             // A reply for a session the visitor has since left (gone home, or started another) is dropped.
             now.name !== 'round' || now.round.session !== next.session ? now
               : 'done' in next ? { name: 'results', summary: next } : { name: 'round', round: next }) }} />
       )}
-      {stage.name === 'results' && <Results summary={stage.summary} mock={!!me?.mock} over={left === 0} onAgain={() => setStage({ name: 'welcome' })} onExpired={expired} />}
+      {stage.name === 'results' && <Results summary={stage.summary} mock={!!me?.mock} over={left === 0} idle={gone} onAgain={() => setStage({ name: 'welcome' })} onExpired={expired} />}
     </Shell>
   )
 }
