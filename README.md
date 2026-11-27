@@ -88,7 +88,7 @@ flowchart TB
 
 - **Frontend**: Vite 7, React 19, TypeScript, Tailwind CSS v4
 - **Backend**: FastAPI, Python
-- **Model**: [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) with a LoRA adapter (r 16), PyTorch, Transformers, PEFT
+- **Model**: [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) with a LoRA adapter (r = 16), PyTorch, Transformers, PEFT
 - **Training**: GRPO with human best/worst feedback; DPO as the baseline
 - **GPU**: [Modal](https://modal.com), one L40S for live sessions, more for benchmarks
 - **Drafting and judging**: Gemini 3.8 Flash, falling back to 3.6 Flash and then 3.5 Flash
