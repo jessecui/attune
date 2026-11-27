@@ -1,6 +1,6 @@
 # Attune
 
-Attune fine-tunes a 7B language model live on one person's feedback, so it learns how they like an adviser to speak to them. You say who is speaking to you and about what ("my doctor explaining my test results"), mark the best and worst of four answers to each of five questions, and get back a model trained on your picks, which you can download and run yourself.
+Attune fine-tunes a 7B language model live on one person's feedback, so it learns how they like an advisor to speak to them. You say who is speaking to you and about what ("my doctor explaining my test results"), mark the best and worst of four answers to each of five questions, and get back a model trained on your picks, which you can download and run yourself.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-round-dark.png">
@@ -11,7 +11,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 - 🎯 **Live RLHF**: GRPO on a LoRA adapter, with your best and worst picks as the reward; one update per question, about five minutes for a session
 - 🧭 **Four style scales**: empathy, directiveness, formality and depth, each answer drawn from a menu of style combinations
-- 🩺 **Any adviser, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
+- 🩺 **Any advisor, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
 - ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
 - 📏 **Measured result**: a judge model rates your tuned model on six questions it was not trained on, beside the standard model
 - 💬 **Try it**: ask your own question and compare the standard model's answer with yours
@@ -42,7 +42,7 @@ Ties count as half a win. GRPO leads on the four standard simulated users (59% h
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"fontSize": "15px", "lineColor": "#94a3b8", "textColor": "#64748b", "clusterBkg": "transparent", "clusterBorder": "#94a3b8", "titleColor": "#64748b"}, "flowchart": {"curve": "basis", "nodeSpacing": 45, "rankSpacing": 40, "padding": 20, "wrappingWidth": 400}}}%%
 flowchart TB
-    UI(["Browser<br/>adviser + topic"])
+    UI(["Browser<br/>advisor + topic"])
 
     D["Draft the setting<br/>5 questions + fact sheets · Gemini<br/>Modal CPU function"]
 

@@ -25,7 +25,7 @@ The visitor is the person being spoken to. The model plays the role and talks to
 From the visitor's description, decide whether it suits the exercise, and if so write the material.
 
 Suitable: any role in which someone gives a person practical advice (a doctor, a tutor, a manager, a coach, \
-a financial adviser, a friend, and so on), on any ordinary topic.
+a financial advisor, a friend, and so on), on any ordinary topic.
 Not suitable, with a one-sentence reason addressed to the visitor: requests that are sexual, hateful, illegal \
 or dangerous; speaking as a real, named person; or anything that is not advice (trivia, stories, poems, code).
 

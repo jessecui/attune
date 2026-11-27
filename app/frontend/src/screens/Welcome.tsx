@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { api, type Draft } from '../api'
 import { Spinner } from '../components/Spinner'
 
-const EXAMPLES = ['My doctor explaining my test results', 'My tutor helping me study for a test', 'My manager giving me feedback', 'A financial adviser helping me save']
+const EXAMPLES = ['My doctor explaining my test results', 'My tutor helping me study for a test', 'My manager giving me feedback', 'A financial advisor helping me save']
 
 /** The start screen: one question to the visitor, with the rest kept to a line each. */
 export function Welcome({ choices, error, onDraft, onStart, onExpired }:
