@@ -7,148 +7,45 @@ GPU endpoint is never exposed to visitors.
 
 Environment:
     CREATOR_NAME        the name the access prompt asks for (required); matched ignoring case and spaces
-    ATTUNE_SECRET       signs the session cookie (optional; if unset, derived from the name and the GPU key,
+    AUTH_SECRET         signs the session cookie (optional; if unset, derived from the name and the GPU key,
                         or random in mock mode)
     ATTUNE_MODAL_URL    the live session service, e.g. https://...-live-web.modal.run
     ATTUNE_FILES_URL    the download service, e.g. https://...-files.modal.run
     ATTUNE_MODAL_KEY    the key both Modal services expect
     ATTUNE_MOCK=1       answer from a recorded session instead of calling Modal (no GPU, no cost)
-    ATTUNE_TRUSTED_PROXIES  how many proxies sit in front of this server (default 0; 1 on Railway). Their
-                        X-Forwarded-For and X-Forwarded-Proto entries are believed; anything further out
-                        was written by the visitor and is ignored
+
+The sign-in gate itself is in auth.py.
 """
 import asyncio
-import hashlib
-import hmac
 import json
 import math
 import os
-import secrets
-import time
 import uuid
 from pathlib import Path
 
 import httpx
-from fastapi import Cookie, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-def normalise(name: str) -> str:
-    """A name with case and all whitespace removed, so "Ada Lovelace", "ada lovelace" and " ADALOVELACE " match."""
-    return "".join(name.split()).casefold()
+from auth import Gate
 
-
-CREATOR = normalise(os.environ.get("CREATOR_NAME", ""))
 MODAL_URL = os.environ.get("ATTUNE_MODAL_URL", "").rstrip("/")
 FILES_URL = os.environ.get("ATTUNE_FILES_URL", "").rstrip("/")
 MODAL_KEY = os.environ.get("ATTUNE_MODAL_KEY", "")
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
-TRUSTED_PROXIES = max(0, int(os.environ.get("ATTUNE_TRUSTED_PROXIES") or 0))
-# The cookie-signing secret. If none is set it is derived from the name and the GPU key, so it
-# survives restarts and changing either signs everyone out. Without the GPU key (mock mode) the
-# name alone would be guessable, so a random secret is used and a restart signs everyone out.
-SECRET = (os.environ.get("ATTUNE_SECRET")
-          or (MODAL_KEY and hashlib.sha256(f"attune-session|{CREATOR}|{MODAL_KEY}".encode()).hexdigest())
-          or secrets.token_hex(32))
-COOKIE, COOKIE_SECONDS = "attune_session", 12 * 3600
 # One session length keeps the app simple and matches what the benchmark tested. The GPU service
 # still accepts 10 for experiments.
 ROUND_CHOICES = (5,)
 
 app = FastAPI(title="Attune")
 
-
-# ---- password gate ---------------------------------------------------------------------
-
-def sign(expires: int) -> str:
-    return hmac.new(SECRET.encode(), str(expires).encode(), hashlib.sha256).hexdigest()
-
-
-def signed_in(token: str | None) -> bool:
-    try:
-        expires, sig = (token or "").split(".")
-        return int(expires) > time.time() and hmac.compare_digest(sig.encode(), sign(int(expires)).encode())
-    except (ValueError, OverflowError):   # a malformed or tampered cookie is simply not signed in
-        return False
-
-
-def require(token: str | None):
-    if not signed_in(token):
-        raise HTTPException(status_code=401, detail="Please sign in")
-
-
-class Login(BaseModel):
-    answer: str = Field(max_length=200)
-
-
-# The name works as a password and names are easy to guess, so wrong answers are limited per address.
-MAX_FAILED, FAILED_WINDOW, MAX_TRACKED = 10, 15 * 60, 10_000
-_failed: dict[str, list[float]] = {}
-
-
-def _forwarded(request: Request, header: str) -> str | None:
-    """A forwarded header's value as written by the outermost trusted proxy, or None without one.
-
-    Each proxy appends one entry (to the header, or as another header line), so with N trusted
-    proxies the N-th entry from the end is the outermost one's. Entries before it were written by
-    the visitor. The header is read here, not through uvicorn's --forwarded-allow-ips, which takes
-    the first entry once every proxy is trusted.
-    """
-    if not TRUSTED_PROXIES:
-        return None
-    entries = [e.strip() for line in request.headers.getlist(header) for e in line.split(",") if e.strip()]
-    if not entries:
-        return None
-    # Fewer entries than proxies: some proxy added none, so the first entry is the furthest out there is.
-    return entries[-TRUSTED_PROXIES] if len(entries) >= TRUSTED_PROXIES else entries[0]
-
-
-def _address(request: Request) -> str:
-    """The visitor's address: from the outermost trusted proxy, else the connection itself."""
-    topic: str = ""   # what the visitor wants to talk about; empty when they named only the role
-    return _forwarded(request, "x-forwarded-for") or (request.client.host if request.client else "unknown")
-
-
-def _recent_failures(address: str, now: float) -> list[float]:
-    if len(_failed) > MAX_TRACKED:   # many one-off addresses: drop stale ones, then the oldest
-        for a in list(_failed):
-            if not [t for t in _failed[a] if now - t < FAILED_WINDOW]:
-                del _failed[a]
-        while len(_failed) > MAX_TRACKED:
-            del _failed[next(iter(_failed))]
-    # Re-inserted, so the dict stays ordered by each address's latest attempt and the oldest go first.
-    recent = [t for t in _failed.pop(address, []) if now - t < FAILED_WINDOW]
-    if recent:
-        _failed[address] = recent
-    return recent
-
-
-@app.post("/api/login")
-async def login(body: Login, request: Request, response: Response):  # async: one thread, so the counts cannot race
-    if not CREATOR:
-        raise HTTPException(status_code=500, detail="CREATOR_NAME is not set on the server")
-    address, now = _address(request), time.time()
-    if len(_recent_failures(address, now)) >= MAX_FAILED:
-        raise HTTPException(status_code=429, detail="Too many attempts. Please try again later.")
-    if not hmac.compare_digest(normalise(body.answer).encode(), CREATOR.encode()):
-        _failed[address] = _failed.pop(address, []) + [now]
-        raise HTTPException(status_code=401, detail="That name doesn't match. Please try again.")
-    expires = int(time.time()) + COOKIE_SECONDS
-    response.set_cookie(COOKIE, f"{expires}.{sign(expires)}", max_age=COOKIE_SECONDS, httponly=True,
-                        samesite="lax", secure=(_forwarded(request, "x-forwarded-proto") or request.url.scheme) == "https")
-    return {"signed_in": True}
-
-
-@app.post("/api/logout")
-def logout(response: Response):
-    response.delete_cookie(COOKIE)
-    return {"signed_in": False}
-
-
-@app.get("/api/me")
-def me(attune_session: str | None = Cookie(default=None)):
-    return {"signed_in": signed_in(attune_session), "mock": MOCK, "round_choices": ROUND_CHOICES}
+# The password gate (auth.py): POST /api/login and GET /api/me. The page reads the two extra fields
+# from /api/me before sign-in.
+gate = Gate("attune", key_source=MODAL_KEY, me_extra={"mock": MOCK, "round_choices": ROUND_CHOICES})
+app.include_router(gate.router, prefix="/api")
+signed_in = [Depends(gate.require)]   # on every route below: the visitor must be signed in
 
 
 # ---- the session: forwarded to Modal, or replayed from a recording in mock mode --------------
@@ -209,6 +106,7 @@ class DraftItem(BaseModel):
 
 class Draft(BaseModel):
     role: str
+    topic: str = ""   # what the visitor wants to talk about; empty when they named only the role
     items: list[DraftItem]
     measure: list[DraftItem]
 
@@ -232,10 +130,9 @@ async def _warm():
         pass
 
 
-@app.post("/api/session/prepare")
-async def prepare(body: Prepare, attune_session: str | None = Cookie(default=None)):
+@app.post("/api/session/prepare", dependencies=signed_in)
+async def prepare(body: Prepare):
     """Check the visitor's setting and draft questions for it. No GPU is needed for this step."""
-    require(attune_session)
     if body.rounds not in ROUND_CHOICES:
         raise HTTPException(status_code=400, detail=f"Rounds must be one of {ROUND_CHOICES}")
     if MOCK:
@@ -267,9 +164,8 @@ class Feedback(BaseModel):
     round: int | None = None   # the question being answered, so a resent submit is recognised
 
 
-@app.post("/api/session/start")
-async def start(body: Start, attune_session: str | None = Cookie(default=None)):
-    require(attune_session)
+@app.post("/api/session/start", dependencies=signed_in)
+async def start(body: Start):
     if body.rounds not in ROUND_CHOICES:
         raise HTTPException(status_code=400, detail=f"Rounds must be one of {ROUND_CHOICES}")
     if MOCK:
@@ -280,9 +176,8 @@ async def start(body: Start, attune_session: str | None = Cookie(default=None)):
     return await modal("/api/start", body=body.model_dump())
 
 
-@app.post("/api/session/feedback")
-async def feedback(body: Feedback, attune_session: str | None = Cookie(default=None)):
-    require(attune_session)
+@app.post("/api/session/feedback", dependencies=signed_in)
+async def feedback(body: Feedback):
     if MOCK:
         s = _mock_sessions.get(body.session)
         if s is None:
@@ -308,10 +203,9 @@ class Try(BaseModel):
     question: str
 
 
-@app.post("/api/session/{session}/try/prepare")
-async def try_prepare(session: str, body: Try, attune_session: str | None = Cookie(default=None)):
+@app.post("/api/session/{session}/try/prepare", dependencies=signed_in)
+async def try_prepare(session: str, body: Try):
     """Step one of trying the model: a fact sheet is written for the visitor's question."""
-    require(attune_session)
     _valid(session)
     if MOCK:
         await asyncio.sleep(0.8)
@@ -319,10 +213,9 @@ async def try_prepare(session: str, body: Try, attune_session: str | None = Cook
     return await modal("/api/try/prepare", body={"session": session, "question": body.question})
 
 
-@app.post("/api/session/{session}/try/answer")
-async def try_answer(session: str, body: Try, attune_session: str | None = Cookie(default=None)):
+@app.post("/api/session/{session}/try/answer", dependencies=signed_in)
+async def try_answer(session: str, body: Try):
     """Step two: the standard model and the visitor's model both answer from that fact sheet."""
-    require(attune_session)
     _valid(session)
     if MOCK:
         await asyncio.sleep(1.0)
@@ -338,10 +231,9 @@ def _valid(session: str):
         raise HTTPException(status_code=404, detail="No such session")
 
 
-@app.get("/api/session/{session}/model/status")
-async def model_status(session: str, attune_session: str | None = Cookie(default=None)):
+@app.get("/api/session/{session}/model/status", dependencies=signed_in)
+async def model_status(session: str):
     """Whether the packaged model is ready to download (it takes a few seconds after the last round)."""
-    require(attune_session)
     _valid(session)
     if MOCK:
         return {"ready": False, "mock": True}
@@ -356,9 +248,8 @@ async def model_status(session: str, attune_session: str | None = Cookie(default
         return {"ready": False, "bytes": None}  # a network hiccup: the page asks again shortly
 
 
-@app.get("/api/session/{session}/model")
-async def model_download(session: str, attune_session: str | None = Cookie(default=None)):
-    require(attune_session)
+@app.get("/api/session/{session}/model", dependencies=signed_in)
+async def model_download(session: str):
     _valid(session)
     if MOCK or not (FILES_URL and MODAL_KEY):
         raise HTTPException(status_code=404, detail="Downloads are not available in this mode")
