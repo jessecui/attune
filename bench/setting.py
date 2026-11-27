@@ -41,7 +41,10 @@ their own situation, in the first person, at most 15 words, and all on different
 With a topic, every question is about that topic, each on a different part of it.
 - Each point is one thing that role would tell the visitor to do in reply, as a bare instruction of at most \
 12 words. Do not give the reason for it. Keep it general and uncontroversial: no doses, figures, legal or \
-medical specifics, and nothing a professional would dispute."""
+medical specifics, and nothing a professional would dispute.
+- The role is the one speaking, so a point never mentions that role as if it were someone else. For a manager, \
+write "Bring competing requests to me", not "to your manager" or "to your supervisor"; for a doctor, "Tell me \
+about any side effects", not "Tell your doctor"."""
 
 
 class Item(BaseModel):
