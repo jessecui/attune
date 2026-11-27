@@ -138,7 +138,7 @@ function TryBox({ session, over, why, onExpired }: { session: string; over: bool
           <input type="checkbox" checked={points} disabled={!!busy || over} onChange={(e) => setPoints(e.target.checked)} className="mt-1 accent-teal-700" />
           <span>Give both models the same advice to deliver <span className="hint">(otherwise, each writes its own)</span></span>
         </label>
-        {over && <p className="mt-3 text-red-700">{why}, so this model is no longer available to try. Your results and the download are still here.</p>}
+        {over && <p className="mt-3 text-red-700">{why}, so this model is no longer available to try. You can still view your results and download your model.</p>}
         {error && !over && <p role="alert" className="mt-3 text-red-700">{error}</p>}
         {answer && (
           <div className="mt-4 grid gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2">
