@@ -22,9 +22,9 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 ## Results
 
-Attune asks whether a reward-based method can learn one person's style from five picks. GRPO, a policy-gradient method introduced by DeepSeek, treats each pick as a reward on the model's own answers and updates the model after every question. A reward is a more general signal than a preference pair: the same update can take ratings, rankings, or automatic checks without being redesigned. DPO, the standard method for tuning on preference pairs, is the baseline it has to match.
+Attune asks whether a reward-based method can learn one person's style from five rounds of picks. GRPO, a policy-gradient method introduced by DeepSeek, treats each pick as a reward on the model's own answers and updates the model after every question. A reward is a more general signal than a preference pair: the same update can take ratings, rankings, or automatic checks without being redesigned. DPO, the standard method for tuning on preference pairs, is the baseline it has to match.
 
-Both methods were trained on the same picks from four simulated users (the judge model, each given a fixed set of preferences), with the same learning rate, session length, and seeds. Every answer scored is to a question the model was not trained on, written from a plain prompt with no style in it.
+Both methods were trained on the same picks from four simulated users (the judge model, each given a fixed set of preferences), with the same learning rate, session length, and seeds. After training, each model answers ten test questions it was not trained on, from a plain prompt with no style in it, and the judge model rates every answer.
 
 | After five rounds | GRPO | DPO |
 |---|---|---|
@@ -35,7 +35,7 @@ Both methods were trained on the same picks from four simulated users (the judge
 
 Win rates are per answer, with a tie counted as half. The first figure is from 12 runs per method on seeds that played no part in choosing the learning rate or the mix of answers shown; the figure in brackets is over all 24 runs. Fact and malformed counts are over all 24.
 
-GRPO matches the baseline: its win rate is within a point of DPO's, it keeps every fact, and head to head the two are within chance of each other (33 wins, 43 ties, 44 losses). So Attune ships GRPO: the more general method, at no measurable cost against the standard one.
+GRPO matches the baseline: its win rate is within a point of DPO's, it keeps every fact, and head to head the two are within chance of each other (33 wins, 43 ties, 44 losses). So Attune ships GRPO: the more general method, at no measurable cost against the standard one at five rounds.
 
 What the tuning runs showed:
 
@@ -185,8 +185,8 @@ For real sessions, `scripts/app.sh` also needs the two addresses that `modal dep
 
 ## Limits
 
-- Advice only. In a test with speakers who aren't advising (a student, a client), the styles came through but content was covered less reliably: both points appeared in 62% of the student's answers and 84% of the client's, against 90% for an advisor. So the setting step keeps every session to advice: it recasts the role as someone advising you, and declines settings it can't recast.
+- Advice only. In a test with speakers who aren't advising (a student, a client), the styles came through but content was covered less reliably: both points appeared in 62% of the student's answers and 84% of the client's, against 90% for an advisor in the same test (a separate measurement from the benchmark above). So the setting step keeps every session to advice: it recasts the role as someone advising you, and declines settings it can't recast.
 - The judge rates style and content and has been spot-checked by eye, not against a full set of hand labels. It is loosest on depth, sometimes counting a short "to…" phrase as a reason. The live fact check before an answer is shown is keyword matching.
 - Results depend on how each style line is worded. The model learns from answers written under those lines, so it can inherit their habits, such as empathetic answers that open the same way ("It can feel…").
-- Five rounds is a ceiling set by the method, not by what could be learned: the style comes through more strongly after eight rounds (fit 4.78 against 3.97), but replay breaks the text from seven rounds on. Limiting the total change to each answer across replays might lift that; it is untested.
+- Five rounds is a ceiling set by the method, not by what could be learned: the style comes through more strongly after eight rounds (a 94% win rate over the untouched model against 90%), but replay breaks the text from seven rounds on. Limiting the total change to each answer across replays might lift that; it is untested.
 - The answers demonstrate a style. They can be wrong and are not medical, legal, or financial advice.
