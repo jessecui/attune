@@ -22,7 +22,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 ## Results
 
-Attune uses GRPO because the project is reinforcement learning from human feedback: each pick is a reward, and the model is updated from it after every question. DPO, the standard way to learn from preference pairs without a reward, is the baseline.
+Attune asks whether a reward-based method can learn one person's style from five picks. GRPO, a policy-gradient method introduced by DeepSeek, treats each pick as a reward on the model's own answers and updates the model after every question. A reward is a more general signal than a preference pair: the same update can take ratings, rankings, or automatic checks without being redesigned. DPO, the standard method for tuning on preference pairs, is the baseline it has to match.
 
 Both methods were trained on the same picks from four simulated users (the judge model, each given a fixed set of preferences), with the same learning rate, session length, and seeds. Every answer scored is to a question the model was not trained on, written from a plain prompt with no style in it.
 
@@ -35,7 +35,7 @@ Both methods were trained on the same picks from four simulated users (the judge
 
 Win rates are per answer, with a tie counted as half. The first figure is from 12 runs per method on seeds that played no part in choosing the learning rate or the mix of answers shown; the figure in brackets is over all 24 runs. Fact and malformed counts are over all 24.
 
-GRPO matches the baseline: its win rate is within a point of DPO's, it keeps every fact, and head to head the two are within chance of each other (33 wins, 43 ties, 44 losses). So Attune ships GRPO, which gives the project what it set out to build, a model trained by reinforcement from one person's feedback, at no measurable cost against the standard method.
+GRPO matches the baseline: its win rate is within a point of DPO's, it keeps every fact, and head to head the two are within chance of each other (33 wins, 43 ties, 44 losses). So Attune ships GRPO: the more general method, at no measurable cost against the standard one.
 
 What the tuning runs showed:
 
@@ -54,7 +54,7 @@ What the tuning runs showed:
   Without replay there were none through seven rounds and one answer in 120 after that. DPO stayed between 1% and 2% at every length, nearly all of it one misspelling ("nerve-wrking") that both tuned models produce and the untouched model never does. Sessions are five questions, the clean length with the most margin.
 - **Experience replay.** It makes GRPO learn faster: after five rounds its win rate over the untouched model was 93% with replay and 85% without, on the same seeds. It is also the cause of the damage above, because each return to an earlier round pushes its worst answer down again.
 - **Learning rate.** 2e-5 kept both the content and the text. At 5e-5, five rounds with replay left over a third of GRPO's answers malformed. At 1e-4 a third of answers dropped a fact, for both methods.
-- **The model's own answers.** Replacing one or two of the four styled answers with the model's own unprompted answer learned worse at every session length: two styled answers do not give enough variety to choose between.
+- **The model's own answers.** Replacing two of the four styled answers with the model's own unprompted answers learned worse at every session length (83% against 88% over the untouched model at five rounds): two styled answers do not give enough variety to choose between. Replacing one made no difference through five rounds, and from six rounds on it learned a little worse and damaged the text more.
 
 The judge rates style and facts, not whether the text is well formed, so the damage was found by reading answers and is now counted in the scoring, by pattern and by a spelling check against a word list.
 
