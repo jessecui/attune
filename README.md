@@ -36,7 +36,7 @@ Ties count as half a win. GRPO and DPO are level: each led by a few points on on
 What the tuning runs showed:
 
 - **Session length.** The judge's fit score for GRPO rose from 3.83 after five rounds to 4.84 after eight and was no higher after ten (4.69), so sessions are eight questions.
-- **Reusing earlier picks.** Spending half of each update on earlier rounds' picks took GRPO's fit from 3.18 to 4.62 at the same learning rate.
+- **Experience replay.** Spending half of each update on earlier rounds' picks makes GRPO learn faster. After five rounds its win rate over the untouched model was 93% with replay and 85% without (67% head to head). By eight rounds the version without it had nearly caught up (90% against 93%).
 - **Learning rate.** At 2e-5 no content was lost. At 1e-4 a third of answers dropped a fact, for both methods.
 - **The model's own answers.** Replacing one or two of the four styled answers with the model's own unprompted answer learned worse at every session length: two styled answers do not give enough variety to choose between.
 - **Longer sessions and content.** By ten rounds 8% of DPO's answers missed a fact, against 1% of GRPO's.

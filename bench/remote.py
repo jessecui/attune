@@ -187,6 +187,11 @@ GRIDS = {
                                  "--lr", "2e-5", "--own", "0", "--no-duplicates", *extra]}
                 for tag, extra in [("dpo", ["--method", "dpo"]), ("grpo-plain", ["--method", "grpo_plain", "--replay"])]
                 for p in LIVE_PERSONAS for seed in (4, 5, 6)],
+    # What reusing earlier rounds' picks adds, at the shipped setup: the "confirm" GRPO runs again with it off.
+    "ablate": [{"name": f"grpo-noreplay-own0-lr2e-5_{p}_s{seed}",
+                "argv": LIVE + ["--judge-user", "--rounds", "10", "--persona", p, "--seed", str(seed), "--save-probe",
+                                "--lr", "2e-5", "--own", "0", "--no-duplicates", "--method", "grpo_plain"]}
+               for p in LIVE_PERSONAS for seed in (4, 5, 6)],
     "final4": [{"name": f"{tag}_{p}_s{seed}",
                 "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
                for tag, extra in [("grpo", SHIPPED), ("dpo-lr2e-5", ["--method", "dpo", "--lr", "2e-5"])]
