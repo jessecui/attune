@@ -559,7 +559,7 @@ class Live:
         def finished(session):
             s = self.sessions.get(session)
             if s is None or not s.get("finished"):
-                raise HTTPException(status_code=404, detail="This model is no longer loaded. Train another to try more questions.")
+                raise HTTPException(status_code=404, detail="This model is no longer available to try. Train another to try more questions.")
             in_time(s)
             s["touched"] = time.time()
             return s
