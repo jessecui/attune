@@ -28,12 +28,12 @@ Both methods were trained on the same picks from four simulated users (the judge
 
 | After five rounds | GRPO | DPO |
 |---|---|---|
-| Win rate over the untouched model | **93%** (90%) | 94% (93%) |
-| Head to head | 45% (46%) | 55% (54%) |
-| Fact-sheet points kept | 100% (480 of 480) | 99.6% (478 of 480) |
-| Malformed answers | 0.8% (2 of 240) | 1.7% (4 of 240) |
+| Win rate over the untouched model | **93%** | 94% |
+| Head to head | 45% | 55% |
+| Fact-sheet points kept | 100% | 99.6% |
+| Malformed answers | 0.8% | 1.7% |
 
-Win rates are per answer, with a tie counted as half. The first figure is from 12 runs per method on seeds that played no part in choosing the learning rate or the mix of answers shown; the figure in brackets is over all 24 runs. Fact and malformed counts are over all 24.
+Win rates are per answer, with a tie counted as half, from 12 runs per method on seeds that played no part in choosing the learning rate or the mix of answers shown. Including the 12 runs used for tuning, they are 90% and 93% over the untouched model, and 46% to 54% head to head. Fact and malformed counts are over all 24 runs (480 fact-sheet points and 240 answers per method).
 
 GRPO matches the baseline: its win rate is within a point of DPO's, it keeps every fact, and head to head the two are within chance of each other (33 wins, 43 ties, 44 losses). So Attune ships GRPO: the more general method, at no measurable cost against the standard one at five rounds.
 
