@@ -80,7 +80,7 @@ flowchart TB
     linkStyle default stroke:#94a3b8,stroke-width:1.5px
 ```
 
-**How the update works.** Training is online: the adapter is updated after every question, during the session. The model makes two choices for each answer: first a style line from the menu, then the answer written in that style. GRPO compares the four answers to one question, so the best pick's choices are reinforced and the worst's discouraged. The style choice is clipped as a single action (ratio 0.2), the wording is trained at 0.3 of that strength so the model doesn't settle on one stock phrase, and 30% of styles are drawn at random to keep exploring. The four styles in a round differ on at least two scales.
+**How the update works.** Training happens online, with the adapter updated after every question during the session. The model makes two choices for each answer: first a style line from the menu, then the answer written in that style. GRPO compares the four answers to one question, so the best pick's choices are reinforced and the worst's discouraged. The style choice is clipped as a single action (ratio 0.2), the wording is trained at 0.3 of that strength so the model doesn't settle on one stock phrase, and 30% of styles are drawn at random to keep exploring. The four styles in a round differ on at least two scales.
 
 **Benchmark.** The same session code runs on Modal with a simulated user in place of the browser: the judge model, given a persona, picks best and worst. GRPO and DPO (trained on the same best-and-worst pairs) run on matched personas and seeds, and the judge rates each run's answers to unseen questions.
 
