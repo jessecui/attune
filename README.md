@@ -136,6 +136,12 @@ Open http://localhost:5180. The backend runs on port 8787.
 .venv/bin/python -m bench.judge compare final      # judge the runs' answers and summarise
 ```
 
+For real sessions, `scripts/app.sh` also needs the two addresses that `modal deploy modal_live.py` prints and a Modal proxy token in `app/backend/.env` (see `.env.example`). The services refuse any request without the token before a container starts:
+
+```bash
+.venv/bin/modal workspace proxy-tokens create --name attune
+```
+
 ---
 
 ## Project Structure

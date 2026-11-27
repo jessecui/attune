@@ -4,15 +4,17 @@
 #   scripts/app.sh          uses the GPU service on Modal (costs GPU time while a session runs)
 #   scripts/app.sh mock     replays a recorded session: no GPU, no cost, for working on the page
 cd "$(dirname "$0")/.."
-# Settings come from app/backend/.env (not in git): at least CREATOR_NAME, the name the access prompt asks for.
+# Settings come from app/backend/.env (not in git): CREATOR_NAME, the name the access prompt asks for, and for the
+# real service the two Modal addresses and the Modal proxy token (see app/backend/.env.example).
 if [ -f app/backend/.env ]; then set -a; source app/backend/.env; set +a; fi
 if [ -z "$CREATOR_NAME" ]; then echo "Set CREATOR_NAME in app/backend/.env (see app/backend/.env.example)."; exit 1; fi
 if [ "$1" = "mock" ]; then
   export ATTUNE_MOCK=1
 else
   export ATTUNE_MODAL_KEY="$(cat .live_key)"
-  export ATTUNE_MODAL_URL="${ATTUNE_MODAL_URL:-https://jcui-projects--attune-live-live-web.us-east.modal.run}"
-  export ATTUNE_FILES_URL="${ATTUNE_FILES_URL:-https://jcui-projects--attune-live-files.us-east.modal.run}"
+  for v in ATTUNE_MODAL_URL ATTUNE_FILES_URL ATTUNE_MODAL_PROXY_ID ATTUNE_MODAL_PROXY_SECRET; do
+    if [ -z "${(P)v}" ]; then echo "Set $v in app/backend/.env (see app/backend/.env.example), or run: scripts/app.sh mock"; exit 1; fi
+  done
 fi
 [ -d app/frontend/node_modules ] || (cd app/frontend && npm install)
 export ATTUNE_BACKEND_PORT="${ATTUNE_BACKEND_PORT:-8787}"

@@ -12,6 +12,9 @@ Environment:
     ATTUNE_MODAL_URL    the live session service, e.g. https://...-live-web.modal.run
     ATTUNE_FILES_URL    the download service, e.g. https://...-files.modal.run
     ATTUNE_MODAL_KEY    the key both Modal services expect
+    ATTUNE_MODAL_PROXY_ID, ATTUNE_MODAL_PROXY_SECRET
+                        a Modal proxy token (wk-..., ws-...). Modal refuses requests without it at its
+                        edge, before any container starts, so a stranger who finds the URLs cannot wake the GPU
     ATTUNE_MOCK=1       answer from a recorded session instead of calling Modal (no GPU, no cost)
 
 The sign-in gate itself is in auth.py.
@@ -34,6 +37,10 @@ from auth import Gate
 MODAL_URL = os.environ.get("ATTUNE_MODAL_URL", "").rstrip("/")
 FILES_URL = os.environ.get("ATTUNE_FILES_URL", "").rstrip("/")
 MODAL_KEY = os.environ.get("ATTUNE_MODAL_KEY", "")
+# Sent with every request to Modal. Without the token the headers are simply absent, and Modal answers 401.
+MODAL_HEADERS = {"Modal-Key": os.environ.get("ATTUNE_MODAL_PROXY_ID", ""),
+                 "Modal-Secret": os.environ.get("ATTUNE_MODAL_PROXY_SECRET", "")}
+MODAL_HEADERS = MODAL_HEADERS if all(MODAL_HEADERS.values()) else {}
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
 # One session length keeps the app simple and matches what the benchmark tested. The GPU service
 # still accepts 10 for experiments.
@@ -62,7 +69,7 @@ async def modal(path: str, params: dict | None = None, body: dict | None = None)
     try:
         # Generous timeout: the first request may wait for the GPU to start and the model to load.
         # Modal answers a request still running after 150 s with a redirect to its result; follow it.
-        async with httpx.AsyncClient(timeout=600, follow_redirects=True) as client:
+        async with httpx.AsyncClient(headers=MODAL_HEADERS, timeout=600, follow_redirects=True) as client:
             r = await client.post(f"{MODAL_URL}{path}", params={"key": MODAL_KEY, **(params or {})}, json=body)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
@@ -124,7 +131,7 @@ class Prepare(BaseModel):
 async def _warm():
     """Start the GPU container while the visitor reads their questions. Best effort."""
     try:
-        async with httpx.AsyncClient(timeout=300, follow_redirects=True) as client:
+        async with httpx.AsyncClient(headers=MODAL_HEADERS, timeout=300, follow_redirects=True) as client:
             await client.get(f"{MODAL_URL}/api/warm", params={"key": MODAL_KEY})
     except httpx.HTTPError:
         pass
@@ -146,7 +153,7 @@ async def prepare(body: Prepare):
     if MODAL_URL:
         asyncio.create_task(_warm())
     try:
-        async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
+        async with httpx.AsyncClient(headers=MODAL_HEADERS, timeout=90, follow_redirects=True) as client:
             r = await client.post(f"{FILES_URL}/prepare", params={"key": MODAL_KEY}, json=body.model_dump())
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Could not reach the setting service ({type(e).__name__})")
@@ -240,7 +247,7 @@ async def model_status(session: str):
     if not (FILES_URL and MODAL_KEY):
         return {"ready": False, "configured": False}
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(headers=MODAL_HEADERS, timeout=60) as client:
             async with client.stream("GET", f"{FILES_URL}/adapter/{session}", params={"key": MODAL_KEY}) as r:
                 size = r.headers.get("content-length")
                 return {"ready": r.status_code == 200, "bytes": int(size) if size and r.status_code == 200 else None}
@@ -253,7 +260,7 @@ async def model_download(session: str):
     _valid(session)
     if MOCK or not (FILES_URL and MODAL_KEY):
         raise HTTPException(status_code=404, detail="Downloads are not available in this mode")
-    client = httpx.AsyncClient(timeout=None)
+    client = httpx.AsyncClient(headers=MODAL_HEADERS, timeout=None)
     try:
         r = await client.send(client.build_request("GET", f"{FILES_URL}/adapter/{session}", params={"key": MODAL_KEY}),
                               stream=True)

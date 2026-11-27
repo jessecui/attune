@@ -3,7 +3,7 @@
 One GPU container holds the model and every open session's adapter. A plain test
 page is served from the same app; the real interface will live elsewhere.
 
-    modal deploy modal_live.py        # prints the URL; open it with ?key=<contents of .live_key>
+    modal deploy modal_live.py        # prints the URLs; requests need a Modal proxy token and ?key=<contents of .live_key>
 
 Each round the page shows four short answers and the person marks the best and the
 worst. To hide the wait, the server works one round ahead: while the person reads
@@ -370,7 +370,7 @@ class Live:
 
     # ---- web endpoints ---------------------------------------------------------------
 
-    @modal.asgi_app()
+    @modal.asgi_app(requires_proxy_auth=True)   # Modal refuses a request without the proxy token before a container starts
     def web(self):
         import os
         import random
@@ -594,7 +594,7 @@ class Live:
 
 @app.function(image=image, volumes={"/adapters": adapters},
               secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY}), modal.Secret.from_name("attune-judge")])
-@modal.asgi_app()
+@modal.asgi_app(requires_proxy_auth=True)
 def files():
     """The work that needs no GPU: preparing a visitor's setting, and serving packaged adapters."""
     import os
