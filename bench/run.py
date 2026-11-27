@@ -232,10 +232,16 @@ class Session:
                     answers[j], texts[j] = o, t
         if getattr(a, "no_duplicates", False):
             # Two identical answers cannot be told apart, and marking one best and the other worst
-            # would contradict itself: redraw the later one, twice at most.
-            for _ in range(2):
+            # would contradict itself: redraw the later one, twice. If a repeat survives that (a short
+            # fact sheet can come out word for word in two plain styles), try twice more in the style
+            # furthest from the answer it repeats: first among styles still two axes from the other
+            # answers, then among all the styles not shown.
+            for attempt in range(5):
                 same = [j for j in range(a.k) if any(alike(texts[j], texts[i]) for i in range(j))]
-                if not same:
+                if attempt > 2 or attempt == 2 and same:   # the two usual redraws were not enough
+                    print(f"repeated answer after two redraws: {'still shown' if same else 'cleared'} "
+                          f"at attempt {attempt}", flush=True)
+                if not same or attempt == 4:
                     break
                 before = {j: picks[j] for j in same}
                 if self.latent:
@@ -243,7 +249,16 @@ class Session:
                     # repeat to a style that differs from every other one shown on two axes or more.
                     for j in same:
                         others = [s for i, s in enumerate(picks) if i != j]
-                        far = [s for s in range(len(STYLES)) if all(style_distance(s, t) >= 2 for t in others)]
+                        if attempt < 2:
+                            far = [s for s in range(len(STYLES)) if all(style_distance(s, t) >= 2 for t in others)]
+                        else:
+                            twins = [picks[i] for i in range(j) if alike(texts[j], texts[i])]
+                            rest = [t for t in others if t not in twins]
+                            unshown = [s for s in range(len(STYLES)) if s not in picks]
+                            apart = [s for s in unshown if all(style_distance(s, t) >= 2 for t in rest)]
+                            pool = apart if attempt == 2 and apart else unshown
+                            reach = {s: min(style_distance(s, t) for t in twins) for s in pool}
+                            far = [s for s in pool if reach[s] == max(reach.values())]
                         if far:
                             picks[j] = rng.choice(far)
                 fresh, fresh_texts = draw(same)
