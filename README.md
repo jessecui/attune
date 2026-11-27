@@ -30,7 +30,7 @@ Benchmarked with simulated users played by the judge model (each given a fixed s
 | Run-to-run variance in scales learned | **73% lower** for GRPO |
 | Answers adding advice not on the fact sheet | 26% for GRPO, 22% for DPO |
 
-Ties count as half a win. GRPO leads on the four standard simulated users (59% head to head) and most clearly on a user who cares about only two scales (94% of those scales right, against 75%). It does not reduce additions: its answers add something not on the fact sheet slightly more often than DPO's. An earlier run had shown the opposite, because answers written in a style were cut at three sentences while DPO's could use four; with the same limit for both, that gap disappeared. In an earlier run with a user who picks the shortest answer, DPO, which trains on the text directly, shortened its answers further than GRPO. Every run and setting is recorded in [`TODO.md`](TODO.md).
+Ties count as half a win. GRPO leads on the four standard simulated users (59% head to head) and most clearly on a user who cares about only two scales (94% of those scales right, against 75%). It does not reduce additions: its answers add something not on the fact sheet slightly more often than DPO's. An earlier run had shown the opposite, because answers written in a style were cut at three sentences while DPO's could use four; with the same limit for both, that gap disappeared. In an earlier run with a user who picks the shortest answer, DPO, which trains on the text directly, shortened its answers further than GRPO.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-results-dark.png">

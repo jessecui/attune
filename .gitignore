@@ -9,3 +9,4 @@ node_modules/
 app/frontend/dist/
 *.tsbuildinfo
 .env
+TODO.md
