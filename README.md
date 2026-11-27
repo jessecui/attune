@@ -9,7 +9,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 ## Features
 
-- 🎯 **Live RLHF**: GRPO on a LoRA adapter, with your best and worst picks as the reward; one update per question, about five minutes for a session
+- 🎯 **Online RLHF**: GRPO on a LoRA adapter, with your best and worst picks as the reward; one update per question, about five minutes for a session
 - 🧭 **Four style scales**: empathy, directiveness, formality and depth, each answer drawn from a menu of style combinations
 - 🩺 **Any advisor, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
 - ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
@@ -80,7 +80,7 @@ flowchart TB
     linkStyle default stroke:#94a3b8,stroke-width:1.5px
 ```
 
-**How the update works.** The model makes two choices for each answer: first a style line from the menu, then the answer written in that style. GRPO compares the four answers to one question, so the best pick's choices are reinforced and the worst's discouraged. The style choice is clipped as a single action (ratio 0.2), the wording is trained at 0.3 of that strength so the model doesn't settle on one stock phrase, and 30% of styles are drawn at random to keep exploring. The four styles in a round differ on at least two scales.
+**How the update works.** Training is online: the adapter is updated after every question, during the session. The model makes two choices for each answer: first a style line from the menu, then the answer written in that style. GRPO compares the four answers to one question, so the best pick's choices are reinforced and the worst's discouraged. The style choice is clipped as a single action (ratio 0.2), the wording is trained at 0.3 of that strength so the model doesn't settle on one stock phrase, and 30% of styles are drawn at random to keep exploring. The four styles in a round differ on at least two scales.
 
 **Benchmark.** The same session code runs on Modal with a simulated user in place of the browser: the judge model, given a persona, picks best and worst. GRPO and DPO (trained on the same best-and-worst pairs) run on matched personas and seeds, and the judge rates each run's answers to unseen questions.
 
