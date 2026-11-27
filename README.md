@@ -4,7 +4,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-round-dark.png">
-  <img alt="A training round: four answers to &quot;How should I study the night before the test?&quot; from a tutor helping you study for a test, each in a different style, with A marked best and C marked worst" src="docs/screenshot-round-light.png">
+  <img alt="A training round: four answers to &quot;What is the best way to memorize formulas?&quot; from a tutor helping you study for a test, each in a different style, with A marked best and C marked worst" src="docs/screenshot-round-light.png">
 </picture>
 
 ## Features
