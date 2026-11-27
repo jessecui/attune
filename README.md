@@ -33,7 +33,7 @@ Both were trained on the same picks from four simulated users (the judge model, 
 | Fact-sheet points kept | 99.4% | 99.4% |
 | Malformed answers | 1.7% | 4.6% |
 
-Win rates are per answer, with a tie counted as half, from 12 runs per method on seeds that played no part in choosing the learning rate or the mix of answers shown. Including the 12 runs used for tuning, they are 95% and 94% over the untouched model, and 52% to 48% head to head. Fact and malformed counts are over all 24 runs (480 fact-sheet points and 240 answers per method).
+Win rates are per answer, with a tie counted as half, from 12 runs per method on seeds that played no part in choosing the learning rate or the mix of answers shown. Including the 12 runs used for tuning, they are 95% and 94% over the untouched model, and 52% to 48% head to head. Fact and malformed counts are over all 24 runs (480 fact-sheet points and 240 answers per method); on the 12 held-out runs alone, malformed answers were 2.5% for DPO (3 of 120) and 8.3% for GRPO (10 of 120), with 238 of 240 fact-sheet points kept by each.
 
 The two learn the style equally well. They differ in what happens as a session gets longer: GRPO's writing breaks down and DPO's does not. Attune ships DPO, with seven questions.
 
