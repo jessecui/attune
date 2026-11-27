@@ -39,7 +39,7 @@ export default function App() {
     attempt.current++
     setStage({ name: 'welcome' })
   }
-  // A session lasts fifteen minutes from its first question. Each reply says how long is left; the
+  // A session lasts twenty minutes from its first question. Each reply says how long is left; the
   // header counts it down, and when it runs out the questions end (the results, once shown, stay).
   const [endsAt, setEndsAt] = useState<number | null>(null), [now, setNow] = useState(Date.now())
   const clock = (reply: { seconds_left?: number }) => { if (reply.seconds_left !== undefined) setEndsAt(Date.now() + reply.seconds_left * 1000) }
@@ -63,7 +63,7 @@ export default function App() {
   useEffect(() => {
     if (left === 0 && stage.name === 'round') {
       attempt.current++
-      setStage({ name: 'welcome', error: 'Your 15 minutes were up, so that session has ended. Start another whenever you like.' })
+      setStage({ name: 'welcome', error: 'Your 20 minutes were up, so that session has ended. Start another whenever you like.' })
     }
   }, [left, stage.name])
   // A lapsed sign-in sends the visitor back to the password screen.
@@ -73,8 +73,8 @@ export default function App() {
   return (
     <Shell mock={!!me?.mock} progress={progress} minutesLeft={left === undefined ? undefined : Math.ceil(left / 60000)} onHome={goHome}>
       {/* The password prompt sits over the start screen, which is inert until sign-in. */}
-      {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [5]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
-      {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [5]} error={stage.error} onStart={(r) => begin(r)}
+      {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [7]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
+      {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [7]} error={stage.error} onStart={(r) => begin(r)}
         onDraft={(rounds, draft) => setStage({ name: 'review', rounds, draft })} onExpired={expired} />}
       {stage.name === 'review' && <Review draft={stage.draft} onBack={() => setStage({ name: 'welcome' })} onStart={(d) => begin(stage.rounds, d)} />}
       {stage.name === 'starting' && <Starting />}

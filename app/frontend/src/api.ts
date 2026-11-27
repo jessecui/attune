@@ -1,7 +1,7 @@
 // Everything the page asks of the backend. The backend holds the GPU service's address and key.
 
 export type Round = { session: string; round: number; rounds: number; question: string; candidates: string[]; waited_seconds?: number; role?: string; topic?: string; title?: string; builtin?: boolean;
-  /** what is left of the session's fifteen minutes */
+  /** what is left of the session's twenty minutes */
   seconds_left?: number }
 // A visitor's setting, drafted by the server: who speaks, the session's questions, and the questions the model is rated on.
 // points is null for a question the visitor wrote or edited; the server writes its fact sheet at the start.

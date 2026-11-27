@@ -24,20 +24,20 @@ import modal
 
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
-# Five questions. With earlier picks reused in each update, more rounds learn a stronger style but start to break
-# the text: over both sets of benchmark runs (grids "long" and "confirm"), malformed final answers were 0.8% after
-# five rounds, 1.7% after six, 4.6% after seven, 7.1% after eight and 24% after ten. The win rate over the
-# untouched model was 90% after five rounds and 94% after eight.
-ROUNDS, K = 5, 4
+# Seven questions, trained with DPO. Over both sets of benchmark runs (grids "long" and "confirm") its win rate
+# over the untouched model was 93% after five rounds and 95% after six, seven and eight, with the style fit still
+# rising a little each round; from ten rounds it starts to drop facts. Its text stays intact at every length (1 to
+# 2% malformed), where GRPO with replay, the method compared against it, reached 24% malformed after ten rounds.
+ROUNDS, K = 7, 4
 MEASURE = 5   # unseen questions, answered and rated once at the end; all of them are shown as before and after
 SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
 # A session lasts this long from the moment its first question is ready, whatever the visitor is doing:
 # questions, results and the try box. It caps what one session can cost. The page shows the time left.
-SESSION_SECONDS = 15 * 60
+SESSION_SECONDS = 20 * 60
 SESSION_GRACE = 60   # a pick sent in the last seconds is still taken
-EXPIRED = "Your 15 minutes are up. Train another to start again."
-# The highest rate that kept the content and the text intact: at 5e-5, five rounds left over a third of answers
-# malformed, and at 1e-4 a third of answers dropped a fact.
+EXPIRED = "Your 20 minutes are up. Train another to start again."
+# The rate both methods were compared at: the highest of the three tried at which neither lost content
+# (at 1e-4 a third of answers dropped a fact, for both).
 LEARNING_RATE = 2e-5
 # What the visitor sees when background work failed: the session cannot go on (its answers are spent).
 STUCK = "Something went wrong while training. Please train another to start again."
@@ -253,7 +253,9 @@ class Live:
         c = s["cands"].pop(n)
         # Each answer is credited to the plain prompt, not to the style instruction it was written under.
         order = [best, *[j for j in range(K) if j not in (best, worst)], worst]
-        s["groups"].append(Group(c["prompt"], c["answers"], order, None, None, bestworst=True))
+        # DPO measures each answer's change against the untouched model, so that model's score is taken once here.
+        ref = self.policy.logprobs([c["prompt"]] * K, c["answers"], use_adapter=False).detach().cpu()
+        s["groups"].append(Group(c["prompt"], c["answers"], order, ref, None, bestworst=True))
         s["method"].update(s["groups"], None)
         # Nothing is measured between rounds: the model is rated once, at the end (see _summary).
 
@@ -355,7 +357,7 @@ class Live:
         from fastapi.responses import HTMLResponse
         from pydantic import BaseModel
 
-        from bench.methods import GRPOPlain
+        from bench.methods import DPO
 
         api = FastAPI()
 
@@ -364,7 +366,7 @@ class Live:
                 raise HTTPException(status_code=403, detail="Wrong or missing key")
 
         def seconds_left(s):
-            """What the page shows: the time left of the session's fifteen minutes."""
+            """What the page shows: the time left of the session's twenty minutes."""
             return max(0, int(SESSION_SECONDS - (time.time() - s["started"])))
 
         def in_time(s):
@@ -450,11 +452,9 @@ class Live:
                  "touched": time.time(),
                  "scenario": scenario, "role": role, "topic": topic, "title": title, "builtin": builtin, "notice": None,
                  "cands": {}, "error": None, "thread": None,
-                 # GRPO's clipped update on the plain prompt; half of each round's steps revisit earlier
-                 # rounds' picks, which took the five-round win rate over the untouched model from 85% to 93%.
-                 # That reuse is also what breaks the text in longer sessions or at higher rates (see ROUNDS).
-                 "method": GRPOPlain(self.policy, lr=LEARNING_RATE, steps_per_round=8, replay=True,
-                                     seed=random.randrange(2 ** 31))}
+                 # DPO on the plain prompt, as in the benchmark: each pick gives five preferred-over pairs,
+                 # and every other step of an update revisits an earlier round's pick.
+                 "method": DPO(self.policy, lr=LEARNING_RATE, steps_per_round=8, seed=random.randrange(2 ** 31))}
             self.sessions[s["id"]] = s
             self._with(s, lambda: self._open(s))
             self._with(s, lambda: self._write(s, 1))

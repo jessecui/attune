@@ -42,9 +42,8 @@ MODAL_HEADERS = {"Modal-Key": os.environ.get("ATTUNE_MODAL_PROXY_ID", ""),
                  "Modal-Secret": os.environ.get("ATTUNE_MODAL_PROXY_SECRET", "")}
 MODAL_HEADERS = MODAL_HEADERS if all(MODAL_HEADERS.values()) else {}
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
-# One session length keeps the app simple and matches what the benchmark tested. The GPU service
-# still accepts 10 for experiments.
-ROUND_CHOICES = (5,)
+# One session length keeps the app simple and matches what the benchmark tested.
+ROUND_CHOICES = (7,)
 
 app = FastAPI(title="Attune")
 
@@ -102,7 +101,7 @@ def _mock():
     return json.loads((Path(__file__).parent / "mock_data.json").read_text())
 
 
-MOCK_SESSION_SECONDS = int(os.environ.get("ATTUNE_MOCK_SESSION_SECONDS") or 15 * 60)   # as on the GPU service; shorter in tests
+MOCK_SESSION_SECONDS = int(os.environ.get("ATTUNE_MOCK_SESSION_SECONDS") or 20 * 60)   # as on the GPU service; shorter in tests
 
 
 def _mock_left(s):

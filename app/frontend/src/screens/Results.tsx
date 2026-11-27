@@ -17,7 +17,7 @@ function describe(found: { side: string; strength: string }[]) {
 }
 
 export function Results({ summary, mock, over, onAgain, onExpired }:
-  { summary: Summary; mock: boolean; /** the session's fifteen minutes have run out */ over: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
+  { summary: Summary; mock: boolean; /** the session's twenty minutes have run out */ over: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
   // axis: the scale's name as the page shows it ("empathy"), not the service's own ("warmth")
   const readings = summary.axes.map((a) => ({ axis: (AXIS_NOTES[a.axis]?.title ?? a.axis).toLowerCase(), ...read(a) }))
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
@@ -128,7 +128,7 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
             {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing answers'}</> : 'Ask'}
           </button>
         </form>
-        {over && <p className="mt-3 text-gray-700">Your 15 minutes are up, so this model is no longer loaded. Your results and the download are still here.</p>}
+        {over && <p className="mt-3 text-gray-700">Your 20 minutes are up, so this model is no longer loaded. Your results and the download are still here.</p>}
         {error && !over && <p role="alert" className="mt-3 text-red-700">{error}</p>}
         {answer && (
           <div className="mt-4 grid gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2">
@@ -136,7 +136,7 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
         )}
-        <p className="hint mt-3">{SAME_POINTS} Check anything that matters with a real professional. Available until your 15 minutes are up.</p>
+        <p className="hint mt-3">{SAME_POINTS} Check anything that matters with a real professional. Available until your 20 minutes are up.</p>
       </div>
     </section>
   )
