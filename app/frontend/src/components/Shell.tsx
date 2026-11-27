@@ -3,10 +3,10 @@ import { isDark, setDark } from '../theme'
 import { Logo } from './Logo'
 
 /** The frame around every screen: a compact header, the page, and the standing note. */
-export function Shell({ children, mock, progress, minutesLeft, onHome }:
+export function Shell({ children, mock, progress, minutesLeft, idle, onHome }:
   { children: ReactNode; mock: boolean; progress?: { at: number; of: number };
     /** what is left of the session's time, rounded up to a minute; shown while a session is open */
-    minutesLeft?: number; onHome: () => void }) {
+    minutesLeft?: number; /** the session ended because the visitor was away, not because its time ran out */ idle?: boolean; onHome: () => void }) {
   const [dark, setDarkState] = useState(isDark)
   const toggle = () => { setDark(!dark); setDarkState(!dark) }
   return (
@@ -24,7 +24,7 @@ export function Shell({ children, mock, progress, minutesLeft, onHome }:
             {progress && <span className="text-gray-600">Question {progress.at} of {progress.of}</span>}
             {minutesLeft !== undefined && (
               <span className={`tabular-nums ${minutesLeft <= 2 ? 'font-medium text-red-700' : 'text-gray-500'}`}>
-                {minutesLeft > 0 ? `GPU: ${minutesLeft} min left` : 'GPU session ended'}
+                {minutesLeft > 0 ? `GPU: ${minutesLeft} min left` : `GPU session ended (${idle ? 'inactivity' : 'time limit'})`}
               </span>
             )}
             <button onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}
