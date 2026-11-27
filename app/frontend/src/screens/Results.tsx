@@ -16,7 +16,8 @@ function describe(found: { side: string; strength: string }[]) {
   return [adjectives.length ? `are ${list(adjectives)}` : '', ...clauses].filter(Boolean).join(', and ')
 }
 
-export function Results({ summary, mock, onAgain, onExpired }: { summary: Summary; mock: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
+export function Results({ summary, mock, over, onAgain, onExpired }:
+  { summary: Summary; mock: boolean; /** the session's fifteen minutes have run out */ over: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
   // axis: the scale's name as the page shows it ("empathy"), not the service's own ("warmth")
   const readings = summary.axes.map((a) => ({ axis: (AXIS_NOTES[a.axis]?.title ?? a.axis).toLowerCase(), ...read(a) }))
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
@@ -85,7 +86,7 @@ export function Results({ summary, mock, onAgain, onExpired }: { summary: Summar
           </section>
         )}
 
-        <TryBox session={summary.session} onExpired={onExpired} />
+        <TryBox session={summary.session} over={over} onExpired={onExpired} />
       </div>
     </div>
   )
@@ -93,7 +94,7 @@ export function Results({ summary, mock, onAgain, onExpired }: { summary: Summar
 
 /** Ask the model anything: the standard model's answer beside the one just trained. Works while
  *  the session's GPU is still up, which is about five minutes after its last use. */
-function TryBox({ session, onExpired }: { session: string; onExpired: (e: unknown) => boolean }) {
+function TryBox({ session, over, onExpired }: { session: string; over: boolean; onExpired: (e: unknown) => boolean }) {
   // busy holds the step in progress, so the button can say which one it is waiting on
   const [question, setQuestion] = useState(''), [busy, setBusy] = useState<'' | 'preparing' | 'writing'>(''), [error, setError] = useState('')
   const [answer, setAnswer] = useState<Example | null>(null)
@@ -116,21 +117,22 @@ function TryBox({ session, onExpired }: { session: string; onExpired: (e: unknow
       </div>
       <div className="p-4">
         <form onSubmit={ask} className="flex gap-2">
-          <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} disabled={!!busy} aria-label="Your question"
+          <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} disabled={!!busy || over} aria-label="Your question"
             placeholder="Type a question" autoComplete="off"
             className="min-w-0 flex-1 rounded-md border border-gray-300 bg-surface px-3 py-2.5 text-[15px] focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
-          <button className="btn btn-primary shrink-0" disabled={!!busy || question.trim().length < 5}>
+          <button className="btn btn-primary shrink-0" disabled={!!busy || over || question.trim().length < 5}>
             {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing answers'}</> : 'Ask'}
           </button>
         </form>
-        {error && <p role="alert" className="mt-3 text-red-700">{error}</p>}
+        {over && <p className="mt-3 text-gray-700">Your 15 minutes are up, so this model is no longer loaded. Your results and the download are still here.</p>}
+        {error && !over && <p role="alert" className="mt-3 text-red-700">{error}</p>}
         {answer && (
           <div className="mt-4 grid gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2">
             <div><p className="hint">Standard model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-600">{answer.before}</p></div>
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
         )}
-        <p className="hint mt-3">{SAME_POINTS} Check anything that matters with a real professional. Available for a few minutes after your session.</p>
+        <p className="hint mt-3">{SAME_POINTS} Check anything that matters with a real professional. Available until your 15 minutes are up.</p>
       </div>
     </section>
   )

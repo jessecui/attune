@@ -23,6 +23,7 @@ import asyncio
 import json
 import math
 import os
+import time
 import uuid
 from pathlib import Path
 
@@ -44,7 +45,7 @@ MODAL_HEADERS = MODAL_HEADERS if all(MODAL_HEADERS.values()) else {}
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
 # One session length keeps the app simple and matches what the benchmark tested. The GPU service
 # still accepts 10 for experiments.
-ROUND_CHOICES = (8,)
+ROUND_CHOICES = (5,)
 
 app = FastAPI(title="Attune")
 
@@ -97,9 +98,17 @@ def _mock():
     return json.loads((Path(__file__).parent / "mock_data.json").read_text())
 
 
+MOCK_SESSION_SECONDS = int(os.environ.get("ATTUNE_MOCK_SESSION_SECONDS") or 15 * 60)   # as on the GPU service; shorter in tests
+
+
+def _mock_left(s):
+    return max(0, int(MOCK_SESSION_SECONDS - (time.time() - s["started"])))
+
+
 def _mock_round(s, n):
     r = _mock()["rounds"][n - 1]
-    return {"session": s["id"], "round": n, "rounds": s["rounds"], **r, "role": "an advisor", "builtin": True}
+    return {"session": s["id"], "round": n, "rounds": s["rounds"], **r, "role": "an advisor", "builtin": True,
+            "seconds_left": _mock_left(s)}
 
 
 def _mock_summary(s):
@@ -187,7 +196,7 @@ async def start(body: Start):
         raise HTTPException(status_code=400, detail=f"Rounds must be one of {ROUND_CHOICES}")
     if MOCK:
         await asyncio.sleep(1.5)
-        s = {"id": uuid.uuid4().hex, "rounds": body.rounds, "round": 0}
+        s = {"id": uuid.uuid4().hex, "rounds": body.rounds, "round": 0, "started": time.time()}
         _mock_sessions[s["id"]] = s
         return _mock_round(s, 1)
     return await modal("/api/start", body=body.model_dump())
@@ -204,7 +213,7 @@ async def feedback(body: Feedback):
         # Repeats first, as the GPU service does: after the last question, the results again;
         # a resent submit for a question already answered, the reply it got.
         if s["round"] >= s["rounds"]:
-            return _mock_summary(s)
+            return {**_mock_summary(s), "seconds_left": _mock_left(s)}
         if body.round is not None and body.round == s["round"] and s["round"] >= 1:
             return _mock_round(s, s["round"] + 1)
         if body.round is not None and body.round != s["round"] + 1:
@@ -212,7 +221,7 @@ async def feedback(body: Feedback):
         if body.best == body.worst or not {body.best, body.worst} <= set(range(4)):
             raise HTTPException(status_code=400, detail="Pick two different answers")
         s["round"] += 1
-        return _mock_summary(s) if s["round"] >= s["rounds"] else _mock_round(s, s["round"] + 1)
+        return {**_mock_summary(s), "seconds_left": _mock_left(s)} if s["round"] >= s["rounds"] else _mock_round(s, s["round"] + 1)
     return await modal("/api/feedback", body=body.model_dump())
 
 

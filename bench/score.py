@@ -2,7 +2,8 @@
 
 A run of N rounds passes through every shorter session on the way, so its answers after round n are a
 session of n rounds. Each method's answers to the ten test questions are rated for how well they suit
-the simulated user, whether they keep the fact sheet, and whether they add to it.
+the simulated user, whether they keep the fact sheet, and whether they add to it. The judge does not
+look at whether the text is well formed, so that is checked here by pattern (see malformed).
 
     python -m bench.score confirm 8          # the numbers quoted in the README
     python -m bench.score long 5 7 8 10      # session length, and the model's own answers among the four
@@ -13,6 +14,7 @@ import glob
 import os
 import hashlib
 import json
+import re
 import statistics
 import sys
 from collections import defaultdict
@@ -55,6 +57,13 @@ for i in range(0, len(keys), 240):
 mean = lambda v: sum(v) / len(v)
 
 
+def malformed(text):
+    """Broken text of the kinds over-training produces: no space after punctuation, two words run
+    together, an answer that does not end, or characters from another script."""
+    return bool(re.search(r"[a-z][.,;:!?][A-Za-z]", text) or re.search(r"\b[a-z]{2,}[A-Z][a-z]+", text)
+                or not re.search(r"[.!?)\"']\s*$", text.strip()) or re.search(r"[^\x00-\x7f‘’“”–—…é°]", text))
+
+
 def fits(texts, key):
     wants = R.user_wants(key[0], menu)
     return [style_score(cache[h(q, t)], wants) for q, t in zip(test_q, texts)]
@@ -76,7 +85,7 @@ def versus(a, na, b, nb):
     return f"{100 * (w + t / 2) / n:.0f}% ({w}/{t}/{l})" if n else "none shared"
 
 
-print("\nmethod | own answers per round | rounds | runs | fit | scales right of 4 (mean, variance) | facts | additions | over untouched | GRPO against DPO, same setup")
+print("\nmethod | own answers per round | rounds | runs | fit | scales right of 4 (mean, variance) | facts | additions | malformed | over untouched | GRPO against DPO, same setup")
 for (method, own), by_run in sorted(runs.items()):
     for n in LENGTHS:
         have = {k: r for k, r in by_run.items() if n in r}
@@ -87,5 +96,6 @@ for (method, own), by_run in sorted(runs.items()):
         other = runs.get(("dpo", own)) if method == "grpo-plain" else None
         print(f"  {method:10} | {own} | {n:2} | {len(have):2} | {mean([f for k, r in have.items() for f in fits(r[n], k)]):5.2f} | "
               f"{mean(rr):.2f}  {statistics.pvariance(rr):.2f} | {mean([mean(v['facts_covered']) for v in vs]):.2f} | "
-              f"{mean([bool(v['added']) for v in vs]):.2f} | {versus(have, n, have, 0):>18} | {versus(have, n, other, n) if other else ''}")
+              f"{mean([bool(v['added']) for v in vs]):.2f} | {100 * mean([malformed(t) for r in have.values() for t in r[n]]):.1f}% | "
+              f"{versus(have, n, have, 0):>18} | {versus(have, n, other, n) if other else ''}")
     print()

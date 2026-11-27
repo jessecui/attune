@@ -29,7 +29,7 @@ export default function App() {
     setStage({ name: 'starting', rounds })
     try {
       const round = await api.start(rounds, draft)
-      if (attempt.current === mine) setStage({ name: 'round', round })
+      if (attempt.current === mine) { clock(round); setStage({ name: 'round', round }) }
     } catch (e) { if (attempt.current === mine && !expired(e)) setStage({ name: 'welcome', error: (e as Error).message }) }
   }
   // The logo goes home. Part-way through a session that means giving it up, so ask first.
@@ -39,26 +39,45 @@ export default function App() {
     attempt.current++
     setStage({ name: 'welcome' })
   }
+  // A session lasts fifteen minutes from its first question. Each reply says how long is left; the
+  // header counts it down, and when it runs out the questions end (the results, once shown, stay).
+  const [endsAt, setEndsAt] = useState<number | null>(null), [now, setNow] = useState(Date.now())
+  const clock = (reply: { seconds_left?: number }) => { if (reply.seconds_left !== undefined) setEndsAt(Date.now() + reply.seconds_left * 1000) }
+  const open = stage.name === 'round' || stage.name === 'results'
+  useEffect(() => { if (!open) setEndsAt(null) }, [open])
+  useEffect(() => {
+    if (endsAt === null) return
+    setNow(Date.now())
+    const t = setInterval(() => setNow(Date.now()), 5000)
+    return () => clearInterval(t)
+  }, [endsAt])
+  const left = endsAt === null || !open ? undefined : Math.max(0, endsAt - now)
+  useEffect(() => {
+    if (left === 0 && stage.name === 'round') {
+      attempt.current++
+      setStage({ name: 'welcome', error: 'Your 15 minutes were up, so that session has ended. Start another whenever you like.' })
+    }
+  }, [left, stage.name])
   // A lapsed sign-in sends the visitor back to the password screen.
   const expired = (e: unknown) => (e as { status?: number }).status === 401 && (setStage({ name: 'gate' }), true)
 
   const progress = stage.name === 'round' ? { at: stage.round.round, of: stage.round.rounds } : undefined
   return (
-    <Shell mock={!!me?.mock} progress={progress} onHome={goHome}>
+    <Shell mock={!!me?.mock} progress={progress} minutesLeft={left === undefined ? undefined : Math.ceil(left / 60000)} onHome={goHome}>
       {/* The password prompt sits over the start screen, which is inert until sign-in. */}
-      {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [8]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
-      {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [8]} error={stage.error} onStart={(r) => begin(r)}
+      {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [5]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
+      {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [5]} error={stage.error} onStart={(r) => begin(r)}
         onDraft={(rounds, draft) => setStage({ name: 'review', rounds, draft })} onExpired={expired} />}
       {stage.name === 'review' && <Review draft={stage.draft} onBack={() => setStage({ name: 'welcome' })} onStart={(d) => begin(stage.rounds, d)} />}
       {stage.name === 'starting' && <Starting />}
       {stage.name === 'round' && (
         <RoundScreen key={stage.round.round} round={stage.round} onExpired={expired}
-          onNext={(next) => setStage((now) =>
+          onNext={(next) => { clock(next); setStage((now) =>
             // A reply for a session the visitor has since left (gone home, or started another) is dropped.
             now.name !== 'round' || now.round.session !== next.session ? now
-              : 'done' in next ? { name: 'results', summary: next } : { name: 'round', round: next })} />
+              : 'done' in next ? { name: 'results', summary: next } : { name: 'round', round: next }) }} />
       )}
-      {stage.name === 'results' && <Results summary={stage.summary} mock={!!me?.mock} onAgain={() => setStage({ name: 'welcome' })} onExpired={expired} />}
+      {stage.name === 'results' && <Results summary={stage.summary} mock={!!me?.mock} over={left === 0} onAgain={() => setStage({ name: 'welcome' })} onExpired={expired} />}
     </Shell>
   )
 }

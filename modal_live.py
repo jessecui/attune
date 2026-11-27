@@ -24,13 +24,21 @@ import modal
 
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
-# Eight questions: in the benchmark (grid "long") the judge's fit rose from 3.83 after five rounds to 4.84
-# after eight and was no higher after ten, with every fact kept at this learning rate.
-ROUNDS, K = 8, 4
+# Five questions. With earlier picks reused in each update, more rounds learn a stronger style but start to break
+# the text: over both sets of benchmark runs (grids "long" and "confirm"), malformed final answers were 0.4% after
+# five rounds, 0.8% after six, 3.3% after seven, 5.8% after eight and 17% after ten. The win rate over the
+# untouched model was 90% after five rounds and 94% after eight.
+ROUNDS, K = 5, 4
 MEASURE = 5   # unseen questions, answered and rated once at the end; all of them are shown as before and after
 SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
-LONG_ROUNDS = 10  # optional longer session: each of the ten built-in questions once
-LEARNING_RATE = 2e-5   # the highest rate at which the benchmark lost no content (5e-5 and 1e-4 drop facts)
+# A session lasts this long from the moment its first question is ready, whatever the visitor is doing:
+# questions, results and the try box. It caps what one session can cost. The page shows the time left.
+SESSION_SECONDS = 15 * 60
+SESSION_GRACE = 60   # a pick sent in the last seconds is still taken
+EXPIRED = "Your 15 minutes are up. Train another to start again."
+# The highest rate that kept the content and the text intact: at 5e-5, five rounds left over a third of answers
+# malformed, and at 1e-4 a third of answers dropped a fact.
+LEARNING_RATE = 2e-5
 # What the visitor sees when background work failed: the session cannot go on (its answers are spent).
 STUCK = "Something went wrong while training. Please train another to start again."
 
@@ -354,6 +362,16 @@ class Live:
             if not key_ok(key, os.environ.get("ATTUNE_KEY", "")):
                 raise HTTPException(status_code=403, detail="Wrong or missing key")
 
+        def seconds_left(s):
+            """What the page shows: the time left of the session's fifteen minutes."""
+            return max(0, int(SESSION_SECONDS - (time.time() - s["started"])))
+
+        def in_time(s):
+            """End a session that has run past its limit (and the few seconds of grace)."""
+            if time.time() - s["started"] > SESSION_SECONDS + SESSION_GRACE:
+                self.sessions.pop(s["id"], None)
+                raise HTTPException(status_code=410, detail=EXPIRED)
+
         @api.get("/", response_class=HTMLResponse)
         def page(key: str = ""):
             check(key)
@@ -416,21 +434,23 @@ class Live:
         def start(body: StartIn | None = None, key: str = "", rounds: int = ROUNDS):
             check(key)
             rounds = (body and body.rounds) or rounds
-            if rounds not in (ROUNDS, LONG_ROUNDS):
-                raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
+            if rounds != ROUNDS:
+                raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS}")
             scenario, role, topic, builtin = self.builtin, "an advisor", "", True
             if body and body.draft:
                 scenario, role, topic = scenario_from(body.draft, rounds)
                 builtin = False
-            # Sessions a visitor walked away from are dropped after half an hour without activity.
-            for sid in [k for k, old in list(self.sessions.items()) if time.time() - old["touched"] > 1800]:
+            # Sessions past their time limit, or left before their first question was ready, are dropped.
+            for sid in [k for k, old in list(self.sessions.items())
+                        if time.time() - old.get("started", old["touched"]) > SESSION_SECONDS + SESSION_GRACE]:
                 self.sessions.pop(sid, None)   # another start may have dropped it already
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "touched": time.time(),
                  "scenario": scenario, "role": role, "topic": topic, "builtin": builtin, "notice": None,
                  "cands": {}, "error": None, "thread": None,
                  # GRPO's clipped update on the plain prompt; half of each round's steps revisit earlier
-                 # rounds' picks, which in the benchmark took the judge's fit from 3.18 to 4.62.
+                 # rounds' picks, which took the five-round win rate over the untouched model from 85% to 93%.
+                 # That reuse is also what breaks the text in longer sessions or at higher rates (see ROUNDS).
                  "method": GRPOPlain(self.policy, lr=LEARNING_RATE, steps_per_round=8, replay=True,
                                      seed=random.randrange(2 ** 31))}
             self.sessions[s["id"]] = s
@@ -440,7 +460,8 @@ class Live:
                 s["thread"] = threading.Thread(target=self._background,
                                                args=(s, lambda: self._with(s, lambda: self._write(s, 2))))
                 s["thread"].start()
-            return s["cands"][1]["payload"]
+            s["started"] = time.time()   # the clock starts now, not while the GPU was starting
+            return {**s["cands"][1]["payload"], "seconds_left": seconds_left(s)}
 
         class Feedback(BaseModel):
             session: str
@@ -455,9 +476,12 @@ class Live:
             if s is None:
                 raise HTTPException(status_code=404, detail="Session expired; start again")
             s["touched"] = time.time()
+            if "started" not in s:
+                raise HTTPException(status_code=409, detail="The first question is still being written")
             if s.get("finished"):
                 # A repeat of the last submit (say the reply was lost on the way): send the results again.
-                return {**s["summary"], "waited_seconds": 0.0}
+                return {**s["summary"], "waited_seconds": 0.0, "seconds_left": seconds_left(s)}
+            in_time(s)
             if fb.round is not None and fb.round == s["round"] < s["rounds"] and s.get("reply"):
                 return s["reply"]   # this question's picks were already applied: resend what came back
             if fb.round is not None and fb.round != s["round"] + 1 and s["round"] < s["rounds"]:
@@ -479,7 +503,8 @@ class Live:
                 if s["round"] < s["rounds"]:   # else the last update is done and only the results failed: retry those
                     n = s["round"] = s["round"] + 1
                     if n < s["rounds"]:
-                        payload = {**s["cands"][n + 1]["payload"], "waited_seconds": round(time.time() - t, 1)}
+                        payload = {**s["cands"][n + 1]["payload"], "waited_seconds": round(time.time() - t, 1),
+                                   "seconds_left": seconds_left(s)}
                         s["thread"] = threading.Thread(target=self._after, args=(s, n, fb.best, fb.worst))
                         s["thread"].start()
                         s["reply"] = payload
@@ -494,7 +519,7 @@ class Live:
                 s["finished"] = True
                 # Package the adapter in the background; the download appears a few seconds later.
                 threading.Thread(target=lambda: self._with(s, lambda: self._export(s, out))).start()
-                return {**out, "waited_seconds": round(time.time() - t, 1)}
+                return {**out, "waited_seconds": round(time.time() - t, 1), "seconds_left": seconds_left(s)}
             finally:
                 busy.release()
 
@@ -506,6 +531,7 @@ class Live:
             s = self.sessions.get(session)
             if s is None or not s.get("finished"):
                 raise HTTPException(status_code=404, detail="This model is no longer loaded. Train another to try more questions.")
+            in_time(s)
             s["touched"] = time.time()
             return s
 
@@ -575,8 +601,8 @@ def files():
         """Check a visitor's setting and draft its questions: the session's, then the rating ones."""
         if not key_ok(key, os.environ.get("ATTUNE_KEY", "")):
             raise HTTPException(status_code=401, detail="Missing or wrong key")
-        if body.rounds not in (ROUNDS, LONG_ROUNDS):
-            raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS} or {LONG_ROUNDS}")
+        if body.rounds != ROUNDS:
+            raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS}")
         os.chdir("/root")
         from bench import setting
         if len(setting.clean(body.setting, 300)) < 3:

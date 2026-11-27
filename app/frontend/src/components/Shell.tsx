@@ -3,8 +3,10 @@ import { isDark, setDark } from '../theme'
 import { Logo } from './Logo'
 
 /** The frame around every screen: a compact header, the page, and the standing note. */
-export function Shell({ children, mock, progress, onHome }:
-  { children: ReactNode; mock: boolean; progress?: { at: number; of: number }; onHome: () => void }) {
+export function Shell({ children, mock, progress, minutesLeft, onHome }:
+  { children: ReactNode; mock: boolean; progress?: { at: number; of: number };
+    /** what is left of the session's time, rounded up to a minute; shown while a session is open */
+    minutesLeft?: number; onHome: () => void }) {
   const [dark, setDarkState] = useState(isDark)
   const toggle = () => { setDark(!dark); setDarkState(!dark) }
   return (
@@ -20,6 +22,11 @@ export function Shell({ children, mock, progress, onHome }:
           <div className="ml-auto flex items-center gap-4">
             {mock && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Demo data</span>}
             {progress && <span className="text-gray-600">Question {progress.at} of {progress.of}</span>}
+            {minutesLeft !== undefined && (
+              <span className={`tabular-nums ${minutesLeft <= 2 ? 'font-medium text-red-700' : 'text-gray-500'}`}>
+                {minutesLeft > 0 ? `${minutesLeft} min left` : 'Time is up'}
+              </span>
+            )}
             <button onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}
               className="grid h-8 w-8 cursor-pointer place-items-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900">
               <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

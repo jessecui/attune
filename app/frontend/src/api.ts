@@ -1,6 +1,8 @@
 // Everything the page asks of the backend. The backend holds the GPU service's address and key.
 
-export type Round = { session: string; round: number; rounds: number; question: string; candidates: string[]; waited_seconds?: number; role?: string; topic?: string; builtin?: boolean }
+export type Round = { session: string; round: number; rounds: number; question: string; candidates: string[]; waited_seconds?: number; role?: string; topic?: string; builtin?: boolean;
+  /** what is left of the session's fifteen minutes */
+  seconds_left?: number }
 // A visitor's setting, drafted by the server: who speaks, the session's questions, and the questions the model is rated on.
 // points is null for a question the visitor wrote or edited; the server writes its fact sheet at the start.
 export type DraftItem = { question: string; points: string[] | null }
@@ -9,7 +11,7 @@ export type Draft = { suitable: boolean; reason: string; role: string; topic?: s
 // written: the judge's 1-to-5 rating of the writing (5 = first style): [standard model, your model], when available.
 export type Axis = { axis: string; first: string; second: string; written?: number[] | null }
 export type Example = { question: string; before: string; after: string }
-export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; role?: string; topic?: string; builtin?: boolean }
+export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; role?: string; topic?: string; builtin?: boolean; seconds_left?: number }
 export type Me = { signed_in: boolean; mock: boolean; round_choices: number[] }
 export type ModelStatus = { ready: boolean; bytes?: number | null; mock?: boolean; configured?: boolean }
 
