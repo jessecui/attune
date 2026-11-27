@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { api, AS_ADJECTIVE, AS_CLAUSE, read, type Example, type ModelStatus, type Summary } from '../api'
+import { api, AS_ADJECTIVE, AS_CLAUSE, AXIS_NOTES, read, type Example, type ModelStatus, type Summary } from '../api'
 import { Scale } from '../components/Scale'
 import { Spinner } from '../components/Spinner'
 
@@ -14,7 +14,8 @@ function describe(found: { side: string; strength: string }[]) {
 }
 
 export function Results({ summary, mock, onAgain, onExpired }: { summary: Summary; mock: boolean; onAgain: () => void; onExpired: (e: unknown) => boolean }) {
-  const readings = summary.axes.map((a) => ({ axis: a.axis, ...read(a) }))
+  // axis: the scale's name as the page shows it ("empathy"), not the service's own ("warmth")
+  const readings = summary.axes.map((a) => ({ axis: (AXIS_NOTES[a.axis]?.title ?? a.axis).toLowerCase(), ...read(a) }))
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
   const found = readings.filter((r) => r.strength !== 'none' && r.moved), open = readings.filter((r) => r.strength === 'none')
   const same = readings.filter((r) => r.strength !== 'none' && !r.moved)
