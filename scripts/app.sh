@@ -22,11 +22,30 @@ if lsof -nP -iTCP:$ATTUNE_BACKEND_PORT -sTCP:LISTEN >/dev/null || lsof -nP -iTCP
   echo "Port $ATTUNE_BACKEND_PORT or 5180 is already in use. Stop whatever is using it, or the earlier copy of this script."; exit 1
 fi
 # --reload: the backend picks up code changes itself, as the page already does
-(cd app/backend && ../../.venv/bin/uvicorn main:app --reload --no-proxy-headers --timeout-graceful-shutdown 2 --port $ATTUNE_BACKEND_PORT) &
+# exec: each job is the server itself, not a shell around it, so stopping the job stops the server
+(cd app/backend && exec ../../.venv/bin/uvicorn main:app --reload --no-proxy-headers --timeout-graceful-shutdown 2 --port $ATTUNE_BACKEND_PORT) &
 backend=$!
-# On exit, stop the backend and wait for it, so its last log lines print before the prompt returns.
-# Ctrl-C would otherwise end this script at once, without the exit step, so it is caught and turned into an exit.
-trap "kill $backend 2>/dev/null; wait $backend 2>/dev/null" EXIT
-trap "exit 130" INT TERM
 echo "Open http://localhost:5180 (the access prompt asks for the creator's name)"
-cd app/frontend && npm run dev
+(cd app/frontend && exec node_modules/.bin/vite) &
+frontend=$!
+
+# Whether a job of this script is still running (a finished one that has not been collected does not count).
+running() { case "$(ps -o stat= -p $1 2>/dev/null)" in ""|Z*) return 1;; esac }
+# On exit, stop both servers and wait for them, so their last log lines print before the prompt returns.
+stop_servers() {
+  trap '' INT TERM HUP   # a second Ctrl-C must not cut this short and leave a server holding its port
+  kill $frontend $backend 2>/dev/null
+  for i in {1..40}; do   # up to four seconds
+    running $backend || running $frontend || break
+    sleep 0.1
+  done
+  # uvicorn's reloader sometimes stops answering signals: end it and the server it started
+  if running $backend; then pkill -9 -P $backend 2>/dev/null; kill -9 $backend 2>/dev/null; fi
+  if running $frontend; then kill -9 $frontend 2>/dev/null; fi
+  wait $backend $frontend 2>/dev/null
+}
+trap stop_servers EXIT
+# Ctrl-C, a closed terminal or a kill would otherwise end this script at once, without the exit step.
+trap "exit 130" INT TERM HUP
+# The page server runs as a job, not in the foreground, so the shell can act on a signal as it arrives.
+wait $frontend
