@@ -44,7 +44,7 @@ MODAL_HEADERS = MODAL_HEADERS if all(MODAL_HEADERS.values()) else {}
 MOCK = os.environ.get("ATTUNE_MOCK") == "1"
 # One session length keeps the app simple and matches what the benchmark tested. The GPU service
 # still accepts 10 for experiments.
-ROUND_CHOICES = (5,)
+ROUND_CHOICES = (8,)
 
 app = FastAPI(title="Attune")
 
@@ -66,13 +66,23 @@ def _relayed(code: int) -> int:
 async def modal(path: str, params: dict | None = None, body: dict | None = None):
     if not (MODAL_URL and MODAL_KEY):
         raise HTTPException(status_code=500, detail="The GPU service is not configured on the server")
-    try:
-        # Generous timeout: the first request may wait for the GPU to start and the model to load.
-        # Modal answers a request still running after 150 s with a redirect to its result; follow it.
-        async with httpx.AsyncClient(headers=MODAL_HEADERS, timeout=600, follow_redirects=True) as client:
-            r = await client.post(f"{MODAL_URL}{path}", params={"key": MODAL_KEY, **(params or {})}, json=body)
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
+    for attempt in (1, 2):
+        try:
+            # Generous timeout: the first request may wait for the GPU to start and the model to load.
+            # Modal answers a request still running after 150 s with a redirect to its result; follow it.
+            async with httpx.AsyncClient(headers=MODAL_HEADERS, timeout=600, follow_redirects=True) as client:
+                r = await client.post(f"{MODAL_URL}{path}", params={"key": MODAL_KEY, **(params or {})}, json=body)
+            break
+        except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
+            # The connection was dropped before an answer came back, which happens now and then while the
+            # GPU container is starting. One more try is safe: a start that did go through leaves a spare
+            # session that is swept up, and a repeated answer is recognised by its question number.
+            print(f"GPU service: {type(e).__name__} on {path}, attempt {attempt}", flush=True)
+            if attempt == 2:
+                raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
+            await asyncio.sleep(2)
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
     if r.status_code >= 400:
         detail = r.json().get("detail") if r.headers.get("content-type", "").startswith("application/json") else None
         raise HTTPException(status_code=_relayed(r.status_code),

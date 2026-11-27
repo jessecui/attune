@@ -159,7 +159,8 @@ class GRPOStyle:
     name = "grpo_style"
     latent = True
 
-    def __init__(self, policy, lr=1e-4, steps_per_round=8, clip=0.2, choice_clip=0.0, answer_weight=1.0, seed=0):
+    def __init__(self, policy, lr=1e-4, steps_per_round=8, clip=0.2, choice_clip=0.0, answer_weight=1.0, seed=0,
+                 replay=False):
         self.policy = policy
         self.steps = steps_per_round
         self.clip = clip
@@ -172,14 +173,31 @@ class GRPOStyle:
         # choice still learns at full speed while the wording changes more slowly, so the model does
         # not settle on one stock phrasing (or one answer for every style) within a few rounds.
         self.answer_weight = answer_weight
+        # If set, every other step of a round's update goes to an earlier round's picks instead of the
+        # newest, so each pick is used more than once (as DPO does). Off, only the newest round is used.
+        self.replay = replay
+        self.rng = random.Random(seed)
         self.opt = torch.optim.AdamW(policy.trainable_parameters(), lr=lr, weight_decay=0.0)
 
     def update(self, groups, pool):
-        g = groups[-1]
+        if not self.replay or len(groups) == 1:
+            return self._update(groups[-1], self.steps)
+        # Half the steps on the newest round, the rest spread over earlier rounds chosen at random.
+        # Each visit takes its own "before" probabilities, so the clip is measured from where the
+        # policy stands when that round is revisited.
+        first = self._update(groups[-1], self.steps - self.steps // 2)
+        for _ in range(self.steps // 2):
+            self._update(self.rng.choice(groups[:-1]), 1)
+        return first
+
+    def _update(self, g, steps):
         k = len(g.completions)
         reward = torch.zeros(k)
         if g.rewards is not None:
             reward = torch.tensor(g.rewards, dtype=torch.float)
+        elif g.bestworst:
+            # Only a favourite and a least favourite were marked; the two in between say nothing.
+            reward[g.order[0]], reward[g.order[-1]] = 1.0, -1.0
         elif g.liked is not None:
             # "Pick the ones you like": reward 1 for picked, 0 for the rest.
             reward[g.liked] = 1.0
@@ -193,7 +211,7 @@ class GRPOStyle:
         old = [[self.policy.token_logprobs(p, c).detach() for p, c in cand] for cand in segs]
         n_tokens = sum(len(c) for cand in segs for _, c in cand)
         losses = []
-        for _ in range(self.steps):
+        for _ in range(steps):
             self.opt.zero_grad()
             total = 0.0
             for cand, a, olds in zip(segs, adv, old):
@@ -216,4 +234,19 @@ class GRPOStyle:
         return {"loss": sum(losses) / len(losses)}
 
 
-METHODS = {"dpo": DPO, "grpo": GRPO, "grpo_style": GRPOStyle}
+class GRPOPlain(GRPOStyle):
+    """The same clipped, group-relative update aimed at the plain prompt, so the writing itself is trained.
+
+    As for DPO, the four candidates are written under style instructions the model never sees in
+    training: they only make the candidates differ. Each one is then scored as an answer to the
+    plain prompt, and the best is reinforced and the worst discouraged there. Nothing chooses a
+    style, so the tuned model answers a plain question with no style in its prompt.
+
+    The candidates did not come from the behaviour being trained, so this is GRPO's objective used
+    off-policy. The ratio is still taken against the plain-prompt policy as it stood before the round.
+    """
+    name = "grpo_plain"
+    latent = False
+
+
+METHODS = {"dpo": DPO, "grpo": GRPO, "grpo_style": GRPOStyle, "grpo_plain": GRPOPlain}

@@ -6,11 +6,10 @@ export type Round = { session: string; round: number; rounds: number; question: 
 export type DraftItem = { question: string; points: string[] | null }
 /** topic: what the visitor wants to talk about, as it reads after "about"; empty when they named only the role */
 export type Draft = { suitable: boolean; reason: string; role: string; topic?: string; items: DraftItem[]; measure: DraftItem[] }
-// lean: the model's log-odds of choosing the first style: [standard model, your model].
 // written: the judge's 1-to-5 rating of the writing (5 = first style): [standard model, your model], when available.
-export type Axis = { axis: string; first: string; second: string; lean: number[]; written?: number[] | null }
+export type Axis = { axis: string; first: string; second: string; written?: number[] | null }
 export type Example = { question: string; before: string; after: string }
-export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; style_instructions: string[]; role?: string; topic?: string; builtin?: boolean }
+export type Summary = { done: true; session: string; rounds: number; axes: Axis[]; examples: Example[]; role?: string; topic?: string; builtin?: boolean }
 export type Me = { signed_in: boolean; mock: boolean; round_choices: number[] }
 export type ModelStatus = { ready: boolean; bytes?: number | null; mock?: boolean; configured?: boolean }
 
@@ -43,15 +42,12 @@ export const api = {
 
 // ---- reading a result -------------------------------------------------------------------
 
-// A lean is the model's log-odds for an axis's first style over its second.
-export const probability = (lean: number) => 1 / (1 + Math.exp(-lean))
-
 export type Reading = { side: string; other: string; strength: 'none' | 'leans' | 'clear'; share: number; position: number; detail: string;
   /** false when the writing ended within half a point of the standard model's: too small a change to call learned */
   moved: boolean }
 
-/** What the profile says about one axis: under 75% either way is no clear preference,
- *  75% to 95% is a lean, above that is stated plainly. */
+/** What the judge's ratings say about one scale: within half a point of the middle is no clear
+ *  preference, up to a full point is a lean, beyond that is stated plainly. */
 export function read(a: Axis): Reading {
   if (a.written?.length) {
     // From the writing: within half a point of 3 is no clear preference, a full point or more is clear.
@@ -64,13 +60,8 @@ export function read(a: Axis): Reading {
              detail: `Its writing rated ${(3 + off).toFixed(1)} out of 5 for ${shown(side)}`
                + (moved ? '.' : standard === (3 + off).toFixed(1) ? ', the same as the standard model.' : `, close to the standard model's ${standard}.`) }
   }
-  const last = a.lean[a.lean.length - 1], prev = a.lean[a.lean.length - 2] ?? last
-  const p = probability(last), share = Math.max(p, 1 - p)
-  const side = last >= 0 ? a.first : a.second, other = last >= 0 ? a.second : a.first
-  const settled = Math.sign(last) === Math.sign(prev) || prev === 0
-  const strength = share < 0.75 || !settled ? 'none' : share < 0.95 ? 'leans' : 'clear'
-  return { side, other, strength, share, position: p, moved: true,
-           detail: `Ended ${share > 0.95 ? 'more than 95%' : Math.floor(share * 100) + '%'} ${shown(side)} by its style choices.` }
+  // The judge was unavailable, so there is no rating to read.
+  return { side: a.first, other: a.second, strength: 'none', share: 0, position: 0.5, moved: false, detail: 'Not rated this time.' }
 }
 
 export const AXIS_NOTES: Record<string, { title: string; about: string }> = {

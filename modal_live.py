@@ -6,11 +6,16 @@ page is served from the same app; the real interface will live elsewhere.
     modal deploy modal_live.py        # prints the URLs; requests need a Modal proxy token and ?key=<contents of .live_key>
 
 Each round the page shows four short answers and the person marks the best and the
-worst. To hide the wait, the server works one round ahead: while the person reads
-round N, it applies their round N-1 feedback and then writes round N+1's answers.
-So a round's feedback first shapes the answers two rounds later. Nothing is measured
-between rounds: at the end the tuned model answers unseen questions and a judge model
-rates them (see _summary).
+worst. The four are written under four different style instructions, which are there
+only to make them differ: the training is aimed at the plain prompt, so the best pick
+becomes more likely, and the worst less likely, as an answer to the question with no
+style named. The finished model is never given a style.
+
+To hide the wait, the server works one round ahead: while the person reads round N,
+it applies their round N-1 feedback and then writes round N+1's answers. So a round's
+feedback first shapes the answers two rounds later. Nothing is measured between
+rounds: at the end the tuned model answers unseen questions from the plain prompt and
+a judge model rates them (see _summary).
 """
 import secrets as pysecrets
 from pathlib import Path
@@ -19,10 +24,13 @@ import modal
 
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
-ROUNDS, K = 5, 4
-MEASURE, EXAMPLES = 5, 3  # unseen questions rated once, at the end (as many as the session asks); how many are shown as before/after
+# Eight questions: in the benchmark (grid "long") the judge's fit rose from 3.83 after five rounds to 4.84
+# after eight and was no higher after ten, with every fact kept at this learning rate.
+ROUNDS, K = 8, 4
+MEASURE = 5   # unseen questions, answered and rated once at the end; all of them are shown as before and after
 SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
-LONG_ROUNDS = 10  # optional longer session: each of the ten questions once
+LONG_ROUNDS = 10  # optional longer session: each of the ten built-in questions once
+LEARNING_RATE = 2e-5   # the highest rate at which the benchmark lost no content (5e-5 and 1e-4 drop facts)
 # What the visitor sees when background work failed: the session cannot go on (its answers are spent).
 STUCK = "Something went wrong while training. Please train another to start again."
 
@@ -102,7 +110,7 @@ GOOD TO KNOW
       ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct
 """
 
-PACKAGE_EXAMPLE = """\"\"\"Answer a question in your Attune style: python example.py "How do I ask for a raise?" \"\"\"
+PACKAGE_EXAMPLE = """\"\"\"Ask your Attune model a question: python example.py "How do I ask for a raise?" \"\"\"
 import json
 import sys
 from pathlib import Path
@@ -119,9 +127,9 @@ base = AutoModelForCausalLM.from_pretrained(meta["base_model"], dtype=torch.floa
 model = PeftModel.from_pretrained(base, str(here)).to(device).eval()
 
 question = sys.argv[1] if len(sys.argv) > 1 else "How do I ask for a raise?"
-style = "\\n".join(f"- {c}" for c in meta["style_instructions"])
+# The question and nothing else: no style is named. The style is in the adapter's weights.
 messages = [{"role": "system", "content": meta["system_prompt"]},
-            {"role": "user", "content": f"Question: {question}\\n\\nWrite your answer in this style:\\n{style}"}]
+            {"role": "user", "content": f"Question: {question}"}]
 # return_dict=True works across transformers versions (newer ones return a mapping, not a bare tensor)
 enc = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt", return_dict=True).to(device)
 # a little randomness, so answers do not all open with the same phrase
@@ -160,11 +168,10 @@ class Live:
         # The built-in questions: used when a visitor gives no setting, or the setting cannot be prepared.
         # "heldout" questions are never used in rounds; they are what the model is rated on.
         self.builtin = {"system": builtin["system"], "train": builtin["train"], "heldout": builtin["test"][:MEASURE]}
-        self.args = argparse.Namespace(two_step=True, k=K, max_new_tokens=128, max_sentences=4,
-                                       min_facts=1.0, strict_facts=True, redraws=3, neutral_start=True,
-                                       # the four answers come from styles that differ on two scales or
-                                       # more, and a near-copy of another answer is replaced
-                                       min_distance=2, no_duplicates=True)
+        self.args = argparse.Namespace(two_step=False, k=K, max_new_tokens=128, max_sentences=4,
+                                       min_facts=1.0, strict_facts=True, redraws=3,
+                                       # a near-copy of another answer is rewritten in a style not on screen
+                                       no_duplicates=True)
         self.policy = Policy(MODEL)
         self.fresh = self.policy.snapshot()  # the untouched adapter every session starts from
         self.sessions = {}
@@ -174,7 +181,7 @@ class Live:
         """Set a new session up on its own questions: prompts, and the standard model's answers to
         the rating questions (written here, rated in the background) as the "before"."""
         import threading
-        s["sess"] = self.R.Session(self.policy, s["scenario"], self.args, latent=True)
+        s["sess"] = self.R.Session(self.policy, s["scenario"], self.args, latent=False)
         # Sampled, not the single most likely wording: the same setting as the tuned model's answers below.
         items = s["scenario"]["heldout"]
         outs = self.policy.generate(s["sess"].plain["heldout"], max_new_tokens=self.args.max_new_tokens,
@@ -184,9 +191,7 @@ class Live:
         s["rating0"] = threading.Thread(
             target=lambda: s.update(written0=self._written(s["scenario"]["heldout"], s["base_texts"])))
         s["rating0"].start()
-        # Before any feedback every style is equally likely, so there is no lean to measure yet.
-        s["history"] = [{"round": 0, "lean": {a: 0.0 for a in AXES}, "style": [], "clauses": [],
-                         "answer": s["base_texts"][0], "texts": None}]
+        s["groups"] = []   # every round's answers and picks: each update also revisits earlier rounds
 
     # ---- pieces of GPU work; each runs with one session's adapter loaded -------------
 
@@ -201,7 +206,7 @@ class Live:
     def _written(self, items, texts):
         """The judge's average rating of these answers to the unseen questions, per axis (1 to 5).
 
-        None if the judge is unavailable; the page then falls back to the model's style choices.
+        None if the judge is unavailable; the page then shows the answers without ratings.
         """
         try:
             from bench.judge import judge_many
@@ -211,55 +216,22 @@ class Live:
             print(f"judge unavailable: {e}", flush=True)
             return None
 
-    def _track(self, s):
-        """What the session's adapter prefers on each axis, and its answers to the rating questions."""
-        import torch
-
-        from bench.personas import WARM_PHRASES, features
-
-        R = self.R
-        # The style choice is read on three of the unseen questions (it is the slow part, and it is
-        # no longer what the page plots); the style favoured across them is used for every answer.
-        sess = s["sess"]
-        prompts = sess.styled["heldout"][:3]
-        lean, total = {a: 0.0 for a in AXES}, 0
-        for j, p in enumerate(prompts):
-            lp = sess.style_logp(p)
-            total = total + lp
-            for a in AXES:
-                m = torch.tensor(R.AXES[a])
-                # log-odds of the axis's first option over its second
-                lean[a] += (torch.logsumexp(lp[m], 0) - torch.logsumexp(lp[~m], 0)).item() / len(prompts)
-        items = s["scenario"]["heldout"]
-        # The answers that get rated are written in styles shared out in proportion to the model's
-        # preferences (largest remainders, so nothing is random): a model split between two styles
-        # writes some answers in each, and its rating sits in the middle instead of flipping.
-        share = torch.softmax(total / len(prompts), dim=0) * len(items)
-        counts = share.floor()
-        for j in (share - counts).argsort(descending=True)[: int(len(items) - counts.sum())]:
-            counts[j] += 1
-        firsts = [j for j in share.argsort(descending=True).tolist() for _ in range(int(counts[j]))]
-        # Sampled with a little randomness. Taking the single most likely wording every time makes
-        # every answer open with the same phrase ("I get you're…"), whichever question it is.
-        outs = self.policy.generate([sess.answer_prompt(it, f) for it, f in zip(items, firsts)],
-                                    max_new_tokens=self.args.max_new_tokens, **SHOWN)
-        texts = sess.finish(outs, firsts, items)[1]
-        text, first = texts[0], firsts[0]
-        style = [m["options"][0 if R.AXES[m["axis"]][first] else 1][0] for m in self.menu]
-        f = features(text)
-        return {"lean": {a: round(v, 2) for a, v in lean.items()}, "style": style, "answer": text, "texts": texts,
-                "favoured": first,
-                "clauses": list(R.STYLE_CLAUSES[first]),
-                "words": f["words"], "sentences": f["sentences"], "exclamations": text.count("!"),
-                "warm_phrases": sum(text.lower().count(p) for p in WARM_PHRASES)}
+    def _final(self, s):
+        """The session's model on the rating questions: the plain prompt, with no style in it."""
+        sess, items = s["sess"], s["scenario"]["heldout"]
+        # Sampled with a little randomness, as the standard model's answers were: taking the single
+        # most likely wording every time makes answers open with the same phrase.
+        outs = self.policy.generate(sess.plain["heldout"], max_new_tokens=self.args.max_new_tokens, **SHOWN)
+        return sess.finish(outs, items=items)[1]
 
     def _write(self, s, n):
         """Write round n's candidates with the session's current adapter."""
         import time
         t = time.time()
         i = (n - 1) % len(s["scenario"]["train"])
-        picks, answers, texts, redrawn, segments = s["sess"].propose(i, s["rng"])
-        s["cands"][n] = {"answers": answers, "segments": segments,
+        # Four different style instructions, drawn at random: they only make the four answers differ.
+        picks, answers, texts, redrawn, _ = s["sess"].propose(i, s["rng"])
+        s["cands"][n] = {"answers": answers, "prompt": s["sess"].plain["train"][i],
                          "payload": {"session": s["id"], "round": n, "rounds": s["rounds"],
                                      "question": s["scenario"]["train"][i]["q"], "candidates": texts,
                                      "role": s["role"], "topic": s.get("topic", ""), "builtin": s["builtin"],
@@ -270,10 +242,10 @@ class Live:
         """Apply round n's feedback to the session's adapter."""
         from bench.methods import Group
         c = s["cands"].pop(n)
-        rewards = [0.0] * K
-        rewards[best], rewards[worst] = 1.0, -1.0
-        s["method"].update([Group(None, c["answers"], list(range(K)), None, None,
-                                  segments=c["segments"], rewards=rewards)], None)
+        # Each answer is credited to the plain prompt, not to the style instruction it was written under.
+        order = [best, *[j for j in range(K) if j not in (best, worst)], worst]
+        s["groups"].append(Group(c["prompt"], c["answers"], order, None, None, bestworst=True))
+        s["method"].update(s["groups"], None)
         # Nothing is measured between rounds: the model is rated once, at the end (see _summary).
 
     def _after(self, s, n, best, worst):
@@ -293,48 +265,38 @@ class Live:
             print(f"session {s['id']}: {s['error']}", flush=True)   # the detail goes to the log, not the visitor
 
     def _summary(self, s):
-        # Measured once, at the end: the tuned model answers the unseen questions and the judge rates
-        # each scale. The standard model's ratings on the same questions (taken at start-up) are the
-        # comparison. If the judge is unavailable the page falls back to the model's style choices.
-        # Only the answering needs the GPU; the judge calls run outside the lock, so a slow Gemini
-        # does not hold up other visitors' sessions.
-        final = {"round": s["rounds"], **self._with(s, lambda: self._track(s))}
-        s["favoured"] = final["favoured"]
-        h = [s["history"][0], final]
+        # Measured once, at the end: the tuned model answers the unseen questions from the plain prompt
+        # and the judge rates each scale. The standard model's ratings on the same questions (taken at
+        # start-up) are the comparison. Only the answering needs the GPU; the judge calls run outside
+        # the lock, so a slow Gemini does not hold up other visitors' sessions.
+        texts = self._with(s, lambda: self._final(s))
         s["rating0"].join(timeout=40)
-        written = [s["written0"], self._written(s["scenario"]["heldout"], final["texts"])]
+        written = [s["written0"], self._written(s["scenario"]["heldout"], texts)]
         rated = all(written)
         axes = [{"axis": m["axis"], "first": m["options"][0][0], "second": m["options"][1][0],
-                 "lean": [r["lean"][m["axis"]] for r in h],
                  "written": [w[m["axis"]] for w in written] if rated else None} for m in self.menu]
-        texts = h[-1]["texts"]   # the tuned model's answers to the unseen questions, as rated
         examples = [{"question": it["q"], "before": b, "after": t}
-                    for it, b, t in list(zip(s["scenario"]["heldout"], s["base_texts"], texts))[:EXAMPLES]]
-        keep = ("round", "style", "answer", "words", "sentences", "exclamations", "warm_phrases")
+                    for it, b, t in zip(s["scenario"]["heldout"], s["base_texts"], texts)]
         return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes, "role": s["role"],
-                "topic": s.get("topic", ""), "builtin": s["builtin"],
-                "style_instructions": h[-1]["clauses"], "tracked_question": s["scenario"]["heldout"][0]["q"],
-                "track": [{k: r.get(k) for k in keep} for r in h], "examples": examples}
+                "topic": s.get("topic", ""), "builtin": s["builtin"], "examples": examples}
 
     def _try(self, s, item):
         """One question of the visitor's own, answered by the standard model and by their model.
 
-        Both answer from the same two-point fact sheet (written for the question just before this),
-        in the same prompts as the session used, so the two say the same thing and differ in style.
-        The tuned model writes in the style it favoured at the end of the session.
+        Both get the same prompt: the question and a two-point fact sheet (written for it just before
+        this), and no style. The only difference is the session's adapter.
         """
-        sess, style = s["sess"], s["favoured"]
+        sess = s["sess"]
         plain = self.policy.prompt_ids(s["scenario"]["system"], self.R.user_message(item))
-        styled = sess.answer_prompt(item, style)
         try:   # both answers in one pass on the GPU
-            base, tuned = ([o] for o in self.policy.generate([plain, styled], max_new_tokens=self.args.max_new_tokens,
+            base, tuned = ([o] for o in self.policy.generate([plain, plain], max_new_tokens=self.args.max_new_tokens,
                                                               adapters=[False, True], **SHOWN))
         except Exception as e:  # noqa: BLE001 - fall back to one after the other
             print(f"mixed batch failed, writing in turn: {e}", flush=True)
             base = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, use_adapter=False, **SHOWN)
-            tuned = self.policy.generate([styled], max_new_tokens=self.args.max_new_tokens, **SHOWN)
+            tuned = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, **SHOWN)
         return {"question": item["q"], "before": sess.finish(base, items=[item])[1][0],
-                "after": sess.finish(tuned, [style], [item])[1][0]}
+                "after": sess.finish(tuned, items=[item])[1][0]}
 
     def _export(self, s, summary):
         """Package the session's adapter as a zip on the adapters volume, for download."""
@@ -349,12 +311,14 @@ class Live:
         self.policy.model.save_pretrained(str(d))   # PEFT writes the adapter only, not the base model
         (d / "README.md").unlink(missing_ok=True)   # PEFT's empty model card; instructions.txt is the guide
         meta = {"base_model": MODEL, "created": time.strftime("%Y-%m-%d"), "rounds": s["rounds"],
-                "profile": [{"axis": a["axis"], "first": a["first"], "second": a["second"], "lean": a["lean"][-1]}
-                            for a in summary["axes"]],
+                # the judge's ratings of the writing, 1 to 5 toward "first": the standard model's, then this one's
+                "profile": [{"axis": a["axis"], "first": a["first"], "second": a["second"],
+                             "standard_model": a["written"][0] if a["written"] else None,
+                             "this_model": a["written"][-1] if a["written"] else None} for a in summary["axes"]],
                 "speaking_as": s["role"], "about": s.get("topic", ""), "questions": [it["q"] for it in s["scenario"]["train"][: s["rounds"]]],
-                "style_instructions": summary["style_instructions"], "system_prompt": s["scenario"]["system"],
-                "prompt_format": "Question, then the fact sheet if any, then 'Write your answer in this style:' "
-                                 "followed by the style instructions as a bulleted list, all in the user turn."}
+                "system_prompt": s["scenario"]["system"],
+                "prompt_format": "The user turn is 'Question: ...', then 'Facts:' and a bulleted fact sheet if there is "
+                                 "one. No style is named anywhere: the adapter carries the style."}
         (d / "attune.json").write_text(json.dumps(meta, indent=1))
         (d / "instructions.txt").write_text(PACKAGE_README.format(base=MODEL, date=meta["created"], rounds=s["rounds"]))
         (d / "example.py").write_text(PACKAGE_EXAMPLE)
@@ -382,7 +346,7 @@ class Live:
         from fastapi.responses import HTMLResponse
         from pydantic import BaseModel
 
-        from bench.methods import GRPOStyle
+        from bench.methods import GRPOPlain
 
         api = FastAPI()
 
@@ -465,14 +429,10 @@ class Live:
                  "touched": time.time(),
                  "scenario": scenario, "role": role, "topic": topic, "builtin": builtin, "notice": None,
                  "cands": {}, "error": None, "thread": None,
-                 # 2e-5 for the five-question session: in the benchmark it kept nearly all of what 3e-5
-                 # learned (3.58 against 3.67 axes of 4) with the wording staying close to the standard
-                 # model's (drift 0.36 against 0.62), where 3e-5 settled on stock phrases in live sessions.
-                 # Ten rounds stay at 1e-5.
-                 # The wording is trained at a third of the strength of the style choice: in the
-                 # benchmark that cut how often the final answers shared one opening (29% against 39%).
-                 "method": GRPOStyle(self.policy, lr=2e-5 if rounds == ROUNDS else 1e-5, steps_per_round=8,
-                                     choice_clip=0.2, answer_weight=0.3)}
+                 # GRPO's clipped update on the plain prompt; half of each round's steps revisit earlier
+                 # rounds' picks, which in the benchmark took the judge's fit from 3.18 to 4.62.
+                 "method": GRPOPlain(self.policy, lr=LEARNING_RATE, steps_per_round=8, replay=True,
+                                     seed=random.randrange(2 ** 31))}
             self.sessions[s["id"]] = s
             self._with(s, lambda: self._open(s))
             self._with(s, lambda: self._write(s, 1))

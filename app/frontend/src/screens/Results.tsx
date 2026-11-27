@@ -3,6 +3,9 @@ import { api, AS_ADJECTIVE, AS_CLAUSE, AXIS_NOTES, read, type Example, type Mode
 import { Scale } from '../components/Scale'
 import { Spinner } from '../components/Spinner'
 
+// How the two columns of a comparison were written: the same prompt for both, with no style named in it.
+const SAME_POINTS = 'Both models get the same question and the same two points to make, and neither is told a style. The difference comes from your model\'s training.'
+
 /** "empathetic, collaborative and formal" */
 const list = (words: string[]) => words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
 
@@ -40,23 +43,25 @@ export function Results({ summary, mock, onAgain, onExpired }: { summary: Summar
           <p className="hint">Result · {summary.rounds} questions</p>
           <h1 className="mt-1 text-lg font-semibold text-gray-900">Your model is ready</h1>
           <p className="mt-2 text-gray-600">
-            {found.length > 0
+            {!rated ? <>Its writing could not be rated this time. The examples below show how it answers.</>
+              : found.length > 0
               ? <>It learned that{setting} you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
               : <>Your picks did not move the model clearly on any scale.</>}
-            {open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
-            {same.length > 0 && <> On {list(same.map((r) => r.axis))}, it writes much as the standard model already does.</>}
+            {rated && open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
+            {rated && same.length > 0 && <> On {list(same.map((r) => r.axis))}, it writes much as the standard model already does.</>}
           </p>
         </section>
 
+        {rated && (
         <section className="panel" aria-labelledby="scales">
           <h2 id="scales" className="panel-title border-b border-gray-200 px-4 py-3">What it learned</h2>
           <div className="divide-y divide-gray-100">{summary.axes.map((a) => <Scale key={a.axis} axis={a} />)}</div>
           <p className="hint border-t border-gray-100 px-4 py-3">
-            {rated ? <>Rated by a second AI model from answers to five questions your model was not trained on. <Marker hollow /> standard model, <Marker /> your model. The darker middle is no clear preference.</>
-              : 'The writing could not be rated this time, so these show the styles your model chooses. The darker middle is no clear preference.'}
+            Rated by a second AI model from answers to five questions your model was not trained on. <Marker hollow /> standard model, <Marker /> your model. The darker middle is no clear preference.
             {' '}Results can differ between sessions.
           </p>
         </section>
+        )}
 
         {example && (
           <section className="panel" aria-labelledby="difference">
@@ -75,6 +80,7 @@ export function Results({ summary, mock, onAgain, onExpired }: { summary: Summar
                 <div><p className="hint">Standard model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-600">{example.before}</p></div>
                 <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{example.after}</p></div>
               </div>
+              <p className="hint mt-3">{SAME_POINTS}</p>
             </div>
           </section>
         )}
@@ -124,7 +130,7 @@ function TryBox({ session, onExpired }: { session: string; onExpired: (e: unknow
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
         )}
-        <p className="hint mt-3">Both models are given the same two points to make, so the difference you see is style. Check anything that matters with a real professional. Available for a few minutes after your session.</p>
+        <p className="hint mt-3">{SAME_POINTS} Check anything that matters with a real professional. Available for a few minutes after your session.</p>
       </div>
     </section>
   )

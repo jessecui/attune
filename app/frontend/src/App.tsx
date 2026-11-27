@@ -46,8 +46,8 @@ export default function App() {
   return (
     <Shell mock={!!me?.mock} progress={progress} onHome={goHome}>
       {/* The password prompt sits over the start screen, which is inert until sign-in. */}
-      {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [5, 10]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
-      {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [5, 10]} error={stage.error} onStart={(r) => begin(r)}
+      {stage.name === 'gate' && <><div inert aria-hidden><Welcome choices={me?.round_choices ?? [8]} onStart={() => {}} onDraft={() => {}} onExpired={() => false} /></div><Gate onDone={refresh} /></>}
+      {stage.name === 'welcome' && <Welcome key={stage.error ?? ''} choices={me?.round_choices ?? [8]} error={stage.error} onStart={(r) => begin(r)}
         onDraft={(rounds, draft) => setStage({ name: 'review', rounds, draft })} onExpired={expired} />}
       {stage.name === 'review' && <Review draft={stage.draft} onBack={() => setStage({ name: 'welcome' })} onStart={(d) => begin(stage.rounds, d)} />}
       {stage.name === 'starting' && <Starting />}

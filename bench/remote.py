@@ -143,6 +143,50 @@ GRIDS = {
                   "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), "--max-sentences", "4",
                                   *SHIPPED[:4], "--answer-weight", aw, *SHIPPED[6:], "--sample-temps", "0,0.7,1.0"]}
                  for aw in ("0.3", "0.15", "0") for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # Can what GRPO learned be moved into the plain prompt, so the model writes in the learned style with no
+    # style in its prompt? After the session, the adapter is trained to give its own styled answers to the
+    # plain prompt, at three settings; the held-out questions are then answered from the plain prompt.
+    "distill": [{"name": f"grpo_{p}_s{seed}",
+                 "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *SHIPPED,
+                                 "--distill", "3:1e-4,6:1e-4,3:3e-4"]}
+                for p in LIVE_PERSONAS for seed in (1, 2)],
+    # GRPO's update aimed at the plain prompt (no style choice, no style in the tuned model's prompt), at two
+    # learning rates. Compared with the GRPO and DPO runs of final4, which use the same users and seeds.
+    "plain": [{"name": f"grpo-plain-lr{lr}_{p}_s{seed}",
+               "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed),
+                               "--method", "grpo_plain", "--lr", lr]}
+              for lr in ("2e-5", "5e-5") for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # Fair tuning of the two methods that train the plain prompt: the same three learning rates, users and seeds,
+    # both reusing earlier rounds' picks (DPO always does). Each run also answers the five held-out questions:
+    # a method's rate is chosen on those and the comparison reported on the ten test questions.
+    "tune1": [{"name": f"{tag}-lr{lr}_{p}_s{seed}",
+               "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), "--save-probe",
+                               "--lr", lr, *extra]}
+              for tag, extra in [("dpo", ["--method", "dpo"]), ("grpo-plain", ["--method", "grpo_plain", "--replay"])]
+              for lr in ("2e-5", "5e-5", "1e-4") for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # Session length and the model's own answers, for the two methods that train the plain prompt. Ten rounds
+    # (a ten-round run passes through every shorter session, so rounds 5, 7 and 8 are read from the same runs),
+    # with 0, 1 or 2 of each round's four answers being the model's own answer to the plain prompt. Rate 2e-5
+    # for both: in tune1 it was the highest rate at which five rounds lost no content.
+    "long": [{"name": f"{tag}-own{own}-lr2e-5_{p}_s{seed}",
+              "argv": LIVE + ["--judge-user", "--rounds", "10", "--persona", p, "--seed", str(seed), "--save-probe",
+                              "--lr", "2e-5", "--own", str(own), "--no-duplicates", *extra]}
+             for tag, extra in [("dpo", ["--method", "dpo"]), ("grpo-plain", ["--method", "grpo_plain", "--replay"])]
+             for own in (0, 1, 2) for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # The model's own answers at five rounds and rate 5e-5, the best five-round rate in tune1 (the "long" grid
+    # covers five rounds only at 2e-5). Own 0 is the control: the same runs with the duplicate rule on.
+    "own5": [{"name": f"{tag}-own{own}-lr5e-5_{p}_s{seed}",
+              "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), "--save-probe",
+                              "--lr", "5e-5", "--own", str(own), "--no-duplicates", *extra]}
+             for tag, extra in [("dpo", ["--method", "dpo"]), ("grpo-plain", ["--method", "grpo_plain", "--replay"])]
+             for own in (0, 1, 2) for p in LIVE_PERSONAS for seed in (1, 2, 3)],
+    # The "long" grid's best setup (no own answers, rate 2e-5) again on seeds it has not seen, so the session
+    # length chosen from "long" can be reported on runs that played no part in choosing it.
+    "confirm": [{"name": f"{tag}-own0-lr2e-5_{p}_s{seed}",
+                 "argv": LIVE + ["--judge-user", "--rounds", "10", "--persona", p, "--seed", str(seed), "--save-probe",
+                                 "--lr", "2e-5", "--own", "0", "--no-duplicates", *extra]}
+                for tag, extra in [("dpo", ["--method", "dpo"]), ("grpo-plain", ["--method", "grpo_plain", "--replay"])]
+                for p in LIVE_PERSONAS for seed in (4, 5, 6)],
     "final4": [{"name": f"{tag}_{p}_s{seed}",
                 "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
                for tag, extra in [("grpo", SHIPPED), ("dpo-lr2e-5", ["--method", "dpo", "--lr", "2e-5"])]

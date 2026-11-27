@@ -138,7 +138,7 @@ class Session:
         limit = self.args.max_sentences
         if not limit:
             return outs, texts
-        caps = [min(STYLE_CAPS[s], limit) if styles and STYLE_CAPS else limit for s in (styles or outs)]
+        caps = [min(STYLE_CAPS[s], limit) if styles and STYLE_CAPS and s is not None else limit for s in (styles or outs)]
         if items:
             for j, (t, it) in enumerate(zip(texts, items)):
                 full = facts_retained(cap_sentences(t, limit), it["keys"])
@@ -169,8 +169,13 @@ class Session:
     def style_dist(self, prompt):
         return self.style_logp(prompt).exp()
 
-    def propose(self, i, rng):
-        """K candidates for training prompt i: (styles, token ids, texts, redraw count, segments)."""
+    def propose(self, i, rng, own=0):
+        """K candidates for training prompt i: (styles, token ids, texts, redraw count, segments).
+
+        own: for methods that train the plain prompt, how many of the K are the model's own answers to
+        the plain prompt, with no style instruction (their style is None). The rest keep an instruction,
+        which is there only to make the candidates differ.
+        """
         a, item = self.args, self.scenario["train"][i]
         if self.latent:
             dist = (1 - EXPLORE) * self.style_dist(self.styled["train"][i]) + EXPLORE / len(STYLES)
@@ -193,8 +198,12 @@ class Session:
                     picks = torch.multinomial(dist, a.k, replacement=False, generator=g).tolist()
         else:
             picks = rng.sample(range(len(STYLES)), a.k)
+            picks[:min(own, a.k)] = [None] * min(own, a.k)
+            rng.shuffle(picks)
 
         def context(s):
+            if s is None:   # the model's own answer: the plain prompt, as it will be used once trained
+                return self.plain["train"][i]
             if self.two_step or (not self.latent and STYLE_CLAUSES):
                 # The style as bullets in the user turn. For dpo this instruction is hidden:
                 # the model is trained on the plain prompt to prefer the answers it led to.
@@ -261,6 +270,11 @@ class Session:
                             far = [s for s in pool if reach[s] == max(reach.values())]
                         if far:
                             picks[j] = rng.choice(far)
+                else:
+                    # No style is being learned here, so any style not on screen will do: a repeat (two of the
+                    # model's own answers alike, or two styles that came out the same) is rewritten in one.
+                    for j in same:
+                        picks[j] = rng.choice([s for s in range(len(STYLES)) if s not in picks])
                 fresh, fresh_texts = draw(same)
                 for j, o, t in zip(same, fresh, fresh_texts):
                     if facts_retained(t, item["keys"]) >= a.min_facts:
@@ -298,6 +312,42 @@ class Session:
                                             best, self.scenario[split])[1]
                            for who, on in (("tuned", True), ("standard", False))}
         return out
+
+    def distill(self, epochs, lr, per=4, seed=0):
+        """Move what was learned into the plain prompt, so the model writes in the learned style unasked.
+
+        For each question the session asked, the tuned model writes `per` answers in the style it
+        picks for that question (sampled, each keeping the fact sheet). The adapter is then trained,
+        by ordinary next-token prediction, to give those answers to the plain prompt, which names
+        no style. Returns what was done; the adapter is changed in place.
+        """
+        t0 = time.time()
+        rng = random.Random(seed)
+        n = min(self.args.rounds, len(self.scenario["train"]))
+        _, best, _ = self.chosen("train")
+        pairs = []
+        for i in range(n):
+            item, style = self.scenario["train"][i], best[i]
+            outs = self.policy.generate([self.answer_prompt(item, style)] * per, max_new_tokens=self.args.max_new_tokens,
+                                        temperature=0.8, top_p=0.95)
+            ids, texts = self.finish(outs, [style] * per, [item] * per)
+            pairs += [(self.plain["train"][i], o) for o, t in zip(ids, texts)
+                      if facts_retained(t, item["keys"]) >= self.args.min_facts]
+        opt = torch.optim.AdamW(self.policy.trainable_parameters(), lr=lr, weight_decay=0.0)
+        losses = []
+        for _ in range(epochs):
+            rng.shuffle(pairs)
+            for k in range(0, len(pairs), 4):
+                batch = pairs[k:k + 4]
+                lp = self.policy.logprobs([p for p, _ in batch], [c for _, c in batch], grad=True)
+                loss = -(lp / torch.tensor([len(c) for _, c in batch], device=lp.device)).mean()
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+                losses.append(loss.item())
+        return {"examples": len(pairs), "steps": len(losses), "seconds": time.time() - t0,
+                "loss_first": losses[0] if losses else None, "loss_last": losses[-1] if losses else None,
+                "styles": [STYLES[s] for s in best[:n]]}
 
     def answer_heldout(self, use_adapter=True, plain=False, split="heldout"):
         """Greedy answers to the held-out prompts, plus the style marginals if latent."""
@@ -427,6 +477,17 @@ def main(argv=None):
                     help="if a candidate still drops facts after redraws, replace its style with another")
     ap.add_argument("--redraws", type=int, default=3, help="attempts to replace a candidate that drops facts")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--own", type=int, default=0,
+                    help="dpo, grpo_plain: this many of each round's candidates are the model's own answers to the plain "
+                         "prompt; the rest are written under a style instruction for variety")
+    ap.add_argument("--save-probe", action="store_true",
+                    help="also answer the held-out questions after the last round (with --eval-split test)")
+    ap.add_argument("--replay", action="store_true",
+                    help="grpo_style, grpo_plain: spend half of each round's steps on earlier rounds' picks")
+    ap.add_argument("--distill", default="",
+                    help="comma-separated 'epochs:learning rate' settings: after the last round, train the adapter to give "
+                         "its styled answers to the plain prompt, and answer the held-out questions from the plain prompt")
+    ap.add_argument("--distill-per", type=int, default=4, help="styled answers written per session question for --distill")
     ap.add_argument("--sample-temps", default="",
                     help="comma-separated temperatures: after the last round, also answer the held-out questions "
                          "at each one, with the tuned model and with the untouched model in the same style")
@@ -463,6 +524,8 @@ def main(argv=None):
         extra["choice_clip"] = args.choice_clip
     if args.answer_weight != 1.0:
         extra["answer_weight"] = args.answer_weight
+    if args.replay:
+        extra["replay"] = True
     menu = scenario.get("menu") if args.axes else None
     flip_axes = set(filter(None, args.flip_axes.split(",")))
     care = set(filter(None, args.care.split(",")))
@@ -488,7 +551,7 @@ def main(argv=None):
     for r in range(1, args.rounds + 1):
         i = (r - 1) % len(scenario["train"])
         t_gen = time.time()
-        picks, cands, cand_texts, redrawn, segments = sess.propose(i, rng)
+        picks, cands, cand_texts, redrawn, segments = sess.propose(i, rng, own=args.own)
         t_gen = time.time() - t_gen
         flipped = bool(args.flip_at) and r > args.flip_at
         wants = user_wants(args.persona, menu, flipped, flip_axes)
@@ -570,12 +633,34 @@ def main(argv=None):
             info["axes_right"] = axes_right(marg, wants)
         print(line(r, ev, f" | redrawn {redrawn} | gen {t_gen:4.1f}s | update {t_upd:5.1f}s | "
                    + " ".join(f"{k} {v:.3f}" for k, v in info.items())), flush=True)
-        log["rounds"].append({"round": r, "styles": [STYLES[s] for s in picks], "candidates": cand_texts,
+        log["rounds"].append({"round": r, "styles": [STYLES[s] if s is not None else "(own answer, no style)" for s in picks], "candidates": cand_texts,
                               "redrawn": redrawn, "order": order, "flipped": flipped, "judged": judged, "careless": careless, "relabelled": relabelled, "t_generate": t_gen, "t_update": t_upd,
                               **info, **ev})
 
     if args.sample_temps and latent:
         log["sampled"] = sess.answer_sampled([float(t) for t in args.sample_temps.split(",")])
+
+    if args.save_probe and scenario.get("probe"):
+        # The held-out questions as well, so a setting can be chosen on them and reported on the test questions.
+        log["probe"] = {"questions": [it["q"] for it in scenario["probe"]],
+                        "base": sess.answer_heldout(use_adapter=False, plain=True, split="probe")[0],
+                        "texts": sess.answer_heldout(split="probe", plain=not latent)[0]}
+
+    if args.distill and latent:
+        # The tuned model on the plain prompt, with no style in it: before any distilling, then after each
+        # setting ("epochs:learning rate"), every one starting again from the adapter as the session left it.
+        log["plain_tuned"] = sess.answer_heldout(plain=True)[0]
+        after_session = policy.snapshot()
+        log["distilled"] = {}
+        for setting in args.distill.split(","):
+            epochs, lr = setting.split(":")
+            policy.restore(after_session)
+            info = sess.distill(int(epochs), float(lr), per=args.distill_per, seed=args.seed)
+            info["texts"] = sess.answer_heldout(plain=True)[0]
+            log["distilled"][setting] = info
+            print(f"distilled {setting}: {info['examples']} examples, {info['steps']} steps, {info['seconds']:.0f}s, "
+                  f"loss {info['loss_first']:.2f} -> {info['loss_last']:.2f}", flush=True)
+        policy.restore(after_session)
 
     out = Path(args.out or f"results/{args.method}_{args.persona}_s{args.seed}.json")
     out.parent.mkdir(parents=True, exist_ok=True)
