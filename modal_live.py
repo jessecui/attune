@@ -112,13 +112,24 @@ GOOD TO KNOW
 
   - It was trained on short pieces of advice, so that is where it sounds most
     like your session.
+  - In your session every answer was given two points to make. Asked a bare
+    question, it answers from what it knows. To give it points, add them after
+    the question:
+      .venv/bin/python example.py "How do I ask for a raise?" "Gather evidence of your results" "Research typical pay"
   - It knows no more than the standard model. Its answers show a style; they can
     be wrong and are not medical, legal, or financial advice.
   - To free the disk space afterwards, delete this folder:
       ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct
 """
 
-PACKAGE_EXAMPLE = """\"\"\"Ask your Attune model a question: python example.py "How do I ask for a raise?" \"\"\"
+# The part of the system prompt that holds an answer to its fact sheet.
+POINTS_RULE = "Base your advice only on the points provided and cover both of them. You may add a brief remark that sets the tone, but no new advice. "
+
+PACKAGE_EXAMPLE = """\"\"\"Ask your Attune model a question: python example.py "How do I ask for a raise?"
+
+To give it the points to make, as in your session, add them after the question:
+    python example.py "How do I ask for a raise?" "Gather evidence of your results" "Research typical pay"
+\"\"\"
 import json
 import sys
 from pathlib import Path
@@ -135,9 +146,14 @@ base = AutoModelForCausalLM.from_pretrained(meta["base_model"], dtype=torch.floa
 model = PeftModel.from_pretrained(base, str(here)).to(device).eval()
 
 question = sys.argv[1] if len(sys.argv) > 1 else "How do I ask for a raise?"
-# The question and nothing else: no style is named. The style is in the adapter's weights.
-messages = [{"role": "system", "content": meta["system_prompt"]},
-            {"role": "user", "content": f"Question: {question}"}]
+points = sys.argv[2:]
+# No style is named anywhere: the style is in the adapter's weights. With points, the prompt is the one
+# your session used (the answer is held to them); without, the model answers from what it knows.
+if points:
+    system, user = meta["system_prompt_with_points"], f"Question: {question}\\n\\nFacts:\\n" + "\\n".join(f"- {p}" for p in points)
+else:
+    system, user = meta["system_prompt"], f"Question: {question}"
+messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
 # return_dict=True works across transformers versions (newer ones return a mapping, not a bare tensor)
 enc = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt", return_dict=True).to(device)
 # a little randomness, so answers do not all open with the same phrase
@@ -327,9 +343,13 @@ class Live:
                              "standard_model": a["written"][0] if a["written"] else None,
                              "this_model": a["written"][-1] if a["written"] else None} for a in summary["axes"]],
                 "speaking_as": s["role"], "about": s.get("topic", ""), "questions": [it["q"] for it in s["scenario"]["train"][: s["rounds"]]],
-                "system_prompt": s["scenario"]["system"],
-                "prompt_format": "The user turn is 'Question: ...', then 'Facts:' and a bulleted fact sheet if there is "
-                                 "one. No style is named anywhere: the adapter carries the style."}
+                # In the session every question came with two points to make, and the system prompt says so.
+                # Asked a bare question there are no points, so that sentence is left out.
+                "system_prompt": s["scenario"]["system"].replace(POINTS_RULE, ""),
+                "system_prompt_with_points": s["scenario"]["system"],
+                "prompt_format": "The user turn is 'Question: ...'. With points to make, it continues with 'Facts:' and "
+                                 "a bulleted list, and the system prompt is system_prompt_with_points. No style is "
+                                 "named anywhere: the adapter carries the style."}
         (d / "attune.json").write_text(json.dumps(meta, indent=1))
         (d / "instructions.txt").write_text(PACKAGE_README.format(base=MODEL, date=meta["created"], rounds=s["rounds"]))
         (d / "example.py").write_text(PACKAGE_EXAMPLE)
