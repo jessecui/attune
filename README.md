@@ -159,7 +159,7 @@ For real sessions, `scripts/app.sh` also needs the two addresses that `modal dep
 
 ## Limits
 
-- Advice only. A test with speakers who aren't advising (a student, a client) kept the styles but lost content, so the setting step treats every setting as advice and declines ones that aren't.
+- Advice only. In a test with speakers who aren't advising (a student, a client), the styles came through but content was covered less reliably: both points appeared in 62% of the student's answers and 84% of the client's, against 90% for an advisor. So the setting step keeps every session to advice: it recasts the role as someone advising you, and declines settings it can't recast.
 - The judge rates style and content and has been spot-checked by eye, not against a full set of hand labels. It is loosest on depth, sometimes counting a short "to…" phrase as a reason. The live fact check before an answer is shown is keyword matching.
-- Results depend on how each style line is worded, and a tuned model can still settle on one opening phrase.
+- Results depend on how each style line is worded. Empathetic answers often share an opening ("It can feel…"): the untouched model does the same when given that style, so it comes from the instruction and not from training.
 - The answers demonstrate a style. They can be wrong and are not medical, legal or financial advice.
