@@ -53,12 +53,25 @@ export default function App() {
   }, [endsAt])
   const left = endsAt === null || !open ? undefined : Math.max(0, endsAt - now)
   // The GPU stops after five minutes without a request, and the session is in its memory. While a
-  // session is open and has time left, a request every two minutes keeps it running.
+  // session has time left, the visitor's own activity (moving the pointer, scrolling, typing) sends a
+  // request, at most one a minute, so the GPU stays up while someone is reading and stops about five
+  // minutes after they walk away.
   const live = left !== undefined && left > 0
   useEffect(() => {
     if (!live) return
-    const t = setInterval(() => { api.alive().catch(() => {}) }, 120000)
-    return () => clearInterval(t)
+    let last = Date.now()   // the request that opened this screen has just reached the GPU
+    const active = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 60000) return
+      last = Date.now()
+      api.alive().catch(() => {})
+    }
+    const events = ['pointermove', 'pointerdown', 'keydown', 'scroll', 'touchstart'] as const
+    events.forEach((e) => window.addEventListener(e, active, { passive: true, capture: true }))
+    document.addEventListener('visibilitychange', active)
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, active, { capture: true }))
+      document.removeEventListener('visibilitychange', active)
+    }
   }, [live])
   useEffect(() => {
     if (left === 0 && stage.name === 'round') {
@@ -68,6 +81,17 @@ export default function App() {
   }, [left, stage.name])
   // A lapsed sign-in sends the visitor back to the password screen.
   const expired = (e: unknown) => (e as { status?: number }).status === 401 && (setStage({ name: 'gate' }), true)
+
+  // A pick sent to a session the GPU no longer holds: it stopped after five minutes without activity,
+  // or the twenty minutes ran out. Either way the session cannot go on, so say why and offer another.
+  const lost = (e: unknown) => {
+    const status = (e as { status?: number }).status
+    if (status !== 404 && status !== 410) return false
+    attempt.current++
+    setStage({ name: 'welcome', error: status === 410 ? 'Your 20 minutes were up, so that session has ended. Start another whenever you like.'
+      : 'That session ended after about five minutes without activity. Start another whenever you like.' })
+    return true
+  }
 
   const progress = stage.name === 'round' ? { at: stage.round.round, of: stage.round.rounds } : undefined
   return (
@@ -79,7 +103,7 @@ export default function App() {
       {stage.name === 'review' && <Review draft={stage.draft} onBack={() => setStage({ name: 'welcome' })} onStart={(d) => begin(stage.rounds, d)} />}
       {stage.name === 'starting' && <Starting />}
       {stage.name === 'round' && (
-        <RoundScreen key={stage.round.round} round={stage.round} onExpired={expired}
+        <RoundScreen key={stage.round.round} round={stage.round} onExpired={(e) => expired(e) || lost(e)}
           onNext={(next) => { clock(next); setStage((now) =>
             // A reply for a session the visitor has since left (gone home, or started another) is dropped.
             now.name !== 'round' || now.round.session !== next.session ? now

@@ -217,9 +217,9 @@ async def start(body: Start):
 
 @app.post("/api/session/alive", dependencies=signed_in)
 async def alive():
-    """Called every couple of minutes by a page with a session open. The GPU container stops after five
-    minutes without a request and the session lives in its memory, so without this a visitor who spent
-    that long on one question would lose the session."""
+    """Called by a page with a session open while its visitor is active, at most once a minute. The GPU
+    container stops after five minutes without a request and the session lives in its memory, so without
+    this a visitor who spent that long reading one question would lose the session."""
     if not MOCK and MODAL_URL:
         _background(_warm())
     return {"ok": True}
