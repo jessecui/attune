@@ -13,7 +13,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 - 🧭 **Four style scales**: empathy, directiveness, formality and depth, each answer drawn from a menu of style combinations
 - 🩺 **Any advisor, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
 - ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
-- 📏 **Measured result**: a judge model rates your tuned model on six questions it was not trained on, beside the standard model
+- 📏 **Measured result**: a judge model rates your tuned model on five questions it was not trained on, beside the standard model
 - 💬 **Try it**: ask your own question and compare the standard model's answer with yours
 - 📦 **Download**: the adapter as a zip, with your results and a script to run it
 - 🌓 **Light and dark themes**
@@ -56,7 +56,7 @@ flowchart TB
         F["Check facts<br/>redraw if a point is missing"]
         PICK(["Browser<br/>mark best + worst"])
         U["GRPO update<br/>best and worst as reward<br/>repeat for each of 5 questions"]
-        M["Measure<br/>6 unseen questions · rated by Gemini"]
+        M["Measure<br/>5 unseen questions · rated by Gemini"]
         PKG["Package the adapter<br/>download served by a Modal CPU function"]
         C --> W --> F --> PICK --> U
         U -.-> C

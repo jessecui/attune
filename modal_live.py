@@ -20,7 +20,7 @@ import modal
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
 ROUNDS, K = 5, 4
-MEASURE, EXAMPLES = 6, 3  # unseen questions rated once, at the end; how many are shown as before/after
+MEASURE, EXAMPLES = 5, 3  # unseen questions rated once, at the end (as many as the session asks); how many are shown as before/after
 SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
 LONG_ROUNDS = 10  # optional longer session: each of the ten questions once
 # What the visitor sees when background work failed: the session cannot go on (its answers are spent).

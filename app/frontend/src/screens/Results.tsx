@@ -51,7 +51,7 @@ export function Results({ summary, mock, onAgain, onExpired }: { summary: Summar
           <h2 id="scales" className="panel-title border-b border-gray-200 px-4 py-3">What it learned</h2>
           <div className="divide-y divide-gray-100">{summary.axes.map((a) => <Scale key={a.axis} axis={a} />)}</div>
           <p className="hint border-t border-gray-100 px-4 py-3">
-            {rated ? <>Rated by a second AI model from answers to six questions your model was not trained on. <Marker hollow /> standard model, <Marker /> your model. The darker middle is no clear preference.</>
+            {rated ? <>Rated by a second AI model from answers to five questions your model was not trained on. <Marker hollow /> standard model, <Marker /> your model. The darker middle is no clear preference.</>
               : 'The writing could not be rated this time, so these show the styles your model chooses. The darker middle is no clear preference.'}
             {' '}Results can differ between sessions.
           </p>

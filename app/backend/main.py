@@ -147,7 +147,7 @@ async def prepare(body: Prepare):
         fx = _mock()
         return {"suitable": True, "reason": "", "role": "an advisor (demo data ignores the setting)", "topic": "",
                 "items": [{"question": r["question"], "points": ["", ""]} for r in fx["rounds"][: body.rounds]],
-                "measure": [{"question": e["question"], "points": ["", ""]} for e in fx["examples"]] * 2}
+                "measure": [{"question": e["question"], "points": ["", ""]} for e in fx["examples"] * 2][:5]}
     if not (FILES_URL and MODAL_KEY):
         raise HTTPException(status_code=500, detail="The setting service is not configured on the server")
     if MODAL_URL:
