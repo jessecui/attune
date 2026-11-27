@@ -36,6 +36,10 @@ If suitable:
 with a verb ending in "-ing" and names what the visitor is doing, such as "asking for a promotion" or "studying \
 for a chemistry test". It must read naturally after "when ..." and after "about ...". No capital letter, no full stop. \
 Take it from the description (or from the topic you are given); leave it empty if only the role is named.
+- title: the setting in one line as the visitor would say it, from the role's side: the role, then what that role \
+is doing for the visitor, such as "A team manager discussing your promotion", "A tutor helping you study for a \
+chemistry test" or "A manager giving you feedback on your job performance". At most 10 words, a capital on the \
+first word only, no full stop, and the visitor is "you". With no topic it is the role alone ("A team manager").
 - items: exactly the number of items asked for. Each has a question the visitor would put to that role about \
 their own situation, in the first person, at most 15 words, and all on different matters; and exactly two points. \
 With a topic, every question is about that topic, each on a different part of it.
@@ -57,6 +61,7 @@ class Draft(BaseModel):
     reason: str
     role: str
     topic: str
+    title: str
     items: list[Item]
 
 
@@ -95,7 +100,7 @@ def draft(setting, n):
             raise ValueError("too few questions came back")
     d = _ask(f"The visitor's description: {clean(setting, 300)}\n\nNumber of items: {n}", Draft, check=enough)
     return {"suitable": d.suitable, "reason": clean(d.reason, 300), "role": clean(d.role, 80),
-            "topic": clean_topic(d.topic),
+            "topic": clean_topic(d.topic), "title": clean_topic(d.title),
             "items": [{"question": clean(i.question, 200), "points": [clean(p, 200) for p in i.points]}
                       for i in d.items[:n]]}
 

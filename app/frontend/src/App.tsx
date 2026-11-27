@@ -52,6 +52,14 @@ export default function App() {
     return () => clearInterval(t)
   }, [endsAt])
   const left = endsAt === null || !open ? undefined : Math.max(0, endsAt - now)
+  // The GPU stops after five minutes without a request, and the session is in its memory. While a
+  // session is open and has time left, a request every two minutes keeps it running.
+  const live = left !== undefined && left > 0
+  useEffect(() => {
+    if (!live) return
+    const t = setInterval(() => { api.alive().catch(() => {}) }, 120000)
+    return () => clearInterval(t)
+  }, [live])
   useEffect(() => {
     if (left === 0 && stage.name === 'round') {
       attempt.current++

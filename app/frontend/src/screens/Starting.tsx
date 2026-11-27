@@ -20,6 +20,8 @@ export function Starting() {
             <li key={step} className="flex items-center gap-2.5 text-gray-700"><span className="h-1.5 w-1.5 rounded-full bg-gray-300" aria-hidden />{step}</li>
           ))}
         </ul>
+        {/* A normal start is under a minute; past that, no GPU was free and the service is waiting for one. */}
+        {seconds >= 60 && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-amber-900">GPUs are busy right now. Still trying; this can take a few minutes.</p>}
         <p className="mt-4 text-gray-600">You will have 15 minutes once the first question appears.</p>
         <div className="mt-4 h-1 overflow-hidden rounded-full bg-gray-100"><div className="indeterminate h-full w-1/4 rounded-full bg-teal-700" /></div>
       </div>

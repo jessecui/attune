@@ -4,14 +4,14 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-round-dark.png">
-  <img alt="A training round: four answers to &quot;What is the best way to handle memorizing complex definitions?&quot; from a tutor, each in a different style, with one marked best and one marked worst" src="docs/screenshot-round-light.png">
+  <img alt="A training round: four answers to &quot;I keep getting distracted by my phone when reviewing notes.&quot; from a tutor helping you study for a test, each in a different style, with A marked best and C marked worst" src="docs/screenshot-round-light.png">
 </picture>
 
 ## Features
 
 - 🎯 **Online RLHF**: GRPO on a LoRA adapter, with your best and worst picks as the reward; one update per question, about four minutes for a session
 - 🪶 **No prompt scaffolding**: style instructions only make the four answers in a round differ. The training changes how the model answers a plain question, and the finished model is never given a style
-- 🧭 **Four style scales**: empathy, directiveness, formality and depth, each answer drawn from a menu of style combinations
+- 🧭 **Four style scales**: empathy, directiveness, formality, and depth, each answer drawn from a menu of style combinations
 - 🩺 **Any advisor, any topic**: Gemini turns your description into five questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
 - ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
 - 📏 **Measured result**: a judge model rates your tuned model on five questions it was not trained on, beside the standard model
@@ -22,7 +22,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 
 ## Results
 
-Benchmarked with simulated users played by the judge model (each given a fixed set of preferences), five feedback rounds per run. Every answer scored is to a question the model was not trained on, written from a plain prompt with no style in it. Two sets of runs, 12 per method each; the second set's seeds played no part in choosing the settings:
+Benchmarked with simulated users played by the judge model (each given a fixed set of preferences), five feedback rounds per run. Every answer scored is to a question the model was not trained on, written from a plain prompt with no style in it. Four simulated users, six seeds each, in two sets of 12 runs per method. The first set was used to choose the settings; the second set's seeds played no part in choosing the learning rate or the mix of answers shown, so it is the one quoted first:
 
 | Comparison | Result |
 |---|---|
@@ -30,31 +30,31 @@ Benchmarked with simulated users played by the judge model (each given a fixed s
 | GRPO against DPO, same users and seeds | 45% on the second set (33 wins, 43 ties, 44 losses); 46% over both (73, 75, 92) |
 | DPO against the untouched model | 94% on the second set; 93% over both |
 | Fact-sheet points covered | 100% for GRPO, 99.6% for DPO |
-| Malformed answers | 0.4% for GRPO (1 of 240), 0% for DPO |
+| Malformed answers | 0.8% for GRPO (2 of 240), 1.7% for DPO (4 of 240) |
 
-Ties count as half a win. GRPO performs comparably to DPO, with DPO a little ahead on both sets by a margin within chance. Both ran at the same learning rate, session length, users and seeds, and both reuse earlier rounds' picks in later updates.
+Ties count as half a win. GRPO's win rate over the untouched model is within a point of DPO's on the second set and within three over both, and it kept every fact-sheet point (480 of 480). Head to head DPO is a little ahead on both sets, by a margin within chance. Both ran at the same learning rate, session length, users, and seeds, and both reuse earlier rounds' picks in later updates.
+
+DPO's lead comes from one of the four simulated users: the "gentle explainer", where GRPO did not pick up the empathy that user wants (18 wins to DPO's 32). Over the other three the two are level (55 wins to 60, with 65 ties).
 
 What the tuning runs showed:
 
-- **Session length, and where the text breaks.** With earlier picks reused in each update (experience replay), more rounds learn a stronger style but damage the writing: missing spaces, words run together, answers that do not end. Over both sets of runs:
+- **Session length, and where the text breaks.** With earlier picks reused in each update (experience replay), more rounds learn a stronger style but damage the writing: missing spaces, words run together, misspellings, answers that do not end. Over both sets of runs:
 
   | Rounds | Win rate over the untouched model | Malformed answers |
   |---|---|---|
   | 3 | 78% | 0% |
-  | 5 | 90% | 0.4% |
-  | 6 | 92% | 0.8% |
-  | 7 | 94% | 3.3% |
-  | 8 | 94% | 5.8% |
-  | 10 | 95% | 17% |
+  | 5 | 90% | 0.8% |
+  | 6 | 91% | 1.7% |
+  | 7 | 94% | 4.6% |
+  | 8 | 94% | 7.1% |
+  | 10 | 95% | 24% |
 
-  Without replay there were no malformed answers at any length, and DPO stayed at or near 0%. Sessions are five questions, the clean length with the most margin.
+  Without replay there were none through seven rounds and one answer in 120 after that. DPO stayed between 1% and 2% at every length, nearly all of it one misspelling ("nerve-wrking") that both tuned models produce and the untouched model never does. Sessions are five questions, the clean length with the most margin.
 - **Experience replay.** It makes GRPO learn faster: after five rounds its win rate over the untouched model was 93% with replay and 85% without, on the same seeds. It is also the cause of the damage above, because each return to an earlier round pushes its worst answer down again.
 - **Learning rate.** 2e-5 kept both the content and the text. At 5e-5, five rounds with replay left over a third of GRPO's answers malformed. At 1e-4 a third of answers dropped a fact, for both methods.
 - **The model's own answers.** Replacing one or two of the four styled answers with the model's own unprompted answer learned worse at every session length: two styled answers do not give enough variety to choose between.
 
-The judge rates style and facts, not whether the text is well formed, so the damage was found by reading answers and is now counted by pattern in the scoring.
-
-An earlier version of Attune learned which of sixteen style instructions to use and wrote the chosen one into the model's prompt. It scored well (a 96% win rate over the untouched model), but with that instruction removed the tuned model wrote like the untouched one (fit −0.16 against 0.00), so it learned a prompt, not a way of writing. The method above replaced it.
+The judge rates style and facts, not whether the text is well formed, so the damage was found by reading answers and is now counted in the scoring, by pattern and by a spelling check against a word list.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-results-dark.png">
@@ -104,7 +104,7 @@ flowchart TB
     linkStyle default stroke:#94a3b8,stroke-width:1.5px
 ```
 
-**How the update works.** Training happens online, with the adapter updated after every question during the session. Each round's four answers are written under four different style instructions drawn from the menu. The instructions are there only to make the answers differ: each answer is then scored as a reply to the plain question, with no style named. GRPO compares the four, so the best pick becomes more likely as a plain answer and the worst less likely, with every step clipped (ratio 0.2). Half of each update's steps go back over earlier rounds' picks (experience replay), so each pick is used more than once; this is why sessions stop at five questions (see Results). Because the answers are written under style instructions and not sampled from the plain prompt itself, this is GRPO's objective used off-policy. The tuned model is never given a style: on the results page, in the try box and in the download, its prompt is the question alone.
+**How the update works.** Training happens online, with the adapter updated after every question during the session. Each round's four answers are written under four different style instructions drawn from the menu. The instructions are there only to make the answers differ: each answer is then scored as a reply to the plain question, with no style named. GRPO compares the four, so the best pick becomes more likely as a plain answer and the worst less likely, with every step clipped (ratio 0.2). Half of each update's steps go back over earlier rounds' picks (experience replay), so each pick is used more than once; this is why sessions stop at five questions (see Results). Because the answers are written under style instructions and not sampled from the plain prompt itself, this is GRPO's objective used off-policy. The tuned model is never given a style: on the results page, in the try box, and in the download, its prompt is the question alone.
 
 **Benchmark.** The same session code runs on Modal with a simulated user in place of the browser: the judge model, given a persona, picks best and worst. GRPO and DPO are trained on the same best-and-worst picks, on matched personas and seeds, with the same learning rates tried for each. A method's settings are chosen on held-out questions and one set of seeds, and the comparison is reported on test questions and fresh seeds.
 
@@ -114,7 +114,7 @@ flowchart TB
 - **Backend**: FastAPI, Python
 - **Model**: [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct) with a LoRA adapter (r = 16), PyTorch, Transformers, PEFT
 - **Training**: GRPO with human best/worst feedback; DPO as the baseline
-- **GPU**: [Modal](https://modal.com), one L40S for live sessions, more for benchmarks
+- **GPU**: [Modal](https://modal.com), one L40S for live sessions (an A100 when none is free), more for benchmarks
 - **Drafting and judging**: Gemini 3.8 Flash, falling back to 3.6 Flash and then 3.5 Flash
 
 ---
@@ -173,7 +173,7 @@ For real sessions, `scripts/app.sh` also needs the two addresses that `modal dep
 | Path | What it is |
 |---|---|
 | `bench/` | Session simulation, GRPO and DPO, simulated users, the judge, setting drafts |
-| `data/` | Built-in questions, fact sheets and the style menu (`advice.json`); `experiments/` holds the copies used in wording tests |
+| `data/` | Built-in questions, fact sheets, and the style menu (`advice.json`); `experiments/` holds the copies used in wording tests |
 | `modal_live.py` | The live session service: generation, updates, results, try box, adapter packaging |
 | `modal_app.py`, `bench/remote.py` | Benchmark jobs on Modal |
 | `app/backend/` | FastAPI server: name gate, private relay to Modal, mock mode |
@@ -187,4 +187,4 @@ For real sessions, `scripts/app.sh` also needs the two addresses that `modal dep
 - The judge rates style and content and has been spot-checked by eye, not against a full set of hand labels. It is loosest on depth, sometimes counting a short "to…" phrase as a reason. The live fact check before an answer is shown is keyword matching.
 - Results depend on how each style line is worded. The model learns from answers written under those lines, so it can inherit their habits, such as empathetic answers that open the same way ("It can feel…").
 - Five rounds is a ceiling set by the method, not by what could be learned: the style comes through more strongly after eight rounds (fit 4.78 against 3.97), but replay breaks the text from seven rounds on. Limiting the total change to each answer across replays might lift that; it is untested.
-- The answers demonstrate a style. They can be wrong and are not medical, legal or financial advice.
+- The answers demonstrate a style. They can be wrong and are not medical, legal, or financial advice.

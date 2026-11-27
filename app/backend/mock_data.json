@@ -3,190 +3,114 @@
   {
    "question": "I keep forgetting to take my daily medication. What can I do?",
    "candidates": [
-    "Tying the dose to a daily routine, like brushing your teeth, helps because it creates a habitual connection. A weekly pill organizer makes tracking easier, showing at a glance if you missed a dose.",
-    "It is understandable to feel frustrated by such a common issue. Initiate by linking the medication time to a specific daily activity, such as brushing your teeth. Proceed to use a weekly pill organizer to track and visually confirm each dose taken.",
-    "Establish a daily routine that includes taking your medication at the same time as an existing activity. Utilize a weekly pill organizer to keep track of your dosages and spot missed doses. Implement these strategies to enhance your adherence and ensure you do not forget your medication.",
-    "Tying your pill time to brushing your teeth each morning helps. A weekly organizer also lets you see if you skipped a dose."
+    "Tying your pill taking to a daily habit like brushing your teeth can help make it a routine. This way, it becomes as natural as other daily activities. A weekly pill organizer also works well because it lets you see at a glance if you've missed a dose, making it easier to stay on track.",
+    "It can be tough when you're trying to stay on top of your medication. Tie your pill time to brushing your teeth to make it a habit. It'll become second nature before you know it. And use a weekly organizer to keep track; it's easy to see if you've missed a dose and helps keep you consistent.",
+    "Tie the moment of taking your medication to a specific daily action such as brushing your teeth to create a habitual association. Use a weekly pill organizer to visually track your daily doses and identify missed ones promptly. These strategies enhance memory through routine and visual cues, ensuring medication adherence and maintaining health.",
+    "It is common to feel frustrated when medication schedules interfere with daily life. Tying the administration of your medication to a regular activity like brushing your teeth can help establish a reliable reminder. Utilizing a weekly pill organizer can also provide a visual cue regarding whether you have taken your medication."
    ]
   },
   {
    "question": "I have an exam next week. How should I study?",
    "candidates": [
-    "Divide your study sessions into several days to prevent cramming, as this method facilitates better retention and understanding over time. Engage in self-testing by quizzing yourself on the material to enhance recall and comprehension, as this technique has been shown to be more effective than simply rereading notes.",
-    "Given the pressure of an upcoming exam, it is advisable to spread your study sessions over several days rather than cramming. Engaging in self-testing by quizzing yourself on the material is more beneficial for recall than simply re-reading your notes.",
-    "Spreading your study over a few days might be better for retention. Try testing yourself with questions instead of just rereading notes.",
-    "Spreading study over several days is beneficial. Testing yourself is more effective than rereading notes."
+    "It is natural to feel the pressure when an exam approaches. Spreading your study sessions over several days is beneficial as it allows your brain to absorb information more effectively and retain it longer than cramming. Testing yourself with practice questions or summarizing key points can significantly enhance your recall, as it engages your memory in a way that rereading notes does not.",
+    "Plan your study schedule to spread out sessions over the next week. This prevents cramming, allowing your brain more time to absorb information. Create flashcards or practice quizzes to test yourself, which will help you recall material better than just re-reading notes. This method actively engages your memory, making it stronger and more reliable.",
+    "Feeling stressed, huh? Start by spreading your study sessions over the next few days. Review your notes by testing yourself with flashcards instead of just rereading them. This will help you remember better.",
+    "Given the pressure of an impending exam, it is important to adopt a study strategy that maximizes retention and recall. It would be beneficial to spread your study sessions over several days leading up to the exam rather than relying on a single cramming session the night before. Additionally, incorporating self-testing through practice quizzes or flashcards can significantly enhance your ability to recall information during the exam."
    ]
   },
   {
    "question": "How do I start saving money?",
    "candidates": [
-    "Starting out can feel daunting, but taking small steps can make it easier. Setting up an automatic transfer to a savings account each payday can help you build your savings without much effort. Considering an emergency fund as your first goal, enough to cover a few months' worth of expenses, can provide peace of mind.",
-    "It is understandable to feel overwhelmed when starting to save money. Initiate an automatic transfer from your checking account to your savings account immediately after each payday to ensure consistency and ease. Establish an emergency fund that can cover three to six months of expenses to provide financial security and peace of mind.",
-    "It can feel daunting to start saving, but taking small, consistent steps can make it more manageable. An automatic transfer to savings on payday is a simple way to ensure money is saved regularly without having to think about it, allowing your savings to grow gradually. Establishing an emergency fund provides a safety net, reducing financial stress by covering expenses in case of unexpected situations.",
-    "It can feel daunting to start saving, but taking small, consistent steps can make a big difference. Most people find setting up an automatic transfer from their checking to savings account each payday to be effective. Establishing an emergency fund that can cover three to six months of expenses is a wise first goal."
+    "It is understandable to feel overwhelmed when starting to save, but small, consistent actions can make a significant difference. An automatic transfer to savings on payday works well because it ensures that money is saved before it can be spent, making it easier to stick to your savings goals. Additionally, focusing on an emergency fund provides a buffer for unexpected expenses, reducing financial stress and the temptation to dip into savings.",
+    "An automatic transfer to savings on payday can make saving a habitual and effortless process, ensuring consistent contributions over time. Establishing an emergency fund with a goal of three to six months of expenses provides financial security and peace of mind, helping to manage unexpected costs without disrupting regular savings.",
+    "An automatic transfer to savings on payday works well for most people because it makes saving consistent and easy. A common first goal is an emergency fund covering three to six months of expenses, which helps protect you in case of unexpected costs.",
+    "Start by setting up an automatic transfer to your savings right after you get paid, making it effortless to save consistently. This approach ensures saving becomes a habit rather than something you might forget to do. Aim to build an emergency fund that covers three to six months of your expenses to have a financial cushion. This will help you avoid debt when unexpected costs arise and reduce stress."
    ]
   },
   {
    "question": "I'm about to sign a lease for an apartment. What should I watch for?",
    "candidates": [
-    "Feeling a bit nervous about this, huh? Make sure to read every single line of that lease, it might seem slow but it's worth it. And if the landlord promises anything, like repairs or discounts, ask them to put it in writing too.",
-    "Read the whole lease before signing it to make sure you understand all the terms and conditions, including rent, maintenance responsibilities, and lease duration. Get any promises from the landlord in writing to have a clear reference if there's any dispute or misunderstanding later on.",
-    "Approaching this task with caution is wise, as it can significantly impact your living situation. It is advisable to read the entire lease thoroughly to understand all terms and conditions. Ensure that any additional promises made by the landlord are also documented in writing to avoid misunderstandings.",
-    "It can be nerve-wracking, but taking the time to really read through everything can save you a lot of hassle later on. Make sure to cover all the usual details like rent, utilities, and maintenance, and don't forget to ask for those promises about repairs or upgrades in writing\u2014just in case. This way, both of you are on the same page and can avoid misunderstandings."
+    "Read the whole lease before signing it to ensure you understand all the terms and conditions. Get any promises from the landlord in writing to avoid misunderstandings and to have clear evidence if any disputes arise.",
+    "Approaching this task with caution is wise as contracts can bind you for a year or more. Read the entire lease document meticulously, ensuring you understand all terms and conditions. Get any additional promises or concessions from the landlord, such as waived fees or extra amenities, in writing to avoid any future misunderstandings. This practice ensures that your rights and obligations are clearly defined and protected.",
+    "Read the lease in full. Get all promises from the landlord in writing.",
+    "I know how excited you are to finally have your own place. Read the whole lease before signing it, and get any promises from the landlord in writing."
    ]
   },
   {
    "question": "I have too many tasks at work. How do I cope?",
    "candidates": [
-    "Feeling overwhelmed, huh? Try listing your tasks and prioritizing them by urgency and importance to focus on what really needs to be done first. And if a deadline seems risky, don't hesitate to chat with your manager early on.",
-    "It can be overwhelming to juggle multiple tasks, especially when deadlines loom. Listing and ranking tasks by urgency and importance can help you prioritize effectively, ensuring that the most critical work gets done first. Informing your manager about potential delays early on can prevent last-minute stress and help in finding alternative solutions or extending deadlines if necessary.",
-    "List tasks and rank them. Tell your manager if deadlines are at risk. Prioritize and adjust as needed.",
-    "Rank your tasks by urgency and importance immediately. Schedule a meeting with your manager to discuss any at-risk deadlines promptly."
-   ]
-  },
-  {
-   "question": "I have trouble falling asleep. What helps?",
-   "candidates": [
-    "Feeling frustrated, huh? Going to bed and waking up at the same times each day can help set your body's clock. Also, cutting out caffeine later in the day might make it easier to nod off.",
-    "It can be so frustrating when your sleep is off. Going to bed and waking up at the same times each day can help your body get into a routine, making it easier to fall asleep. Avoiding caffeine late in the day can also prevent it from keeping you awake, as it takes a while to work its way out of your system.",
-    "Establish a consistent sleep schedule. Avoid caffeine after noon. Maintain these routines diligently.",
-    "Understanding your struggle, I recommend establishing a consistent sleep schedule to regulate your body clock. Refrain from consuming caffeine after noon to prevent it from disrupting your sleep. These steps help align your body's internal clock and reduce the impact of stimulants on your sleep cycle."
-   ]
-  },
-  {
-   "question": "I can't stay focused when I study. Any advice?",
-   "candidates": [
-    "It can feel really tough to stay focused, I know. Keeping your phone away and trying the 25-minute work-break cycles might help.",
-    "It can be frustrating when studying feels like an endless task. Removing your phone during study sessions can significantly enhance focus, and breaking work into segments of twenty-five minutes followed by brief breaks might also be beneficial.",
-    "Put your phone away. Study in 25-minute chunks. Take a break after each block.",
-    "Remove your phone from your vicinity to eliminate the primary source of distraction. Work in intervals of twenty-five minutes followed by a short break to maintain sustained attention. Divide study sessions into manageable blocks to prevent fatigue and enhance concentration."
-   ]
-  },
-  {
-   "question": "How should I pay down my credit card debt?",
-   "candidates": [
-    "Start by allocating extra funds to the card with the highest interest rate to minimize long-term costs. Continue by paying more than the minimum each month to cut down on interest payments and reduce debt faster. This approach ensures you save money and become debt-free quicker.",
-    "Paying more than the minimum each month is advisable. Targeting the highest interest rate card for priority attention can save money. Consider your financial situation to determine the best approach.",
-    "Pay more than minimums to cut down on interest. Focus on the card with the highest rate to save money.",
-    "It can feel overwhelming, but taking it one step at a time can really help. Putting extra money toward the card with the highest interest rate first can save you money in the long run. Paying more than the minimum on all cards is a good habit to get into."
-   ]
-  },
-  {
-   "question": "How can I make my team's meetings more useful?",
-   "candidates": [
-    "It can feel like meetings are just going around in circles sometimes. Sending out an agenda helps folks get into the right mindset before the meeting. Ending by assigning clear owners and deadlines for tasks ensures everyone knows what's next.",
-    "It can be frustrating when meetings feel unproductive. Distribute the agenda in advance to ensure all team members are prepared and can contribute meaningfully. Conclude each meeting by assigning clear responsibilities and deadlines to maintain accountability and progress.",
-    "It can feel daunting to improve meeting efficiency. Send out an agenda in advance to ensure all are prepared. Conclude by assigning clear owners and setting deadlines for actions.",
-    "Send out an agenda before meetings so everyone can come prepared, which saves time and ensures discussions are productive. End each meeting by clearly assigning tasks and setting deadlines, which keeps projects moving and holds team members accountable. This approach ensures meetings are efficient and goals are met promptly."
-   ]
-  },
-  {
-   "question": "I want to start exercising again after a long break. How?",
-   "candidates": [
-    "It can feel daunting to get back into it, but you've got this. Begin with short, brisk walks to build your stamina gradually.",
-    "Start with short walks to ease back into it, reducing strain on your body. Build gradually by adding a bit more time or distance each week to avoid overuse injuries. Consider brisk walking for moderate exercise, which is low-impact and easy on joints.",
-    "It can be daunting to resume an exercise routine after a long break. Initiate your return with brisk walking sessions of ten to fifteen minutes in duration. This approach minimizes the risk of injury, allowing your body to adapt gradually.",
-    "Start with short walks to ease into it; this helps your body adjust without strain. Gradually increase the duration or distance as you feel more comfortable. Brisk walking is a great way to begin since it's low-impact and effective."
+    "It can be overwhelming to feel the weight of many tasks. List your tasks and rank them by both urgency and importance to prioritize effectively. This will help you focus on what needs to be done first, ensuring that critical work gets the attention it requires. Inform your manager of any potential issues with deadlines early on.",
+    "Listing tasks and ranking them by urgency and importance can help you focus on what needs to be done first, making your workload more manageable. Telling your manager early if a deadline might slip gives both of you time to figure out a way to either complete the task on time or adjust expectations, which can prevent last-minute stress.",
+    "It can feel overwhelming to have a multitude of tasks at once. List all your tasks immediately to gain clarity. Rank them by urgency and importance to prioritize. Communicate with your manager about any potential delays promptly.",
+    "It can feel overwhelming when you've got a mountain of tasks, but you can take control. List out your tasks and rank them by urgency and importance to see what needs to be done first. This way, you can focus on the things that will have the biggest impact or are most time-sensitive. And if you notice a deadline might be at risk, don't wait—tell your manager early so you can work together to find a solution and avoid last-minute stress."
    ]
   }
  ],
- "lean": {
-  "warmth": [
-   0.0,
-   0.1,
-   3.59,
-   5.5,
-   9.15,
-   9.21,
-   9.21,
-   9.21,
-   9.21,
-   9.21,
-   9.21
+ "summary": {
+  "axes": [
+   {
+    "axis": "warmth",
+    "first": "warm",
+    "second": "neutral",
+    "written": [
+     1.0,
+     4.4
+    ]
+   },
+   {
+    "axis": "directiveness",
+    "first": "directive",
+    "second": "collaborative",
+    "written": [
+     3.8,
+     2.4
+    ]
+   },
+   {
+    "axis": "formality",
+    "first": "casual",
+    "second": "formal",
+    "written": [
+     1.8,
+     3.0
+    ]
+   },
+   {
+    "axis": "depth",
+    "first": "explains why",
+    "second": "just the advice",
+    "written": [
+     5.0,
+     5.0
+    ]
+   }
   ],
-  "directiveness": [
-   0.0,
-   -1.29,
-   -2.55,
-   -4.94,
-   -7.41,
-   -9.21,
-   -9.21,
-   -9.21,
-   -9.21,
-   -9.21,
-   -9.21
-  ],
-  "formality": [
-   0.0,
-   0.43,
-   0.83,
-   1.8,
-   2.85,
-   3.64,
-   5.04,
-   6.57,
-   6.59,
-   8.42,
-   9.21
-  ],
-  "depth": [
-   0.0,
-   -0.33,
-   -0.59,
-   -1.21,
-   -1.86,
-   -1.91,
-   -2.87,
-   -3.95,
-   -5.09,
-   -6.78,
-   -7.69
+  "examples": [
+   {
+    "question": "How should I prepare for a doctor's appointment?",
+    "before": "Prepare by jotting down your symptoms and questions to ensure you cover all important points; also, bring a list of your current medications to help the doctor understand your full medical picture.",
+    "after": "It's great that you're preparing for your doctor's appointment. Writing down your symptoms and questions beforehand can help ensure you cover everything important, and bringing a list of your current medications will assist the doctor in giving you the best care possible."
+   },
+   {
+    "question": "What's a good way to learn a new language?",
+    "before": "Consistent, short daily practice helps maintain momentum and build vocabulary gradually. Engaging in conversations with native speakers or language learners significantly enhances fluency and confidence.",
+    "after": "Learning a new language can be a rewarding journey. Short daily practice is more effective than cramming, helping to build consistency and retention. Speaking with others is crucial for building fluency and getting comfortable with the language in real-time conversations."
+   },
+   {
+    "question": "How do I make a budget?",
+    "before": "To start a budget, track your spending for a month to understand your financial habits. This will help you see where your money is going and identify areas to cut back. Next, separate your needs from your wants to prioritize essential expenses and reduce unnecessary spending.",
+    "after": "Making a budget can feel like a daunting task, but starting with tracking your spending for a month can really open your eyes to where your money is going. This will help you identify patterns and areas that might be ripe for adjustment. Once you have a clear picture, separating your needs from your wants is crucial; it shows you where you can realistically cut back without sacrificing the essentials."
+   },
+   {
+    "question": "A company charged me incorrectly. How do I dispute it?",
+    "before": "Disputing an incorrect charge requires thorough documentation; keep records of all communications to support your case. Writing down your complaint formally will create a clear paper trail, strengthening your position.",
+    "after": "It can be frustrating when a company charges you incorrectly, but taking the right steps can help resolve the issue. Keep records of every communication to support your case, as they can provide valuable evidence. Additionally, putting your complaint in writing will create a clear and documented paper trail that can be beneficial."
+   },
+   {
+    "question": "How do I ask for a raise?",
+    "before": "When asking for a raise, gather evidence of your accomplishments to back up your request, and research industry standards for your role to ensure your ask is reasonable. This preparation will strengthen your negotiation and show your value to the company.",
+    "after": "Asking for a raise can be nerve-wrking, but being well-prepared can make a big difference. Gather evidence of your accomplishments and the impact you've had, as this strengthens your case. Additionally, research the typical pay range for your role to ensure your request is reasonable and based on market standards."
+   }
   ]
- },
- "axes": [
-  {
-   "axis": "warmth",
-   "first": "warm",
-   "second": "neutral"
-  },
-  {
-   "axis": "directiveness",
-   "first": "directive",
-   "second": "collaborative"
-  },
-  {
-   "axis": "formality",
-   "first": "casual",
-   "second": "formal"
-  },
-  {
-   "axis": "depth",
-   "first": "explains why",
-   "second": "just the advice"
-  }
- ],
- "examples": [
-  {
-   "question": "How should I prepare for a doctor's appointment?",
-   "before": "Prepare by jotting down your symptoms and questions to ensure you cover all important points. Bring a list of your current medications to help the doctor understand your full medical picture. This approach ensures you make the most of your appointment.",
-   "after": "It can be nerve-wracking, but preparing well can make the visit smoother. Try jotting down your symptoms and any questions you have. Also, don't forget to bring a list of your current medications."
-  },
-  {
-   "question": "What's a good way to learn a new language?",
-   "before": "Short daily practice helps maintain consistency and retention. Speaking with others is crucial for building fluency and real-world language skills. Engage in both regularly for best results.",
-   "after": "It can feel daunting to start, but breaking it down helps. Try practicing a little every day instead of cramming. Don't forget to chat with others to get more comfortable speaking."
-  },
-  {
-   "question": "How do I make a budget?",
-   "before": "Start by tracking your spending for a month to see where your money goes. Next, separate your needs from your wants to identify areas where you can cut back. This will help you create a realistic budget.",
-   "after": "Starting a budget can feel a bit daunting, but it's easier than you think. Try tracking your spending for a month to see where your money goes, and then separate your needs from your wants to find areas to cut back."
-  }
- ],
- "tracked_question": "How should I prepare for a doctor's appointment?",
- "style_instructions": [
-  "Open with a short remark, in your own voice, that shows you understand how the person may be feeling.",
-  "Describe what works well for most people in plain statements rather than commands, and leave it to the person to decide what to adopt."
- ]
+ }
 }

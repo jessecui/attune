@@ -57,11 +57,42 @@ for i in range(0, len(keys), 240):
 mean = lambda v: sum(v) / len(v)
 
 
+# Words the system word list lacks but that are ordinary English, so the spelling check passes them.
+MODERN = set("""prioritize prioritizing prioritized prioritizes email emails roadmap benchmark benchmarks proactive proactively
+mindset doesn't aren't isn't healthcare apps paid impactful online creditworthiness meds reusable confrontational okay stats info
+meetups automate feet overhydration checklist mimicking behaviours timeframe brainstorming paperwork podcast backpack escalations
+moisturized sustainability expertise hashtag timelines upfront miscommunications bullseye demystify judgmental breadcrumbs
+budgetable papertrail""".split())
+WORD_LIST = Path("/usr/share/dict/words")   # on macOS and most Linux systems; without it only the patterns are checked
+WORDS = {w.strip().lower() for w in WORD_LIST.read_text().split("\n")} if WORD_LIST.exists() else None
+if WORDS is None:
+    print(f"no word list at {WORD_LIST}: misspellings are not counted, so the malformed column is a lower bound")
+tokens = lambda text: re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower().replace("’", "'"))
+# Every word the untouched model wrote, and every word of the questions and fact sheets, counts as spelled right.
+SEEN = {w for by_run in runs.values() for r in by_run.values() for t in r[0] for w in tokens(t)} | {
+    w for split in ("train", "heldout", "test") for it in sc[split] for w in tokens(it["q"] + " " + " ".join(it["facts"]))}
+ENDINGS = (("'s", ""), ("s", ""), ("es", ""), ("ies", "y"), ("ed", ""), ("ed", "e"), ("d", ""), ("ing", ""), ("ing", "e"), ("ly", ""),
+           ("er", ""), ("est", ""), ("ier", "y"), ("iest", "y"), ("ily", "y"), ("ied", "y"))
+
+
+def spelled(w):
+    """Whether a word is in the word list, in a plain or inflected form (planned, planning, plans)."""
+    if w in WORDS or w in SEEN or w in MODERN or len(w) <= 3:
+        return True
+    if any(w.endswith(end) and w[: -len(end)] + to in WORDS for end, to in ENDINGS):
+        return True
+    return any(w.endswith(end) and len(w) > len(end) + 2 and w[-len(end) - 1] == w[-len(end) - 2] and w[: -len(end) - 1] in WORDS
+               for end in ("ing", "ed", "er"))
+
+
 def malformed(text):
     """Broken text of the kinds over-training produces: no space after punctuation, two words run
-    together, an answer that does not end, or characters from another script."""
-    return bool(re.search(r"[a-z][.,;:!?][A-Za-z]", text) or re.search(r"\b[a-z]{2,}[A-Z][a-z]+", text)
-                or not re.search(r"[.!?)\"']\s*$", text.strip()) or re.search(r"[^\x00-\x7f‘’“”–—…é°]", text))
+    together, an answer that does not end, characters from another script, or a misspelled word
+    ("nerve-wrking"). The judge sees none of these."""
+    if (re.search(r"[a-z][.,;:!?][A-Za-z]", text) or re.search(r"\b[a-z]{2,}[A-Z][a-z]+", text)
+            or not re.search(r"[.!?)\"']\s*$", text.strip()) or re.search(r"[^\x00-\x7f‘’“”–—…é°]", text)):
+        return True
+    return WORDS is not None and not all(spelled(w) or spelled(w.split("'")[0]) for w in tokens(text))
 
 
 def fits(texts, key):

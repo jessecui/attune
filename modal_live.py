@@ -25,8 +25,8 @@ import modal
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
 # Five questions. With earlier picks reused in each update, more rounds learn a stronger style but start to break
-# the text: over both sets of benchmark runs (grids "long" and "confirm"), malformed final answers were 0.4% after
-# five rounds, 0.8% after six, 3.3% after seven, 5.8% after eight and 17% after ten. The win rate over the
+# the text: over both sets of benchmark runs (grids "long" and "confirm"), malformed final answers were 0.8% after
+# five rounds, 1.7% after six, 4.6% after seven, 7.1% after eight and 24% after ten. The win rate over the
 # untouched model was 90% after five rounds and 94% after eight.
 ROUNDS, K = 5, 4
 MEASURE = 5   # unseen questions, answered and rated once at the end; all of them are shown as before and after
@@ -97,7 +97,7 @@ HOW TO RUN IT
        python3 -m venv .venv
        .venv/bin/pip install torch transformers peft accelerate
 
-  3. Quit your browser, code editors and other large apps first: with 24 GB of
+  3. Quit your browser, code editors, and other large apps first: with 24 GB of
      memory, the model uses most of it. Then ask your model a question:
 
        .venv/bin/python example.py "How do I ask for a raise?"
@@ -113,7 +113,7 @@ GOOD TO KNOW
   - It was trained on short pieces of advice, so that is where it sounds most
     like your session.
   - It knows no more than the standard model. Its answers show a style; they can
-    be wrong and are not medical, legal or financial advice.
+    be wrong and are not medical, legal, or financial advice.
   - To free the disk space afterwards, delete this folder:
       ~/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct
 """
@@ -151,7 +151,7 @@ def key_ok(given, expected):
     return bool(expected) and hmac.compare_digest(given.encode(), expected.encode())
 
 
-@app.cls(image=image, gpu="L40S", volumes={"/cache": hf_cache, "/adapters": adapters}, max_containers=1,
+@app.cls(image=image, gpu=["L40S", "A100-40GB", "A100-80GB"], volumes={"/cache": hf_cache, "/adapters": adapters}, max_containers=1,
          scaledown_window=300,
          # the judge model's key, for rating the tuned model's writing at the end
          timeout=900, secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY}), modal.Secret.from_name("attune-judge")])
@@ -242,7 +242,8 @@ class Live:
         s["cands"][n] = {"answers": answers, "prompt": s["sess"].plain["train"][i],
                          "payload": {"session": s["id"], "round": n, "rounds": s["rounds"],
                                      "question": s["scenario"]["train"][i]["q"], "candidates": texts,
-                                     "role": s["role"], "topic": s.get("topic", ""), "builtin": s["builtin"],
+                                     "role": s["role"], "topic": s.get("topic", ""), "title": s.get("title", ""),
+                                     "builtin": s["builtin"],
                                      "notice": s["notice"],
                                      "write_seconds": round(time.time() - t, 1)}}
 
@@ -286,7 +287,7 @@ class Live:
         examples = [{"question": it["q"], "before": b, "after": t}
                     for it, b, t in zip(s["scenario"]["heldout"], s["base_texts"], texts)]
         return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes, "role": s["role"],
-                "topic": s.get("topic", ""), "builtin": s["builtin"], "examples": examples}
+                "topic": s.get("topic", ""), "title": s.get("title", ""), "builtin": s["builtin"], "examples": examples}
 
     def _try(self, s, item):
         """One question of the visitor's own, answered by the standard model and by their model.
@@ -390,6 +391,7 @@ class Live:
         class DraftIn(BaseModel):
             role: str
             topic: str = ""   # what the visitor wants to talk about; empty when they named only the role
+            title: str = ""   # the setting in one line, as the page shows it above each question
             items: list[DraftItem]
             measure: list[DraftItem]
 
@@ -399,10 +401,10 @@ class Live:
 
         def scenario_from(draft, rounds):
             """The session's questions from a visitor's draft; fact sheets are written here for
-            any question they typed themselves. Returns (scenario, role, topic)."""
+            any question they typed themselves. Returns (scenario, role, topic, title)."""
             from bench import setting
             role = setting.clean(draft.role, 80).rstrip(".") or "an advisor"
-            topic = setting.clean_topic(draft.topic)
+            topic, title = setting.clean_topic(draft.topic), setting.clean_topic(draft.title)
             if len(draft.items) != rounds or len(draft.measure) != MEASURE or any(i.points is None for i in draft.measure):
                 raise HTTPException(status_code=400, detail="That set of questions is incomplete; start again")
             items = [{"question": setting.clean(i.question, 200),
@@ -428,7 +430,7 @@ class Live:
             system = self.builtin["system"].replace(
                 opening, f"You are {role}. The person has come to you with a question{f' about {topic}' if topic else ''}. "
                          f"Answer them directly, speaking as yourself in that role.", 1)
-            return {"system": system, "train": made[:rounds], "heldout": made[rounds:]}, role, topic
+            return {"system": system, "train": made[:rounds], "heldout": made[rounds:]}, role, topic, title
 
         @api.post("/api/start")
         def start(body: StartIn | None = None, key: str = "", rounds: int = ROUNDS):
@@ -436,9 +438,9 @@ class Live:
             rounds = (body and body.rounds) or rounds
             if rounds != ROUNDS:
                 raise HTTPException(status_code=400, detail=f"Rounds must be {ROUNDS}")
-            scenario, role, topic, builtin = self.builtin, "an advisor", "", True
+            scenario, role, topic, title, builtin = self.builtin, "an advisor", "", "", True
             if body and body.draft:
-                scenario, role, topic = scenario_from(body.draft, rounds)
+                scenario, role, topic, title = scenario_from(body.draft, rounds)
                 builtin = False
             # Sessions past their time limit, or left before their first question was ready, are dropped.
             for sid in [k for k, old in list(self.sessions.items())
@@ -446,7 +448,7 @@ class Live:
                 self.sessions.pop(sid, None)   # another start may have dropped it already
             s = {"id": uuid.uuid4().hex, "round": 0, "rounds": rounds, "rng": random.Random(), "weights": self.fresh,
                  "touched": time.time(),
-                 "scenario": scenario, "role": role, "topic": topic, "builtin": builtin, "notice": None,
+                 "scenario": scenario, "role": role, "topic": topic, "title": title, "builtin": builtin, "notice": None,
                  "cands": {}, "error": None, "thread": None,
                  # GRPO's clipped update on the plain prompt; half of each round's steps revisit earlier
                  # rounds' picks, which took the five-round win rate over the untouched model from 85% to 93%.
@@ -579,6 +581,7 @@ class Live:
 
 
 @app.function(image=image, volumes={"/adapters": adapters},
+              timeout=1800,   # a 160 MB download on a slow connection outlasts the default five minutes
               secrets=[modal.Secret.from_dict({"ATTUNE_KEY": KEY}), modal.Secret.from_name("attune-judge")])
 @modal.asgi_app(requires_proxy_auth=True)
 def files():
@@ -611,7 +614,7 @@ def files():
             d = setting.draft(body.setting, body.rounds + MEASURE)
         except Exception:  # noqa: BLE001
             raise HTTPException(status_code=502, detail="Could not prepare that setting just now")
-        return {"suitable": d["suitable"], "reason": d["reason"], "role": d["role"], "topic": d["topic"],
+        return {"suitable": d["suitable"], "reason": d["reason"], "role": d["role"], "topic": d["topic"], "title": d["title"],
                 "items": d["items"][: body.rounds], "measure": d["items"][body.rounds:]}
 
     @api.get("/adapter/{session}")

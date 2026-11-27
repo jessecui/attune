@@ -1,15 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { api, AS_ADJECTIVE, AS_CLAUSE, AXIS_NOTES, read, type Example, type ModelStatus, type Summary } from '../api'
+import { api, AS_ADJECTIVE, AS_CLAUSE, AS_MORE, AXIS_NOTES, read, type Example, type ModelStatus, type Summary } from '../api'
 import { Scale } from '../components/Scale'
 import { Spinner } from '../components/Spinner'
 
 // How the two columns of a comparison were written: the same prompt for both, with no style named in it.
 const SAME_POINTS = 'Both models get the same question and the same two points to make, and neither is told a style. The difference comes from your model\'s training.'
 
-/** "empathetic, collaborative and formal" */
-const list = (words: string[]) => words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+/** "empathetic, collaborative, and formal"; two words take no comma ("empathetic and formal") */
+const list = (words: string[]) => words.length < 3 ? words.join(' and ') : `${words.slice(0, -1).join(', ')}, and ${words[words.length - 1]}`
 
-/** "are empathetic, collaborative and formal, and give the advice without the reasons" */
+/** "are empathetic, collaborative, and formal, and give the advice without the reasons" */
 function describe(found: { side: string; strength: string }[]) {
   const adjectives = found.filter((r) => AS_ADJECTIVE[r.side]).map((r) => (r.strength === 'leans' ? 'somewhat ' : '') + AS_ADJECTIVE[r.side])
   const clauses = found.filter((r) => AS_CLAUSE[r.side]).map((r) => (r.strength === 'leans' ? 'mostly ' : '') + AS_CLAUSE[r.side])
@@ -21,7 +21,9 @@ export function Results({ summary, mock, over, onAgain, onExpired }:
   // axis: the scale's name as the page shows it ("empathy"), not the service's own ("warmth")
   const readings = summary.axes.map((a) => ({ axis: (AXIS_NOTES[a.axis]?.title ?? a.axis).toLowerCase(), ...read(a) }))
   // Only scales the training moved count as learned; the rest either show no preference or match the standard model.
-  const found = readings.filter((r) => r.strength !== 'none' && r.moved), open = readings.filter((r) => r.strength === 'none')
+  const found = readings.filter((r) => r.strength !== 'none' && r.moved && !r.toward), open = readings.filter((r) => r.strength === 'none')
+  // Moved toward the other side without crossing the middle: a change in that direction, not a preference for the side it sits on.
+  const shifted = readings.filter((r) => r.strength !== 'none' && r.toward), more = list(shifted.map((r) => AS_MORE[r.other] ?? `more ${r.other}`))
   const same = readings.filter((r) => r.strength !== 'none' && !r.moved)
   // "when asking for a promotion with a team manager": the setting the visitor chose, if they chose one. A topic
   // is drafted as an "-ing" phrase; one that is not falls back to "when speaking with ... about ...".
@@ -47,7 +49,9 @@ export function Results({ summary, mock, over, onAgain, onExpired }:
             {!rated ? <>Its writing could not be rated this time. The examples below show how it answers.</>
               : found.length > 0
               ? <>It learned that{setting} you prefer answers that <strong className="font-semibold text-gray-900">{describe(found)}</strong>.</>
+              : shifted.length > 0 ? <>Your model became <strong className="font-semibold text-gray-900">{more}</strong> than the standard model, without crossing the middle of any scale.</>
               : <>Your picks did not move the model clearly on any scale.</>}
+            {rated && found.length > 0 && shifted.length > 0 && <> It also became {more} than the standard model.</>}
             {rated && open.length > 0 && found.length > 0 && <> On {list(open.map((r) => r.axis))}, your picks showed no clear preference.</>}
             {rated && same.length > 0 && <> On {list(same.map((r) => r.axis))}, it writes much as the standard model already does.</>}
           </p>

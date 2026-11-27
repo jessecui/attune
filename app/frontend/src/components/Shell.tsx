@@ -24,7 +24,7 @@ export function Shell({ children, mock, progress, minutesLeft, onHome }:
             {progress && <span className="text-gray-600">Question {progress.at} of {progress.of}</span>}
             {minutesLeft !== undefined && (
               <span className={`tabular-nums ${minutesLeft <= 2 ? 'font-medium text-red-700' : 'text-gray-500'}`}>
-                {minutesLeft > 0 ? `${minutesLeft} min left` : 'Time is up'}
+                {minutesLeft > 0 ? `GPU: ${minutesLeft} min left` : 'GPU session ended'}
               </span>
             )}
             <button onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}
@@ -48,7 +48,7 @@ export function Shell({ children, mock, progress, minutesLeft, onHome }:
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">{children}</main>
       <footer className="border-t border-gray-200">
         <p className="hint mx-auto max-w-6xl px-4 py-4 text-center sm:px-6">
-          Answers are written by an AI model to show a style of speaking. They can be wrong, and they are not medical, legal or financial advice.
+          Answers are written by an AI model to show a style of speaking. They can be wrong, and they are not medical, legal, or financial advice.
         </p>
       </footer>
     </div>

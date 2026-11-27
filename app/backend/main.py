@@ -21,7 +21,6 @@ The sign-in gate itself is in auth.py.
 """
 import asyncio
 import json
-import math
 import os
 import time
 import uuid
@@ -64,10 +63,13 @@ def _relayed(code: int) -> int:
     return 502 if code >= 500 or code in (401, 403) else code
 
 
+MODAL_TRIES = 8   # connection drops ridden out while the GPU starts: about a minute and a half of waiting between tries
+
+
 async def modal(path: str, params: dict | None = None, body: dict | None = None):
     if not (MODAL_URL and MODAL_KEY):
         raise HTTPException(status_code=500, detail="The GPU service is not configured on the server")
-    for attempt in (1, 2):
+    for attempt in range(1, MODAL_TRIES + 1):
         try:
             # Generous timeout: the first request may wait for the GPU to start and the model to load.
             # Modal answers a request still running after 150 s with a redirect to its result; follow it.
@@ -76,12 +78,14 @@ async def modal(path: str, params: dict | None = None, body: dict | None = None)
             break
         except (httpx.RemoteProtocolError, httpx.ConnectError) as e:
             # The connection was dropped before an answer came back, which happens now and then while the
-            # GPU container is starting. One more try is safe: a start that did go through leaves a spare
-            # session that is swept up, and a repeated answer is recognised by its question number.
+            # GPU container is starting, and a slow start can drop several in a row, so keep trying for
+            # about a minute and a half. A repeated answer is recognised by its question number. A start
+            # that did reach the GPU before its connection dropped leaves a spare session there, which
+            # takes GPU time until the next start clears it; in the logs so far, dropped starts never ran.
             print(f"GPU service: {type(e).__name__} on {path}, attempt {attempt}", flush=True)
-            if attempt == 2:
+            if attempt == MODAL_TRIES:
                 raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
-            await asyncio.sleep(2)
+            await asyncio.sleep(2 if attempt == 1 else 15)
         except httpx.HTTPError as e:
             raise HTTPException(status_code=502, detail=f"Could not reach the GPU service ({type(e).__name__})")
     if r.status_code >= 400:
@@ -112,17 +116,8 @@ def _mock_round(s, n):
 
 
 def _mock_summary(s):
-    fx, n = _mock(), s["rounds"]
-    # Soften the recording's leans so the mock profile shows every kind of result.
-    scale = {"warmth": 0.45, "directiveness": 0.2, "formality": 0.15, "depth": 0.6}
-    # Two entries, as the GPU service sends: the standard model, then the tuned one after the last round.
-    axes = [{**a, "lean": [round(v * scale[a["axis"]], 2) for v in (fx["lean"][a["axis"]][0], fx["lean"][a["axis"]][n])]}
-            for a in fx["axes"]]
-    for a in axes:  # stand-in ratings of the writing, 1 to 5, so the mock looks like a real session
-        a["written"] = [round(3 + 2 * math.tanh(v / 3), 1) for v in a["lean"]]
-    return {"done": True, "session": s["id"], "rounds": n, "axes": axes, "examples": fx["examples"],
-            "role": "an advisor", "builtin": True,
-            "style_instructions": fx["style_instructions"], "tracked_question": fx["tracked_question"], "track": []}
+    """The recorded session's own results: its ratings on each scale and its five example answers."""
+    return {"done": True, "session": s["id"], "rounds": s["rounds"], **_mock()["summary"], "role": "an advisor", "builtin": True}
 
 
 class DraftItem(BaseModel):
@@ -133,6 +128,7 @@ class DraftItem(BaseModel):
 class Draft(BaseModel):
     role: str
     topic: str = ""   # what the visitor wants to talk about; empty when they named only the role
+    title: str = ""   # the setting in one line, shown above each question
     items: list[DraftItem]
     measure: list[DraftItem]
 
@@ -145,6 +141,17 @@ class Start(BaseModel):
 class Prepare(BaseModel):
     setting: str
     rounds: int = ROUND_CHOICES[0]
+
+
+_tasks: set = set()
+
+
+def _background(coro):
+    """Run a coroutine without waiting for it. The reference is kept until it finishes: asyncio holds
+    tasks only weakly, so one nobody else refers to can be dropped before it has run."""
+    task = asyncio.create_task(coro)
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
 
 
 async def _warm():
@@ -164,13 +171,13 @@ async def prepare(body: Prepare):
     if MOCK:
         await asyncio.sleep(1.2)
         fx = _mock()
-        return {"suitable": True, "reason": "", "role": "an advisor (demo data ignores the setting)", "topic": "",
+        return {"suitable": True, "reason": "", "role": "an advisor (demo data ignores the setting)", "topic": "", "title": "",
                 "items": [{"question": r["question"], "points": ["", ""]} for r in fx["rounds"][: body.rounds]],
-                "measure": [{"question": e["question"], "points": ["", ""]} for e in fx["examples"] * 2][:5]}
+                "measure": [{"question": e["question"], "points": ["", ""]} for e in fx["summary"]["examples"]]}
     if not (FILES_URL and MODAL_KEY):
         raise HTTPException(status_code=500, detail="The setting service is not configured on the server")
     if MODAL_URL:
-        asyncio.create_task(_warm())
+        _background(_warm())
     try:
         async with httpx.AsyncClient(headers=MODAL_HEADERS, timeout=90, follow_redirects=True) as client:
             r = await client.post(f"{FILES_URL}/prepare", params={"key": MODAL_KEY}, json=body.model_dump())
@@ -190,6 +197,9 @@ class Feedback(BaseModel):
     round: int | None = None   # the question being answered, so a resent submit is recognised
 
 
+START_SECONDS = 5 * 60   # how long a visitor waits for a GPU before the start is given up
+
+
 @app.post("/api/session/start", dependencies=signed_in)
 async def start(body: Start):
     if body.rounds not in ROUND_CHOICES:
@@ -199,7 +209,21 @@ async def start(body: Start):
         s = {"id": uuid.uuid4().hex, "rounds": body.rounds, "round": 0, "started": time.time()}
         _mock_sessions[s["id"]] = s
         return _mock_round(s, 1)
-    return await modal("/api/start", body=body.model_dump())
+    try:
+        # A start normally takes under a minute. When no GPU is free it can wait much longer, so stop here.
+        return await asyncio.wait_for(modal("/api/start", body=body.model_dump()), START_SECONDS)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=503, detail="No GPU was available. Please try again in a few minutes.")
+
+
+@app.post("/api/session/alive", dependencies=signed_in)
+async def alive():
+    """Called every couple of minutes by a page with a session open. The GPU container stops after five
+    minutes without a request and the session lives in its memory, so without this a visitor who spent
+    that long on one question would lose the session."""
+    if not MOCK and MODAL_URL:
+        _background(_warm())
+    return {"ok": True}
 
 
 @app.post("/api/session/feedback", dependencies=signed_in)
@@ -245,7 +269,7 @@ async def try_answer(session: str, body: Try):
     _valid(session)
     if MOCK:
         await asyncio.sleep(1.0)
-        ex = _mock()["examples"][0]
+        ex = _mock()["summary"]["examples"][0]
         return {"question": body.question, "before": ex["before"], "after": ex["after"]}
     return await modal("/api/try/answer", body={"session": session, "question": body.question})
 
