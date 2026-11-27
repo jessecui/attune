@@ -307,14 +307,19 @@ class Live:
         return {"done": True, "session": s["id"], "rounds": s["rounds"], "axes": axes, "role": s["role"],
                 "topic": s.get("topic", ""), "title": s.get("title", ""), "builtin": s["builtin"], "examples": examples}
 
-    def _try(self, s, item):
+    def _try(self, s, item, points=True):
         """One question of the visitor's own, answered by the standard model and by their model.
 
         Both get the same prompt: the question and a two-point fact sheet (written for it just before
-        this), and no style. The only difference is the session's adapter.
+        this), and no style. The only difference is the session's adapter. With points off, both get
+        the bare question, and the system prompt's sentence about the points is left out: each model
+        then answers from what it knows, as the downloaded model does.
         """
         sess = s["sess"]
-        plain = self.policy.prompt_ids(s["scenario"]["system"], self.R.user_message(item))
+        if points:
+            plain = self.policy.prompt_ids(s["scenario"]["system"], self.R.user_message(item))
+        else:
+            plain = self.policy.prompt_ids(s["scenario"]["system"].replace(POINTS_RULE, ""), f"Question: {item['q']}")
         try:   # both answers in one pass on the GPU
             base, tuned = ([o] for o in self.policy.generate([plain, plain], max_new_tokens=self.args.max_new_tokens,
                                                               adapters=[False, True], **SHOWN))
@@ -322,8 +327,9 @@ class Live:
             print(f"mixed batch failed, writing in turn: {e}", flush=True)
             base = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, use_adapter=False, **SHOWN)
             tuned = self.policy.generate([plain], max_new_tokens=self.args.max_new_tokens, **SHOWN)
-        return {"question": item["q"], "before": sess.finish(base, items=[item])[1][0],
-                "after": sess.finish(tuned, items=[item])[1][0]}
+        items = [item] if points else None   # with no fact sheet there are no facts for the sentence cap to protect
+        return {"question": item["q"], "before": sess.finish(base, items=items)[1][0],
+                "after": sess.finish(tuned, items=items)[1][0]}
 
     def _export(self, s, summary):
         """Package the session's adapter as a zip on the adapters volume, for download."""
@@ -548,6 +554,7 @@ class Live:
         class TryIn(BaseModel):
             session: str
             question: str
+            points: bool = True   # false: the bare question, with no fact sheet for either model
 
         def finished(session):
             s = self.sessions.get(session)
@@ -559,8 +566,8 @@ class Live:
 
         def prepare_question(s, question):
             """A fact sheet for the visitor's question (no GPU needed), as for every other question in
-            the app: without one the two models give different advice, and the tuned model, which
-            was trained on fact sheets, drifts out of its role."""
+            the app: without one the two models give different advice. This step also turns away an
+            unsuitable question, so it runs even when the visitor asks for answers without points."""
             from bench import setting
             question = " ".join(question.split())[:300]
             if len(question) < 5:
@@ -588,14 +595,14 @@ class Live:
             item = s.pop("try_item", None)
             if item is None:
                 raise HTTPException(status_code=400, detail="Ask the question again")
-            return self._with(s, lambda: self._try(s, item))
+            return self._with(s, lambda: self._try(s, item, body.points))
 
         @api.post("/api/try")   # both steps in one call
         def try_model(body: TryIn, key: str = ""):
             check(key)
             s = finished(body.session)
             item = prepare_question(s, body.question)
-            return self._with(s, lambda: self._try(s, item))
+            return self._with(s, lambda: self._try(s, item, body.points))
 
         return api
 

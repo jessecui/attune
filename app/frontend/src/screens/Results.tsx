@@ -4,6 +4,7 @@ import { Scale } from '../components/Scale'
 import { Spinner } from '../components/Spinner'
 
 // How the two columns of a comparison were written: the same prompt for both, with no style named in it.
+const NO_POINTS = 'Both models got only your question: no points to make and no style. The advice itself can differ here, not only the wording.'
 const SAME_POINTS = 'Both models get the same question and the same two points to make, and neither is told a style. The difference comes from your model\'s training.'
 
 /** "empathetic, collaborative, and formal"; two words take no comma ("empathetic and formal") */
@@ -102,6 +103,9 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
   // busy holds the step in progress, so the button can say which one it is waiting on
   const [question, setQuestion] = useState(''), [busy, setBusy] = useState<'' | 'preparing' | 'writing'>(''), [error, setError] = useState('')
   const [answer, setAnswer] = useState<Example | null>(null)
+  // With points, both models are handed the same advice to give, so only the wording differs. Without,
+  // each answers from what it knows, as the downloaded model does when asked a bare question.
+  const [points, setPoints] = useState(true), [answeredWith, setAnsweredWith] = useState(true)
   const ask = async (e: FormEvent) => {
     e.preventDefault()
     if (question.trim().length < 5) return
@@ -109,7 +113,8 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
     try {
       await api.tryPrepare(session, question.trim())
       setBusy('writing')
-      setAnswer(await api.tryAnswer(session, question.trim()))
+      setAnswer(await api.tryAnswer(session, question.trim(), points))
+      setAnsweredWith(points)
     } catch (err) { if (!onExpired(err)) setError((err as Error).message) } finally { setBusy('') }
   }
   return (
@@ -128,6 +133,10 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
             {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing answers'}</> : 'Ask'}
           </button>
         </form>
+        <label className="mt-3 flex items-start gap-2 text-gray-700">
+          <input type="checkbox" checked={points} disabled={!!busy || over} onChange={(e) => setPoints(e.target.checked)} className="mt-1 accent-teal-700" />
+          <span>Give both models the same two points to make <span className="hint">(untick to let each answer from what it knows)</span></span>
+        </label>
         {over && <p className="mt-3 text-gray-700">Your 20 minutes are up, so this model is no longer loaded. Your results and the download are still here.</p>}
         {error && !over && <p role="alert" className="mt-3 text-red-700">{error}</p>}
         {answer && (
@@ -136,7 +145,7 @@ function TryBox({ session, over, onExpired }: { session: string; over: boolean; 
             <div className="md:border-l md:border-gray-100 md:pl-4"><p className="text-xs font-medium text-teal-800">Your model</p><p className="mt-1 whitespace-pre-line text-[15px] leading-relaxed text-gray-900">{answer.after}</p></div>
           </div>
         )}
-        <p className="hint mt-3">{SAME_POINTS} Check anything that matters with a real professional. Available until your 20 minutes are up.</p>
+        <p className="hint mt-3">{answer && !answeredWith ? NO_POINTS : SAME_POINTS} Check anything that matters with a real professional. Available until your 20 minutes are up.</p>
       </div>
     </section>
   )

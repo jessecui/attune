@@ -39,7 +39,7 @@ export const api = {
     request<Round | Summary>('/api/session/feedback', { session, round, best, worst }),
   alive: () => request<{ ok: boolean }>('/api/session/alive', {}),
   tryPrepare: (session: string, question: string) => request<{ prepared: boolean }>(`/api/session/${session}/try/prepare`, { question }),
-  tryAnswer: (session: string, question: string) => request<Example>(`/api/session/${session}/try/answer`, { question }),
+  tryAnswer: (session: string, question: string, points: boolean) => request<Example>(`/api/session/${session}/try/answer`, { question, points }),
   modelStatus: (session: string) => request<ModelStatus>(`/api/session/${session}/model/status`),
   modelUrl: (session: string) => `/api/session/${session}/model`,
 }

@@ -250,6 +250,7 @@ async def feedback(body: Feedback):
 
 class Try(BaseModel):
     question: str
+    points: bool = True   # false: both models get the bare question, with no fact sheet
 
 
 @app.post("/api/session/{session}/try/prepare", dependencies=signed_in)
@@ -270,7 +271,7 @@ async def try_answer(session: str, body: Try):
         await asyncio.sleep(1.0)
         ex = _mock()["summary"]["examples"][0]
         return {"question": body.question, "before": ex["before"], "after": ex["after"]}
-    return await modal("/api/try/answer", body={"session": session, "question": body.question})
+    return await modal("/api/try/answer", body={"session": session, "question": body.question, "points": body.points})
 
 
 # ---- the tuned model, as a download ----------------------------------------------------------

@@ -15,7 +15,7 @@ Attune fine-tunes a 7B language model live on one person's feedback, so it learn
 - 🩺 **Any advisor, any topic**: Gemini turns your description into seven questions and a two-point fact sheet for each, so every answer gives the same advice and only the style differs
 - ✅ **Content check**: an answer missing a fact-sheet point is redrawn before you see it; near-identical answers are replaced
 - 📏 **Measured result**: a judge model rates your tuned model on five questions it was not trained on, beside the standard model
-- 💬 **Try it**: ask your own question and compare the standard model's answer with yours
+- 💬 **Try it**: ask your own question and compare the standard model's answer with yours, with both given the same points to make or with the question alone
 - 📦 **Download**: the adapter as a zip, with your results and a script to run it
 - ⏱️ **Twenty-minute sessions**: a session ends twenty minutes after its first question, with the time left shown, and the GPU stops about five minutes after a visitor walks away, which caps what one visit can cost
 - 🌓 **Light and dark themes**
