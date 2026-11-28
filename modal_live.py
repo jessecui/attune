@@ -24,10 +24,10 @@ import modal
 
 MODEL = "Qwen/Qwen2.5-7B-Instruct"
 AXES = ["warmth", "directiveness", "formality", "depth"]
-# Seven questions, trained with DPO. Over both sets of benchmark runs (grids "long" and "confirm") its win rate
-# over the untouched model was 93% after five rounds, 95% after six and seven and 94% after eight, with the style fit still
-# rising a little each round; from ten rounds it starts to drop facts. Its text stays intact at every length (1 to
-# 2% malformed), where GRPO with replay, the method compared against it, reached 24% malformed after ten rounds.
+# Seven questions, trained with DPO. On the 12 held-out benchmark runs (grid "confirm") its win rate over the base
+# model was 94% after five rounds and 95% from six rounds on, with the style ratings still rising a little each
+# round; at ten rounds it starts to drop facts (92% kept). Its text stays intact at every length (2 to 4%
+# malformed), where GRPO with replay, the method compared against it, reached 23% malformed after ten rounds.
 ROUNDS, K = 7, 4
 MEASURE = 5   # unseen questions, answered and rated once at the end; all of them are shown as before and after
 SHOWN = dict(temperature=0.7, top_p=0.95)   # how the answers on the results screen are written
