@@ -129,7 +129,8 @@ function TryBox({ session, over, why, onExpired }: { session: string; over: bool
         <form onSubmit={ask} className="flex gap-2">
           <input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} disabled={!!busy || over} aria-label="Your question"
             placeholder="Type a question" autoComplete="off"
-            className="min-w-0 flex-1 rounded-md border border-gray-300 bg-surface px-3 py-2.5 text-[15px] focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
+            // 16px on phones: iOS Safari zooms the page when a field with smaller text is focused
+            className="min-w-0 flex-1 rounded-md border border-gray-300 bg-surface px-3 py-2.5 text-base sm:text-[15px] focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-600/10" />
           <button className="btn btn-primary shrink-0" disabled={!!busy || over || question.trim().length < 5}>
             {busy ? <><Spinner />{busy === 'preparing' ? 'Preparing your question' : 'Writing answers'}</> : 'Ask'}
           </button>

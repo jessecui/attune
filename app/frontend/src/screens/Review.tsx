@@ -23,7 +23,8 @@ export function Review({ draft, onStart, onBack }: { draft: Draft; onStart: (dra
             <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-gray-100 text-xs font-medium text-gray-600">{i + 1}</span>
             <input value={q} maxLength={200} aria-label={`Question ${i + 1}`}
               onChange={(e) => setQuestions(questions.map((old, j) => (j === i ? e.target.value : old)))}
-              className="min-w-0 flex-1 rounded-md border border-transparent px-2 py-1.5 hover:border-gray-200 focus:border-teal-600" />
+              // 16px on phones: iOS Safari zooms the page when a field with smaller text is focused
+              className="min-w-0 flex-1 rounded-md border border-transparent px-2 py-1.5 text-base sm:text-sm hover:border-gray-200 focus:border-teal-600" />
             {changed(i) && <span className="hint shrink-0">edited</span>}
           </li>
         ))}
