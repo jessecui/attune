@@ -15,6 +15,10 @@ type Stage =
 export default function App() {
   const [me, setMe] = useState<Me | null>(null)
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
+  // A new screen or a new question starts at the top. On a phone the Next button is at the bottom of a long
+  // page, and without this the next question would open scrolled down to where the last one ended.
+  const question = stage.name === 'round' ? stage.round.round : 0
+  useEffect(() => { window.scrollTo(0, 0) }, [stage.name, question])
 
   const refresh = () => api.me().then((m) => { setMe(m); setStage(m.signed_in ? { name: 'welcome' } : { name: 'gate' }) })
     .catch(() => setStage({ name: 'gate' }))
