@@ -10,7 +10,7 @@ A real-time, human-in-the-loop fine-tuning system that personalizes an LLM's com
 ## Features
 
 - 🎯 **Online Preference Tuning**: DPO on a LoRA adapter (r = 16), one update per feedback round, trained on best/worst picks among four candidates
-- 🪶 **No Prompt Scaffolding**: Style instructions are only there to make the four candidates differ; every update is applied to the plain prompt, and the tuned model is never given a style
+- 🪶 **No Prompt Scaffolding**: Style instructions are used only to make the four candidates differ; every update is applied to the plain prompt, and the tuned model is never given a style
 - 🧭 **Four Style Axes**: Empathy, directiveness, formality, and depth, with candidates drawn from a menu of style combinations
 - 🩺 **Custom Settings**: Gemini drafts seven questions and a two-point fact sheet per question for any advisor and topic, so candidates share content and differ only in style
 - ✅ **Content Control**: Candidates missing a fact-sheet point are redrawn before display; near-duplicate candidates are replaced
@@ -137,7 +137,7 @@ For real sessions, `scripts/app.sh` also needs the two addresses that `modal dep
 
 ### Method Comparison: DPO vs GRPO
 
-Two methods were compared for learning a style from a handful of human picks: DPO, the standard objective for preference pairs, and GRPO, a policy-gradient method that treats each pick as a reward (best +1, worst −1, clipped at a ratio of 0.2, and applied to the plain prompt, which makes it off-policy).
+Two methods were compared for learning a style from a small number of human picks: DPO, the standard objective for preference pairs, and GRPO, a policy-gradient method that treats each pick as a reward (best +1, worst −1, clipped at a ratio of 0.2, and applied to the plain prompt, which makes it off-policy).
 
 **Protocol.** Both methods train on identical picks from four simulated users (an LLM judge assigned a fixed preference on each axis), with the same learning rate, steps per round, and seeds. After training, each model answers ten test questions it was not trained on, from a plain prompt, and the judge rates every answer for style and fact coverage. Hyperparameters were selected on a separate set of validation questions with one set of seeds; the results below are from 12 runs per method on a separate set of seeds (120 answers and 240 fact-sheet points per method).
 
@@ -150,7 +150,7 @@ Two methods were compared for learning a style from a handful of human picks: DP
 
 Win rates are per answer, with ties counted as half. Pooled with the 12 tuning-seed runs (24 per method): win rate 95% vs 94%, head-to-head 52% vs 48%, fact retention 99.4% for both, malformed outputs 1.7% vs 4.6%.
 
-The two methods learn the style equally well at seven rounds. The difference is what happens in longer sessions: GRPO's text starts to break and DPO's does not. So Attune uses DPO, with seven rounds per session.
+The two methods learn the style equally well at seven rounds. The difference is what happens in longer sessions: GRPO's text breaks down and DPO's does not. Attune uses DPO, with seven rounds per session.
 
 ### Session Length
 
@@ -165,15 +165,15 @@ Pooled over 24 runs per method:
 | 8 | 94% | 94% | 1.2% | 7.1% |
 | 10 | 94% | 95% | 0.8% | 24% |
 
-- **Learning speed**: DPO is ahead at three rounds (87% vs 78%) and five (93% vs 90%); GRPO catches up by seven.
+- **Learning speed**: DPO is ahead at three rounds (87% vs 78%) and five (93% vs 90%); GRPO matches it by seven.
 - **Broken text (GRPO)**: Malformed outputs (missing spaces, merged words, misspellings, unfinished answers) rise from 4.6% at seven rounds to 24% at ten. DPO stays at 1–2% at every length, nearly all of it a single misspelling ("nerve-wrking") that both tuned models produce and the base model does not.
 - **Fact retention (DPO)**: 99% through eight rounds, falling to 96% at ten (459 of 480).
-- **Why seven rounds**: DPO's win rate levels off at six rounds while the style ratings keep improving a little; seven fits a 20-minute session and is well short of the length where facts get dropped.
+- **Why seven rounds**: DPO's win rate levels off at six rounds while the style ratings continue to improve slightly; seven fits a 20-minute session and is well short of the length where facts are dropped.
 - **Per-user breakdown**: At seven rounds the methods are level head-to-head for three of the four simulated users; DPO leads for the fourth (29 wins to 15).
 
 ### Ablations
 
-- **Experience replay**: Both methods reuse earlier picks, and the effect differs by method. For GRPO, replay raises the five-round win rate from 85% to 93% on the same seeds and is also what breaks its text: without replay, malformed outputs stay under 1% at every length. For DPO, replay does not change the win rate vs the base model (95% with, 94% without at seven rounds) and trades style strength for content: without replay DPO wins 61% head-to-head against DPO with replay at seven rounds, but fact retention falls from 99.2% to 96.7% (232 of 240), and by ten rounds it trails (42% head-to-head). Attune keeps replay on, for the better fact retention.
+- **Experience replay**: Both methods reuse earlier picks, and the effect differs by method. For GRPO, replay raises the five-round win rate from 85% to 93% on the same seeds and is also what breaks its text: without replay, malformed outputs stay under 1% at every length. For DPO, replay does not change the win rate vs the base model (95% with, 94% without at seven rounds) and trades style strength for content: without replay DPO wins 61% head-to-head against DPO with replay at seven rounds, but fact retention falls from 99.2% to 96.7% (232 of 240), and by ten rounds it trails (42% head-to-head). Attune keeps replay enabled for its better fact retention.
 - **Learning rate**: 2e-5 preserves content and text for both methods. At 1e-4 a third of answers drop a fact (both methods); at 5e-5, over a third of GRPO's five-round answers are malformed.
 - **Candidate mix**: Replacing two of the four styled candidates with the model's own unprompted answers lowers the five-round win rate for both methods (DPO 92% to 78%, GRPO 88% to 83%). Replacing one has little effect on win rate.
 
@@ -237,7 +237,7 @@ Pooled over 24 runs per method:
 
 ## Limitations
 
-- **Advice settings only**: In a test with speakers who aren't giving advice (a student, a client), the styles came through but facts were covered less reliably: both points appeared in 62% of the student's answers and 84% of the client's, against 90% for an advisor in the same test (a separate measurement from the benchmark above). So the setting step recasts each role as an advisor and declines settings it cannot recast.
+- **Advice settings only**: In a test with speakers who aren't giving advice (a student, a client), the styles carried over but facts were covered less reliably: both points appeared in 62% of the student's answers and 84% of the client's, against 90% for an advisor in the same test (a separate measurement from the benchmark above). For that reason, the setting step recasts each role as an advisor and declines settings it cannot recast.
 - **Simulated users**: The benchmark uses four preference profiles played by an LLM, which pick consistently; real preferences are noisier.
 - **Judge validity**: The judge has been spot-checked by hand, not validated against a labeled set. It is least reliable on depth, sometimes counting a short purpose phrase as a reason. The live fact check before a candidate is shown is keyword matching.
 - **Style-instruction dependence**: The model learns from answers written under the menu's style instructions and can inherit their habits, such as empathetic answers that open the same way.
