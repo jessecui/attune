@@ -200,7 +200,9 @@ class Feedback(BaseModel):
     round: int | None = None   # the question being answered, so a resent submit is recognised
 
 
-START_SECONDS = 5 * 60   # how long a visitor waits for a GPU before the start is given up
+# How long a visitor waits for a GPU before the start is given up. Under five minutes on purpose: Railway's
+# proxy closes a request that has sent no data for five minutes, and the visitor should get our message, not its error.
+START_SECONDS = 4 * 60
 
 
 @app.post("/api/session/start", dependencies=signed_in)
