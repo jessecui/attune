@@ -482,6 +482,7 @@ def main(argv=None):
                          "prompt; the rest are written under a style instruction for variety")
     ap.add_argument("--save-probe", action="store_true",
                     help="also answer the held-out questions after the last round (with --eval-split test)")
+    ap.add_argument("--no-replay", action="store_true", help="DPO only: train each round on its own pick alone")
     ap.add_argument("--replay", action="store_true",
                     help="grpo_style, grpo_plain: spend half of each round's steps on earlier rounds' picks")
     ap.add_argument("--distill", default="",
@@ -526,6 +527,8 @@ def main(argv=None):
         extra["answer_weight"] = args.answer_weight
     if args.replay:
         extra["replay"] = True
+    if args.no_replay:
+        extra["replay"] = False
     menu = scenario.get("menu") if args.axes else None
     flip_axes = set(filter(None, args.flip_axes.split(",")))
     care = set(filter(None, args.care.split(",")))

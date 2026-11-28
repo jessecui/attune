@@ -52,8 +52,9 @@ def _pick_group(groups, step, rng):
 class DPO:
     name = "dpo"
 
-    def __init__(self, policy, lr=1e-4, beta=0.1, steps_per_round=8, seed=0):
+    def __init__(self, policy, lr=1e-4, beta=0.1, steps_per_round=8, seed=0, replay=True):
         self.policy = policy
+        self.replay = replay   # every other step revisits an earlier round's pick; off for the ablation
         self.beta = beta
         self.steps = steps_per_round
         self.opt = torch.optim.AdamW(policy.trainable_parameters(), lr=lr, weight_decay=0.0)
@@ -62,7 +63,7 @@ class DPO:
     def update(self, groups, pool):
         losses = []
         for step in range(self.steps):
-            g = _pick_group(groups, step, self.rng)
+            g = _pick_group(groups, step, self.rng) if self.replay else groups[-1]
             prompts = [g.prompt] * len(g.completions)
             # Pass 1 (no grad): the loss and its derivative w.r.t. each log-prob.
             logp = self.policy.logprobs(prompts, g.completions).cpu().requires_grad_()

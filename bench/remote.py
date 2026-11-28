@@ -192,6 +192,11 @@ GRIDS = {
                 "argv": LIVE + ["--judge-user", "--rounds", "10", "--persona", p, "--seed", str(seed), "--save-probe",
                                 "--lr", "2e-5", "--own", "0", "--no-duplicates", "--method", "grpo_plain"]}
                for p in LIVE_PERSONAS for seed in (4, 5, 6)],
+    # The same for DPO, which reuses earlier picks by design: the "confirm" DPO runs again with that off.
+    "ablate_dpo": [{"name": f"dpo-noreplay-own0-lr2e-5_{p}_s{seed}",
+                    "argv": LIVE + ["--judge-user", "--rounds", "10", "--persona", p, "--seed", str(seed), "--save-probe",
+                                    "--lr", "2e-5", "--own", "0", "--no-duplicates", "--method", "dpo", "--no-replay"]}
+                   for p in LIVE_PERSONAS for seed in (4, 5, 6)],
     "final4": [{"name": f"{tag}_{p}_s{seed}",
                 "argv": LIVE + ["--judge-user", "--rounds", "5", "--persona", p, "--seed", str(seed), *extra]}
                for tag, extra in [("grpo", SHIPPED), ("dpo-lr2e-5", ["--method", "dpo", "--lr", "2e-5"])]
