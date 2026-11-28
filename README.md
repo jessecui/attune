@@ -148,34 +148,34 @@ Two methods were compared for learning a style from a small number of human pick
 | **Fact retention** | 99.2% | 99.2% |
 | **Malformed outputs** | 2.5% | 8.3% |
 
-Win rates are per answer, with ties counted as half. Pooled with the 12 tuning-seed runs (24 per method): win rate 95% vs 94%, head-to-head 52% vs 48%, fact retention 99.4% for both, malformed outputs 1.7% vs 4.6%.
+Win rates are per answer, with ties counted as half.
 
 The two methods learn the style equally well at seven rounds. The difference is what happens in longer sessions: GRPO's text breaks down and DPO's does not. Attune uses DPO, with seven rounds per session.
 
 ### Session Length
 
-Pooled over 24 runs per method:
+From the same 12 runs per method:
 
 | Rounds | Win rate vs base: DPO | GRPO | Malformed outputs: DPO | GRPO |
 |---|---|---|---|---|
-| 3 | 87% | 78% | 2.1% | 0% |
-| 5 | 93% | 90% | 1.7% | 0.8% |
-| 6 | 95% | 91% | 2.1% | 1.7% |
-| 7 | 95% | 94% | 1.7% | 4.6% |
-| 8 | 94% | 94% | 1.2% | 7.1% |
-| 10 | 94% | 95% | 0.8% | 24% |
+| 3 | 88% | 80% | 4.2% | 0% |
+| 5 | 94% | 93% | 2.5% | 0% |
+| 6 | 95% | 93% | 3.3% | 2.5% |
+| 7 | 95% | 95% | 2.5% | 8.3% |
+| 8 | 95% | 93% | 1.7% | 10.8% |
+| 10 | 95% | 95% | 1.7% | 23.3% |
 
-- **Learning speed**: DPO is ahead at three rounds (87% vs 78%) and five (93% vs 90%); GRPO matches it by seven.
-- **Broken text (GRPO)**: Malformed outputs (missing spaces, merged words, misspellings, unfinished answers) rise from 4.6% at seven rounds to 24% at ten. DPO stays at 1–2% at every length, nearly all of it a single misspelling ("nerve-wrking") that both tuned models produce and the base model does not.
-- **Fact retention (DPO)**: 99% through eight rounds, falling to 96% at ten (459 of 480).
+- **Learning speed**: DPO is ahead at three rounds (88% vs 80%); GRPO is within a point by five (94% vs 93%) and matches it at seven.
+- **Broken text (GRPO)**: Malformed outputs (missing spaces, merged words, misspellings, unfinished answers) rise from 8.3% at seven rounds to 23% at ten (28 of 120). DPO stays between 2% and 4% at every length. From five to eight rounds, most of it is a single misspelling ("nerve-wrking") that both tuned models produce and the base model does not.
+- **Fact retention (DPO)**: 98% or above through eight rounds, falling to 92% at ten (221 of 240).
 - **Why seven rounds**: DPO's win rate levels off at six rounds while the style ratings continue to improve slightly; seven fits a 20-minute session and is well short of the length where facts are dropped.
-- **Per-user breakdown**: At seven rounds the methods are level head-to-head for three of the four simulated users; DPO leads for the fourth (29 wins to 15).
+- **Per-user breakdown**: At seven rounds the methods are close head-to-head for all four simulated users; neither leads by more than four wins in 30 answers.
 
 ### Ablations
 
 - **Experience replay**: Both methods reuse earlier picks, and the effect differs by method. For GRPO, replay raises the five-round win rate from 85% to 93% on the same seeds and is also what breaks its text: without replay, malformed outputs stay under 1% at every length. For DPO, replay does not change the win rate vs the base model (95% with, 94% without at seven rounds) and trades style strength for content: without replay DPO wins 61% head-to-head against DPO with replay at seven rounds, but fact retention falls from 99.2% to 96.7% (232 of 240), and by ten rounds it trails (42% head-to-head). Attune keeps replay enabled for its better fact retention.
 - **Learning rate**: 2e-5 preserves content and text for both methods. At 1e-4 a third of answers drop a fact (both methods); at 5e-5, over a third of GRPO's five-round answers are malformed.
-- **Candidate mix**: Replacing two of the four styled candidates with the model's own unprompted answers lowers the five-round win rate for both methods (DPO 92% to 78%, GRPO 88% to 83%). Replacing one has little effect on win rate.
+- **Candidate mix**: Replacing two of the four styled candidates with the model's own unprompted answers lowers the five-round win rate for both methods (DPO 92% to 78%, GRPO 88% to 83%, measured on the tuning seeds). Replacing one has little effect on win rate.
 
 ### Evaluation Notes
 
