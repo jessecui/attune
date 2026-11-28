@@ -102,6 +102,11 @@ HOW TO RUN IT
 
        .venv/bin/python example.py "How do I ask for a raise?"
 
+     For answers closest to your session, add two points for your model to
+     bring up:
+
+       .venv/bin/python example.py "How do I ask for a raise?" "List what you achieved this year" "Ask for a specific number"
+
      The first run downloads the standard model before it answers. After that,
      it takes about a minute to load each time.
 
@@ -112,10 +117,8 @@ GOOD TO KNOW
 
   - It was trained on short pieces of advice, so that is where it sounds most
     like your session.
-  - In your session every answer was given two points to make. Asked a bare
-    question, it answers from what it knows. To give it points, add them after
-    the question:
-      .venv/bin/python example.py "How do I ask for a raise?" "List what you achieved this year" "Ask for a specific number"
+  - In your session every answer was given two points to bring up. Asked a
+    bare question, your model answers from what it knows.
   - It knows no more than the standard model. Its answers show a style; they can
     be wrong and are not medical, legal, or financial advice.
   - To free the disk space afterwards, delete this folder:
@@ -127,7 +130,7 @@ POINTS_RULE = "Base your advice only on the points provided and cover both of th
 
 PACKAGE_EXAMPLE = """\"\"\"Ask your Attune model a question: python example.py "How do I ask for a raise?"
 
-To give it the points to make, as in your session, add them after the question:
+For answers closest to your session, add two points for your model to bring up:
     python example.py "How do I ask for a raise?" "List what you achieved this year" "Ask for a specific number"
 \"\"\"
 import json
