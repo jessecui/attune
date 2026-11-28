@@ -1,6 +1,6 @@
 # Attune
 
-A real-time, human-in-the-loop fine-tuning system that personalizes an LLM's communication style. A visitor names an advisor and a topic, ranks the best and worst of four candidate answers to each of seven questions, and a LoRA adapter on Qwen2.5-7B is updated with DPO after every pick. The tuned model is rated against the base model on unseen questions and offered as a download. It needs no style prompt: the learned style is in the adapter's weights.
+A real-time, human-in-the-loop fine-tuning system that personalizes an LLM's communication style. A visitor names an advisor and a topic, marks the best and worst of four candidate answers to each of seven questions, and a LoRA adapter on Qwen2.5-7B is updated with DPO after every pick. The tuned model is rated against the base model on unseen questions and offered as a download. It needs no style prompt: the learned style is in the adapter's weights.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-round-dark.png">
@@ -139,7 +139,7 @@ For real sessions, `scripts/app.sh` also needs the two addresses that `modal dep
 
 Two methods were evaluated for learning a style from a small number of human picks: DPO, the standard objective for preference pairs, and GRPO, a policy-gradient method that treats each pick as a reward (best +1, worst −1, clipped at a ratio of 0.2, credited to the plain prompt and therefore off-policy).
 
-**Protocol.** Both methods train on identical picks from four simulated users (an LLM judge assigned a fixed preference on each axis), with the same learning rate, steps per round, and seeds. After training, each model answers ten held-out test questions from a plain prompt, and the judge rates every answer for style and fact coverage. Hyperparameters were selected on held-out questions with one set of seeds; the results below are from 12 runs per method on a separate set of seeds (120 answers and 240 fact-sheet points per method).
+**Protocol.** Both methods train on identical picks from four simulated users (an LLM judge assigned a fixed preference on each axis), with the same learning rate, steps per round, and seeds. After training, each model answers ten test questions it was not trained on, from a plain prompt, and the judge rates every answer for style and fact coverage. Hyperparameters were selected on a separate set of validation questions with one set of seeds; the results below are from 12 runs per method on a separate set of seeds (120 answers and 240 fact-sheet points per method).
 
 | After 7 rounds | DPO | GRPO |
 |---|---|---|
