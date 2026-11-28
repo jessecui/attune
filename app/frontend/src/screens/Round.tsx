@@ -21,7 +21,7 @@ export function RoundScreen({ round, onNext, onExpired }:
   }
   const ready = best !== null && worst !== null
   const message = error ? error
-    : busy ? (last ? 'Training on your last pick and building your results, about half a minute' : 'Training on your pick and fetching the next question')
+    : busy ? (last ? 'Training on your last pick and building your results (about half a minute)' : 'Training on your pick and fetching the next question')
     : best === null && worst === null ? 'Mark one answer as best and one as worst'
     : best === null ? 'Now mark the best' : worst === null ? 'Now mark the worst' : 'Both marked'
   // The pill's colour says where things stand: waiting on a pick, ready, working, or failed.
